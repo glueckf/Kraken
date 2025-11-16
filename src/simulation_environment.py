@@ -230,6 +230,10 @@ class SimulationConfig:
     latency_threshold: float = None  # If None, latency is not considered
     cost_weight: float = 0.5
 
+    # Latency Trade-off Study
+    run_latency_tradeoff_study: bool = False
+    output_dataset_name: Optional[str] = None
+
     # Simulation mode
     mode: SimulationMode = SimulationMode.RANDOM
 
@@ -1346,12 +1350,15 @@ class Simulation:
         """
         # ----- ALL PUSH CALCULATION -----#
         try:
-            # print("--- Running All Push Computation ---")
-            # self.all_push_results = compute_all_push(self)
-            # all_push_latency = self.all_push_results.get("transmission_latency", 0.0)
-            # if self.latency_threshold is not None:
-            #     self.latency_threshold *= all_push_latency
-            # print("--- ALL PUSH COMPUTATION COMPLETE ---")
+            print("--- Running All Push Computation ---")
+            self.all_push_results = compute_all_push(self)
+            all_push_latency = self.all_push_results.get("transmission_latency", 0.0)
+
+            # Only multiply threshold here for normal simulations
+            # For trade-off study, multiplication happens inside run_kraken_solver
+            if self.latency_threshold is not None and not self.config.run_latency_tradeoff_study:
+                self.latency_threshold *= all_push_latency
+            print("--- ALL PUSH COMPUTATION COMPLETE ---")
             #
             # # ----- INEV COMPUTATION -----#
             # print("--- Running INEv Computation ---")
@@ -1393,18 +1400,24 @@ class Simulation:
             print("--- Running Kraken Computation ---")
             from src.kraken2_0.run import run_kraken_solver
 
-            # TODO: Note that we currently have `strategies_to_run` but only one strategy can run at a time
-            #  In the future, we should be able to run multiple strategies in one go and get their results together
-            #  or each result separately
-            results = run_kraken_solver(
-                ines_context=self,
-                strategies_to_run=[
-                    {"name": "greedy"},
-                    {"name": "k_beam", "k": 3},
-                    {"name": "k_beam", "k": 5}
-                ],
-                compare_within_kraken=True
-            )
+            # Check if running latency trade-off study
+            if self.config.run_latency_tradeoff_study:
+                # Run dual-run experiment: baseline + constrained
+                self.kraken_results = run_kraken_solver(
+                    ines_context=self,
+                    run_latency_tradeoff_study=True
+                )
+            else:
+                # Normal multi-strategy run
+                self.kraken_results = run_kraken_solver(
+                    ines_context=self,
+                    strategies_to_run=[
+                        {"name": "greedy"},
+                        {"name": "k_beam", "k": 3},
+                        {"name": "k_beam", "k": 5}
+                    ],
+                    compare_within_kraken=True
+                )
 
             print(f"--- KRAKEN COMPUTATION COMPLETE ---")
             print(f"DEBUG: Kraken results keys: {self.kraken_results.keys() if self.kraken_results else 'None'}")
@@ -1422,12 +1435,16 @@ class Simulation:
             logger.error(msg=e, exc_info=True)
             raise
 
-    def _write_results(self):
+    def _write_results(self, output_dataset_name: Optional[str] = None):
         """Write all strategy results to a unified parquet file."""
         import pandas as pd
         import pyarrow as pa
         import pyarrow.parquet as pq
         from pathlib import Path
+
+        # Allow config to override output dataset name
+        if self.config.output_dataset_name:
+            output_dataset_name = self.config.output_dataset_name
 
         try:
             print("--- Writing unified results to parquet ---")
@@ -1453,6 +1470,130 @@ class Simulation:
                 row[f"{prefix}_processing_latency"] = safe_float(result.get("processing_latency"))
                 row[f"{prefix}_computing_time"] = safe_float(result.get("computing_time"))
 
+            # Check if this is a latency trade-off study
+            if self.kraken_results and self.kraken_results.get("is_tradeoff_study") is True:
+                print("--- Writing latency trade-off study results ---")
+
+                # Extract results from dual-run
+                baseline_results = self.kraken_results.get("baseline_greedy_results", {})
+                constrained_results = self.kraken_results.get("constrained_greedy_results", {})
+                run_params = self.kraken_results.get("run_parameters", {})
+
+                # Populate baseline results - flatten structure for populate_basic
+                baseline_metrics = baseline_results.get("metrics", {})
+                baseline_flat = {
+                    "status": baseline_results.get("status", "unknown"),
+                    "cost": baseline_metrics.get("total_cost"),
+                    "transmission_latency": baseline_metrics.get("max_latency"),
+                    "processing_latency": baseline_metrics.get("cumulative_processing_latency"),
+                    "computing_time": baseline_results.get("execution_time_seconds"),
+                }
+                populate_basic("baseline_greedy", baseline_flat)
+
+                # Add extended baseline metrics
+                if baseline_results.get("status") == "success":
+                    row["baseline_greedy_workload_cost"] = safe_float(baseline_metrics.get("workload_cost"))
+                    row["baseline_greedy_num_placements"] = safe_float(baseline_metrics.get("num_placements"))
+                    row["baseline_greedy_placements_at_cloud"] = safe_float(baseline_metrics.get("placements_at_cloud"))
+                    row["baseline_greedy_average_cost_per_placement"] = safe_float(baseline_metrics.get("average_cost_per_placement"))
+
+                # Populate constrained results - flatten structure for populate_basic
+                constrained_metrics = constrained_results.get("metrics", {})
+                constrained_flat = {
+                    "status": constrained_results.get("status", "unknown"),
+                    "cost": constrained_metrics.get("total_cost"),
+                    "transmission_latency": constrained_metrics.get("max_latency"),
+                    "processing_latency": constrained_metrics.get("cumulative_processing_latency"),
+                    "computing_time": constrained_results.get("execution_time_seconds"),
+                }
+                populate_basic("constrained_greedy", constrained_flat)
+
+                # Add extended constrained metrics
+                if constrained_results.get("status") == "success":
+                    row["constrained_greedy_workload_cost"] = safe_float(constrained_metrics.get("workload_cost"))
+                    row["constrained_greedy_num_placements"] = safe_float(constrained_metrics.get("num_placements"))
+                    row["constrained_greedy_placements_at_cloud"] = safe_float(constrained_metrics.get("placements_at_cloud"))
+                    row["constrained_greedy_average_cost_per_placement"] = safe_float(constrained_metrics.get("average_cost_per_placement"))
+
+                # Add run parameters
+                row["latency_threshold_factor"] = safe_float(run_params.get("latency_threshold_factor"))
+                row["latency_threshold_absolute"] = safe_float(run_params.get("latency_threshold_absolute"))
+                row["cost_weight"] = safe_float(run_params.get("cost_weight"))
+                row["latency_weight"] = safe_float(run_params.get("latency_weight"))
+
+                # Add configuration parameters
+                row["network_size"] = safe_float(self.config.network_size)
+                row["event_skew"] = safe_float(self.config.event_skew)
+                row["node_event_ratio"] = safe_float(self.config.node_event_ratio)
+                row["max_parents"] = safe_float(self.config.max_parents)
+                row["parent_factor"] = safe_float(self.config.parent_factor)
+                row["num_event_types"] = safe_float(self.config.num_event_types)
+                row["query_size"] = safe_float(self.config.query_size)
+                row["query_length"] = safe_float(self.config.query_length)
+                row["xi"] = safe_float(self.config.xi)
+                row["mode"] = self.config.mode.value if hasattr(self.config.mode, 'value') else str(self.config.mode)
+                row["algorithm"] = self.config.algorithm.value if hasattr(self.config.algorithm, 'value') else str(self.config.algorithm)
+
+                # Create DataFrame
+                df = pd.DataFrame([row])
+
+                # Define explicit PyArrow schema for trade-off study
+                schema_fields = [
+                    # Baseline greedy metrics
+                    pa.field("baseline_greedy_status", pa.string()),
+                    pa.field("baseline_greedy_cost", pa.float64()),
+                    pa.field("baseline_greedy_transmission_latency", pa.float64()),
+                    pa.field("baseline_greedy_processing_latency", pa.float64()),
+                    pa.field("baseline_greedy_computing_time", pa.float64()),
+                    pa.field("baseline_greedy_workload_cost", pa.float64()),
+                    pa.field("baseline_greedy_num_placements", pa.float64()),
+                    pa.field("baseline_greedy_placements_at_cloud", pa.float64()),
+                    pa.field("baseline_greedy_average_cost_per_placement", pa.float64()),
+                    # Constrained greedy metrics
+                    pa.field("constrained_greedy_status", pa.string()),
+                    pa.field("constrained_greedy_cost", pa.float64()),
+                    pa.field("constrained_greedy_transmission_latency", pa.float64()),
+                    pa.field("constrained_greedy_processing_latency", pa.float64()),
+                    pa.field("constrained_greedy_computing_time", pa.float64()),
+                    pa.field("constrained_greedy_workload_cost", pa.float64()),
+                    pa.field("constrained_greedy_num_placements", pa.float64()),
+                    pa.field("constrained_greedy_placements_at_cloud", pa.float64()),
+                    pa.field("constrained_greedy_average_cost_per_placement", pa.float64()),
+                    # Run parameters
+                    pa.field("latency_threshold_factor", pa.float64()),
+                    pa.field("latency_threshold_absolute", pa.float64()),
+                    pa.field("cost_weight", pa.float64()),
+                    pa.field("latency_weight", pa.float64()),
+                    # Configuration parameters
+                    pa.field("network_size", pa.float64()),
+                    pa.field("event_skew", pa.float64()),
+                    pa.field("node_event_ratio", pa.float64()),
+                    pa.field("max_parents", pa.float64()),
+                    pa.field("parent_factor", pa.float64()),
+                    pa.field("num_event_types", pa.float64()),
+                    pa.field("query_size", pa.float64()),
+                    pa.field("query_length", pa.float64()),
+                    pa.field("xi", pa.float64()),
+                    pa.field("mode", pa.string()),
+                    pa.field("algorithm", pa.string()),
+                ]
+
+                # Only include fields that exist in the DataFrame
+                schema_fields = [field for field in schema_fields if field.name in df.columns]
+                explicit_schema = pa.schema(schema_fields)
+
+                # Convert to PyArrow table
+                table = pa.Table.from_pandas(df, schema=explicit_schema, preserve_index=False)
+
+                # Write to parquet
+                output_dir = Path(f"result/{output_dataset_name or 'latency_tradeoff_study'}.parquet")
+                output_dir.mkdir(parents=True, exist_ok=True)
+                pq.write_to_dataset(table, root_path=str(output_dir))
+
+                print(f"--- Trade-off study results written to {output_dir} ---")
+                return
+
+            # Normal simulation result writing
             populate_basic("all_push", self.all_push_results)
             populate_basic("inev", self.inev_results)
             populate_basic("ines", self.ines_results)
@@ -1586,7 +1727,7 @@ class Simulation:
             # Convert DataFrame to PyArrow table with explicit schema
             table = pa.Table.from_pandas(df, schema=explicit_schema, preserve_index=False)
 
-            output_dir = Path("result/unified_results.parquet")
+            output_dir = Path(f"result/{output_dataset_name or 'unified_results'}.parquet")
             output_dir.mkdir(parents=True, exist_ok=True)
 
             existing_files = {file.name for file in output_dir.glob("*.parquet")}

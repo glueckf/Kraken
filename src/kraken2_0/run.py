@@ -25,9 +25,10 @@ from kraken2_0.utils.results_logger import (
 
 def run_kraken_solver(
     ines_context: Any,
-    strategies_to_run: List[Any],
+    strategies_to_run: List[Any] = None,
     enable_detailed_logging: bool = False,
     compare_within_kraken: bool = False,
+    run_latency_tradeoff_study: bool = False,
 ) -> Dict[str, Any]:
     """
     Main entry point for the Kraken 2.0 solver framework.
@@ -39,6 +40,7 @@ def run_kraken_solver(
         strategies_to_run: List of strategy configurations (dicts or enums) specifying which strategies to execute.
         enable_detailed_logging: If True, logs every placement decision to CSV for analysis.
         compare_within_kraken: If True, logs all strategy results in a single wide-format row for comparison.
+        run_latency_tradeoff_study: If True, runs dual-run experiment (baseline + constrained greedy).
 
     Returns:
         Dictionary containing execution results with the following structure:
@@ -52,6 +54,106 @@ def run_kraken_solver(
             "best_solution": SolutionCandidate or None
         }
     """
+    # Handle latency trade-off study mode
+    if run_latency_tradeoff_study:
+        # Validate preconditions
+        if not hasattr(ines_context, 'all_push_results') or not ines_context.all_push_results:
+            raise ValueError("All Push results are missing. Cannot run latency trade-off study.")
+
+        all_push_latency = ines_context.all_push_results.get("transmission_latency", 0.0)
+        if all_push_latency == 0.0:
+            raise ValueError("All Push latency is 0. Cannot calculate relative threshold.")
+
+        # Get parameters
+        latency_threshold_factor = ines_context.config.latency_threshold
+        original_cost_weight = ines_context.config.cost_weight
+
+        # Store original state
+        original_config_threshold = ines_context.latency_threshold
+
+        # Calculate absolute threshold
+        absolute_threshold = latency_threshold_factor * all_push_latency
+
+        # Setup common problem context
+        context = _gather_problem_parameters(ines_context)
+        dependencies = compute_dependencies(
+            ines_context, ines_context.h_mycombi, ines_context.h_criticalMSTypes
+        )
+        processing_order = sorted(dependencies.keys(), key=lambda x: dependencies[x])
+
+        # Run 1: Baseline (no latency constraint)
+        print("--- Running Baseline Greedy (no latency constraint) ---")
+        ines_context.latency_threshold = None
+        context_baseline = _gather_problem_parameters(ines_context)
+        problem_baseline = PlacementProblem(processing_order, context_baseline, False)
+
+        baseline_results = {}
+        try:
+            from kraken2_0.search.greedy import GreedySearch
+            strategy = GreedySearch()
+            baseline_start = time.time()
+            solution = strategy.solve(problem_baseline)
+            baseline_end = time.time()
+
+            metrics = _calculate_solution_metrics(solution, problem_baseline, ines_context)
+            baseline_results = {
+                "status": "success",
+                "solution": solution,
+                "metrics": metrics,
+                "execution_time_seconds": baseline_end - baseline_start,
+            }
+        except Exception as e:
+            baseline_results = {
+                "status": "failed",
+                "error": str(e),
+                "execution_time_seconds": 0.0,
+            }
+
+        # Run 2: Constrained (with latency constraint)
+        print(f"--- Running Constrained Greedy (threshold={absolute_threshold:.2f}) ---")
+        ines_context.latency_threshold = absolute_threshold
+        context_constrained = _gather_problem_parameters(ines_context)
+        problem_constrained = PlacementProblem(processing_order, context_constrained, False)
+
+        constrained_results = {}
+        try:
+            from kraken2_0.search.greedy import GreedySearch
+            strategy = GreedySearch()
+            constrained_start = time.time()
+            solution = strategy.solve(problem_constrained)
+            constrained_end = time.time()
+
+            metrics = _calculate_solution_metrics(solution, problem_constrained, ines_context)
+            constrained_results = {
+                "status": "success",
+                "solution": solution,
+                "metrics": metrics,
+                "execution_time_seconds": constrained_end - constrained_start,
+            }
+        except Exception as e:
+            constrained_results = {
+                "status": "failed",
+                "error": str(e),
+                "execution_time_seconds": 0.0,
+            }
+
+        # Restore original state
+        ines_context.latency_threshold = original_config_threshold
+
+        # Return special dictionary
+        return {
+            "is_tradeoff_study": True,
+            "baseline_greedy_results": baseline_results,
+            "constrained_greedy_results": constrained_results,
+            "run_parameters": {
+                "latency_threshold_factor": latency_threshold_factor,
+                "latency_threshold_absolute": absolute_threshold,
+                "cost_weight": original_cost_weight,
+                "latency_weight": 1.0 - original_cost_weight,
+            }
+        }
+
+    # Normal multi-strategy run
     run_id = uuid.uuid4()
     start_time = time.time()
 
