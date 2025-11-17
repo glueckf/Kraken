@@ -200,13 +200,18 @@ class PlacementProblem:
         max_cost = max(costs)
         cost_range = max_cost - min_cost
 
+        latencies = [candidate.get_critical_path_latency(self) for candidate in s_next_options]
+        min_latency = min(latencies)
+        max_latency = max(latencies)
+        latency_range = max_latency - min_latency
+
         scored_options = []
-        latency_threshold = self.latency_threshold
 
         for candidate in s_next_options:
             candidate_latency = candidate.get_critical_path_latency(self)
-            if math.isfinite(latency_threshold) and latency_threshold > 0:
-                latency_norm = candidate_latency / latency_threshold
+
+            if latency_range > 0:
+                latency_norm = (candidate_latency - min_latency) / latency_range
             else:
                 latency_norm = 0.0
 
