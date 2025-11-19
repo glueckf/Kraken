@@ -1475,51 +1475,54 @@ class Simulation:
                 print("--- Writing latency trade-off study results ---")
 
                 # Extract results from dual-run
-                baseline_results = self.kraken_results.get("baseline_greedy_results", {})
-                constrained_results = self.kraken_results.get("constrained_greedy_results", {})
+                cost_focused_results = self.kraken_results.get("cost_focused_results", {})
+                tradeoff_results = self.kraken_results.get("tradeoff_results", {})
                 run_params = self.kraken_results.get("run_parameters", {})
 
-                # Populate baseline results - flatten structure for populate_basic
-                baseline_metrics = baseline_results.get("metrics", {})
-                baseline_flat = {
-                    "status": baseline_results.get("status", "unknown"),
-                    "cost": baseline_metrics.get("total_cost"),
-                    "transmission_latency": baseline_metrics.get("max_latency"),
-                    "processing_latency": baseline_metrics.get("cumulative_processing_latency"),
-                    "computing_time": baseline_results.get("execution_time_seconds"),
+                # Populate cost-focused results - flatten structure for populate_basic
+                cost_focused_metrics = cost_focused_results.get("metrics", {})
+                cost_focused_flat = {
+                    "status": cost_focused_results.get("status", "unknown"),
+                    "cost": cost_focused_metrics.get("total_cost"),
+                    "transmission_latency": cost_focused_metrics.get("max_latency"),
+                    "processing_latency": cost_focused_metrics.get("cumulative_processing_latency"),
+                    "computing_time": cost_focused_results.get("execution_time_seconds"),
                 }
-                populate_basic("baseline_greedy", baseline_flat)
+                populate_basic("cost_focused_greedy", cost_focused_flat)
 
-                # Add extended baseline metrics
-                if baseline_results.get("status") == "success":
-                    row["baseline_greedy_workload_cost"] = safe_float(baseline_metrics.get("workload_cost"))
-                    row["baseline_greedy_num_placements"] = safe_float(baseline_metrics.get("num_placements"))
-                    row["baseline_greedy_placements_at_cloud"] = safe_float(baseline_metrics.get("placements_at_cloud"))
-                    row["baseline_greedy_average_cost_per_placement"] = safe_float(baseline_metrics.get("average_cost_per_placement"))
+                # Add extended cost-focused metrics
+                if cost_focused_results.get("status") == "success":
+                    row["cost_focused_greedy_workload_cost"] = safe_float(cost_focused_metrics.get("workload_cost"))
+                    row["cost_focused_greedy_num_placements"] = safe_float(cost_focused_metrics.get("num_placements"))
+                    row["cost_focused_greedy_placements_at_cloud"] = safe_float(cost_focused_metrics.get("placements_at_cloud"))
+                    row["cost_focused_greedy_average_cost_per_placement"] = safe_float(cost_focused_metrics.get("average_cost_per_placement"))
 
-                # Populate constrained results - flatten structure for populate_basic
-                constrained_metrics = constrained_results.get("metrics", {})
-                constrained_flat = {
-                    "status": constrained_results.get("status", "unknown"),
-                    "cost": constrained_metrics.get("total_cost"),
-                    "transmission_latency": constrained_metrics.get("max_latency"),
-                    "processing_latency": constrained_metrics.get("cumulative_processing_latency"),
-                    "computing_time": constrained_results.get("execution_time_seconds"),
+                # Populate trade-off results - flatten structure for populate_basic
+                tradeoff_metrics = tradeoff_results.get("metrics", {})
+                tradeoff_flat = {
+                    "status": tradeoff_results.get("status", "unknown"),
+                    "cost": tradeoff_metrics.get("total_cost"),
+                    "transmission_latency": tradeoff_metrics.get("max_latency"),
+                    "processing_latency": tradeoff_metrics.get("cumulative_processing_latency"),
+                    "computing_time": tradeoff_results.get("execution_time_seconds"),
                 }
-                populate_basic("constrained_greedy", constrained_flat)
+                populate_basic("tradeoff_greedy", tradeoff_flat)
 
-                # Add extended constrained metrics
-                if constrained_results.get("status") == "success":
-                    row["constrained_greedy_workload_cost"] = safe_float(constrained_metrics.get("workload_cost"))
-                    row["constrained_greedy_num_placements"] = safe_float(constrained_metrics.get("num_placements"))
-                    row["constrained_greedy_placements_at_cloud"] = safe_float(constrained_metrics.get("placements_at_cloud"))
-                    row["constrained_greedy_average_cost_per_placement"] = safe_float(constrained_metrics.get("average_cost_per_placement"))
+                # Add extended trade-off metrics
+                if tradeoff_results.get("status") == "success":
+                    row["tradeoff_greedy_workload_cost"] = safe_float(tradeoff_metrics.get("workload_cost"))
+                    row["tradeoff_greedy_num_placements"] = safe_float(tradeoff_metrics.get("num_placements"))
+                    row["tradeoff_greedy_placements_at_cloud"] = safe_float(tradeoff_metrics.get("placements_at_cloud"))
+                    row["tradeoff_greedy_average_cost_per_placement"] = safe_float(tradeoff_metrics.get("average_cost_per_placement"))
 
                 # Add run parameters
-                row["latency_threshold_factor"] = safe_float(run_params.get("latency_threshold_factor"))
-                row["latency_threshold_absolute"] = safe_float(run_params.get("latency_threshold_absolute"))
-                row["cost_weight"] = safe_float(run_params.get("cost_weight"))
-                row["latency_weight"] = safe_float(run_params.get("latency_weight"))
+                row["all_push_latency_reference"] = safe_float(run_params.get("all_push_latency"))
+                cost_focused_weights = run_params.get("cost_focused_weights", {})
+                row["cost_focused_cost_weight"] = safe_float(cost_focused_weights.get("cost_weight"))
+                row["cost_focused_latency_weight"] = safe_float(cost_focused_weights.get("latency_weight"))
+                tradeoff_weights = run_params.get("tradeoff_weights", {})
+                row["tradeoff_cost_weight"] = safe_float(tradeoff_weights.get("cost_weight"))
+                row["tradeoff_latency_weight"] = safe_float(tradeoff_weights.get("latency_weight"))
 
                 # Add configuration parameters
                 row["network_size"] = safe_float(self.config.network_size)
@@ -1539,31 +1542,32 @@ class Simulation:
 
                 # Define explicit PyArrow schema for trade-off study
                 schema_fields = [
-                    # Baseline greedy metrics
-                    pa.field("baseline_greedy_status", pa.string()),
-                    pa.field("baseline_greedy_cost", pa.float64()),
-                    pa.field("baseline_greedy_transmission_latency", pa.float64()),
-                    pa.field("baseline_greedy_processing_latency", pa.float64()),
-                    pa.field("baseline_greedy_computing_time", pa.float64()),
-                    pa.field("baseline_greedy_workload_cost", pa.float64()),
-                    pa.field("baseline_greedy_num_placements", pa.float64()),
-                    pa.field("baseline_greedy_placements_at_cloud", pa.float64()),
-                    pa.field("baseline_greedy_average_cost_per_placement", pa.float64()),
-                    # Constrained greedy metrics
-                    pa.field("constrained_greedy_status", pa.string()),
-                    pa.field("constrained_greedy_cost", pa.float64()),
-                    pa.field("constrained_greedy_transmission_latency", pa.float64()),
-                    pa.field("constrained_greedy_processing_latency", pa.float64()),
-                    pa.field("constrained_greedy_computing_time", pa.float64()),
-                    pa.field("constrained_greedy_workload_cost", pa.float64()),
-                    pa.field("constrained_greedy_num_placements", pa.float64()),
-                    pa.field("constrained_greedy_placements_at_cloud", pa.float64()),
-                    pa.field("constrained_greedy_average_cost_per_placement", pa.float64()),
+                    # Cost-focused greedy metrics
+                    pa.field("cost_focused_greedy_status", pa.string()),
+                    pa.field("cost_focused_greedy_cost", pa.float64()),
+                    pa.field("cost_focused_greedy_transmission_latency", pa.float64()),
+                    pa.field("cost_focused_greedy_processing_latency", pa.float64()),
+                    pa.field("cost_focused_greedy_computing_time", pa.float64()),
+                    pa.field("cost_focused_greedy_workload_cost", pa.float64()),
+                    pa.field("cost_focused_greedy_num_placements", pa.float64()),
+                    pa.field("cost_focused_greedy_placements_at_cloud", pa.float64()),
+                    pa.field("cost_focused_greedy_average_cost_per_placement", pa.float64()),
+                    # Trade-off greedy metrics
+                    pa.field("tradeoff_greedy_status", pa.string()),
+                    pa.field("tradeoff_greedy_cost", pa.float64()),
+                    pa.field("tradeoff_greedy_transmission_latency", pa.float64()),
+                    pa.field("tradeoff_greedy_processing_latency", pa.float64()),
+                    pa.field("tradeoff_greedy_computing_time", pa.float64()),
+                    pa.field("tradeoff_greedy_workload_cost", pa.float64()),
+                    pa.field("tradeoff_greedy_num_placements", pa.float64()),
+                    pa.field("tradeoff_greedy_placements_at_cloud", pa.float64()),
+                    pa.field("tradeoff_greedy_average_cost_per_placement", pa.float64()),
                     # Run parameters
-                    pa.field("latency_threshold_factor", pa.float64()),
-                    pa.field("latency_threshold_absolute", pa.float64()),
-                    pa.field("cost_weight", pa.float64()),
-                    pa.field("latency_weight", pa.float64()),
+                    pa.field("all_push_latency_reference", pa.float64()),
+                    pa.field("cost_focused_cost_weight", pa.float64()),
+                    pa.field("cost_focused_latency_weight", pa.float64()),
+                    pa.field("tradeoff_cost_weight", pa.float64()),
+                    pa.field("tradeoff_latency_weight", pa.float64()),
                     # Configuration parameters
                     pa.field("network_size", pa.float64()),
                     pa.field("event_skew", pa.float64()),

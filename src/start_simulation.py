@@ -575,12 +575,9 @@ def main() -> None:
     Main entry point for the Kraken Greedy vs. Constrained-Greedy
     latency trade-off experiment.
     """
-    print("\n[KRAKEN TRADEOFF STUDY] --- STARTING ---")
-
     # --- 1. Define Experiment Parameters ---
-    cost_weight_to_test = 0.5
-    latency_threshold_factors = np.arange(1.0, 5.1, 0.5)  # 1.0, 1.5, ..., 5.0
-    runs = 50
+    cost_weights = [1]
+    runs = 100
 
     base_params = {
         "network_sizes": [100],
@@ -589,7 +586,7 @@ def main() -> None:
         "query_lengths": [5],
         "runs_per_combination": runs,
         "node_event_ratios": [0.7],
-        "num_event_types": [6],
+        "num_event_types": [4, 6, 8, 10],
         "event_skews": [2.0],
         "mode": SimulationMode.RANDOM,
         "enable_parallel": True,
@@ -597,25 +594,15 @@ def main() -> None:
         "xi": 0.0,
     }
 
-    # --- 2. Run the Experiment Loop ---
-    print(f"[STUDY] Running with fixed Cost Weight: {cost_weight_to_test:.2f}")
-    print(f"[STUDY] Testing Latency Factors: {latency_threshold_factors}")
-
-    for factor in latency_threshold_factors:
-        print(f"\n[STUDY] Running for Latency Factor: {factor:.2f}")
+    # --- 3. Run the Experiment Loop ---
+    for weight in cost_weights:
 
         run_parameter_study(
             **base_params,
-            cost_weight=cost_weight_to_test,
-            latency_threshold=factor,  # This is the factor
-            run_latency_tradeoff_study=True,
-            output_dataset_name="latency_tradeoff_study"
+            cost_weight=weight,
+            latency_threshold=None,
+            run_latency_tradeoff_study=False
         )
-
-    print("\n[KRAKEN TRADEOFF STUDY] --- COMPLETED ---")
-
-
-
 
 if __name__ == "__main__":
     # Configure logging for server runs
