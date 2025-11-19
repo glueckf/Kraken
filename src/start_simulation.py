@@ -577,7 +577,7 @@ def main() -> None:
     """
     # --- 1. Define Experiment Parameters ---
     cost_weights = [1]
-    runs = 100
+    runs = 50
 
     base_params = {
         "network_sizes": [100],
