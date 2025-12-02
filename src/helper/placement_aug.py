@@ -668,6 +668,12 @@ def ComputeSingleSinkPlacement(
     filter_input_objects = set()
     filter_input_keys = set()
 
+    """
+    NOTE: From Finn Glück on 02.12.2025
+    Including an array of sinks, can be extended to multiple sinks later
+    """
+    sinks = [0]
+
     # add filters of projections to eventtpes in combi, if filters added, use costs of filter -> compute costs for single etbs of projrates
     intercombi = []
     ##### FILTERS
@@ -806,6 +812,23 @@ def ComputeSingleSinkPlacement(
 
             eventtype_costs[eventtype] = eventtype_cost
             mycosts += eventtype_cost
+
+            """
+            NOTE: Finn Glück on 02.12.2025
+            
+            Adjusting the placement mismatch for INEv and INES with the fanouts, by including the output rate for 
+            final projections in the workload into the cost calculation.
+            """
+            # Add costs for sending to cloud if projection is a final query in workload
+            if projection in self.query_workload:
+                # Projection is a final query in workload
+                output_rate = projrates[projection][1]
+                for sink in sinks:
+                    distance_to_sink = allPairs[destination][sink]
+                    output_rate = projrates[projection][1]
+                    output_cost = output_rate * distance_to_sink
+                    mycosts += output_cost
+
             if is_original_input and not is_filter_input:
                 actual_input_costs_candidate += eventtype_cost
 
@@ -854,6 +877,18 @@ def ComputeSingleSinkPlacement(
         myProjection.addInstances(eventtype, curInstances)  #!
 
     SiSManageETBs(projection, node, IndexEventNodes, EventNodes, network_data)
+
+    # Add output path to longestPath if projection is a final query in workload
+    if projection in self.query_workload:
+        max_hops_to_sink = 0
+        for sink in sinks:
+            path_to_sink = find_shortest_path_or_ancestor(routingAlgo, node, sink)
+            hops_to_sink = len(path_to_sink) - 1 if len(path_to_sink) > 1 else 0
+            # Track the maximum distance to any sink
+            max_hops_to_sink = max(max_hops_to_sink, hops_to_sink)
+        # Add only the longest path to sink (representing worst-case end-to-end latency)
+        longestPath += max_hops_to_sink
+
     hops = (
         len(find_shortest_path_or_ancestor(routingAlgo, 0, node)) - 1
         if len(find_shortest_path_or_ancestor(routingAlgo, 0, node)) > 1

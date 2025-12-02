@@ -576,33 +576,135 @@ def main() -> None:
     latency trade-off experiment.
     """
     # --- 1. Define Experiment Parameters ---
-    cost_weights = [1]
     runs = 50
 
-    base_params = {
-        "network_sizes": [100],
-        "workload_sizes": [5],
-        "parent_factors": [1.8],
-        "query_lengths": [5],
-        "runs_per_combination": runs,
-        "node_event_ratios": [0.7],
-        "num_event_types": [4, 6, 8, 10],
-        "event_skews": [2.0],
-        "mode": SimulationMode.RANDOM,
-        "enable_parallel": True,
-        "max_workers": 14,
-        "xi": 0.0,
-    }
+    run_parameter_study(
+        network_sizes=[100],
+        workload_sizes=[5],
+        parent_factors=[1.8],
+        query_lengths=[5],
+        runs_per_combination=runs,
+        node_event_ratios=[0.7],
+        num_event_types=[6],
+        event_skews=[2],
+        mode=SimulationMode.RANDOM,
+        enable_parallel=True,
+        max_workers=14,
+        xi=0,
+        cost_weight=1
+    )
 
-    # --- 3. Run the Experiment Loop ---
-    for weight in cost_weights:
+    run_parameter_study(
+        network_sizes=[10, 30, 50, 100, 200, 500, 1000],
+        workload_sizes=[5],
+        parent_factors=[1.8],
+        query_lengths=[5],
+        runs_per_combination=runs,
+        node_event_ratios=[0.7],
+        num_event_types=[6],
+        event_skews=[2],
+        mode=SimulationMode.RANDOM,
+        enable_parallel=True,
+        max_workers=14,
+        xi=0,
+        cost_weight=1
+    )
 
-        run_parameter_study(
-            **base_params,
-            cost_weight=weight,
-            latency_threshold=None,
-            run_latency_tradeoff_study=False
-        )
+    run_parameter_study(
+        network_sizes=[100],
+        workload_sizes=[3, 5, 7, 10, 20, 40],
+        parent_factors=[1.8],
+        query_lengths=[5],
+        runs_per_combination=runs,
+        node_event_ratios=[0.7],
+        num_event_types=[6],
+        event_skews=[2],
+        mode=SimulationMode.RANDOM,
+        enable_parallel=True,
+        max_workers=14,
+        xi=0,
+        cost_weight=1
+    )
+
+    run_parameter_study(
+        network_sizes=[100],
+        workload_sizes=[5],
+        parent_factors=[1.0, 1.2, 1.4, 1.8, 2.0],
+        query_lengths=[5],
+        runs_per_combination=runs,
+        node_event_ratios=[0.7],
+        num_event_types=[6],
+        event_skews=[2],
+        mode=SimulationMode.RANDOM,
+        enable_parallel=True,
+        max_workers=14,
+        xi=0,
+        cost_weight=1
+    )
+
+    run_parameter_study(
+        network_sizes=[100],
+        workload_sizes=[5],
+        parent_factors=[1.8],
+        query_lengths=[3, 5, 8, 10],
+        runs_per_combination=runs,
+        node_event_ratios=[0.7],
+        num_event_types=[6],
+        event_skews=[2],
+        mode=SimulationMode.RANDOM,
+        enable_parallel=True,
+        max_workers=14,
+        xi=0,
+        cost_weight=1
+    )
+
+    run_parameter_study(
+        network_sizes=[100],
+        workload_sizes=[5],
+        parent_factors=[1.8],
+        query_lengths=[5],
+        runs_per_combination=runs,
+        node_event_ratios=[0.1, 0.3, 0.5, 0.7, 0.9],
+        num_event_types=[6],
+        event_skews=[2],
+        mode=SimulationMode.RANDOM,
+        enable_parallel=True,
+        max_workers=14,
+        xi=0,
+        cost_weight=1
+    )
+
+    run_parameter_study(
+        network_sizes=[100],
+        workload_sizes=[5],
+        parent_factors=[1.8],
+        query_lengths=[5],
+        runs_per_combination=runs,
+        node_event_ratios=[0.7],
+        num_event_types=[4, 6, 8, 10],
+        event_skews=[2],
+        mode=SimulationMode.RANDOM,
+        enable_parallel=True,
+        max_workers=14,
+        xi=0,
+        cost_weight=1
+    )
+
+    run_parameter_study(
+        network_sizes=[100],
+        workload_sizes=[5],
+        parent_factors=[1.8],
+        query_lengths=[5],
+        runs_per_combination=runs,
+        node_event_ratios=[0.7],
+        num_event_types=[6],
+        event_skews=[1.0, 1.2, 1.4, 1.6, 1.8, 2.0],
+        mode=SimulationMode.RANDOM,
+        enable_parallel=True,
+        max_workers=14,
+        xi=0,
+        cost_weight=1
+    )
 
 if __name__ == "__main__":
     # Configure logging for server runs

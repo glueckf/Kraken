@@ -545,10 +545,8 @@ def calculate_prepp_from_cloud(context, reused_buffer_section):
 
 def update_results_for_topology(context, ines_results, inev_results):
     """
-    Update INES and INEv results to include cloud transmission costs and latency.
-
-    Both strategies use the same placement (INES is built on top of INEv), so the
-    topology adjustments (costs for sending to cloud) are identical for both.
+    Update INES results to include cloud transmission costs and latency.
+    Format INEv results into the expected dictionary structure (already adjusted in placement).
 
     Args:
         context: Simulation context with network topology and query workload
@@ -560,7 +558,7 @@ def update_results_for_topology(context, ines_results, inev_results):
             [4] total_push_costs (all-push costs)
             [5] node_received_eventtypes
             [6] acquisition_steps
-        inev_results: Results from INEv with similar structure
+        inev_results: Results from INEv (already adjusted, just needs formatting)
 
     Returns:
         Tuple of (ines_dict, inev_dict) where each dict contains:
@@ -586,14 +584,8 @@ def update_results_for_topology(context, ines_results, inev_results):
         # Calculate INES latencies (returns tuple of transmission and processing latencies)
         ines_transmission_latency_per_query, ines_processing_latency = calculate_ines_max_latency(context, ines_results)
 
-        # Extract INEv data
-        inev_total_costs = inev_results['cost']
-        inev_calculation_time = inev_results['computing_time']
-        inev_transmission_latency = inev_results['transmission_latency']
-        inev_processing_latency = inev_results['processing_latency']
-
+        # ===== ADJUST INES RESULTS ONLY =====
         # Calculate additional costs for sending query results to cloud
-        # This is the same for both INES and INEv since they use the same placement
         additional_costs = 0
 
         for projection in ines_eval_plan:
@@ -605,12 +597,10 @@ def update_results_for_topology(context, ines_results, inev_results):
                     query_output_rate = context.h_projrates.get(projection_name, (1.0, 1.0))[1]
                     additional_costs += hops_from_node_to_cloud * query_output_rate
 
-        # Update costs for both strategies
+        # Update costs for INES only
         ines_total_costs += additional_costs
-        inev_total_costs += additional_costs
 
-        # Calculate additional latency for sending to cloud
-        # Find the maximum latency contribution from any placement to cloud
+        # Calculate additional latency for sending to cloud (INES only)
         additional_latency = 0
         if isinstance(ines_max_latency_tuple, tuple) and len(ines_max_latency_tuple) > 0:
             node_with_max_latency = ines_max_latency_tuple[0]
@@ -647,15 +637,21 @@ def update_results_for_topology(context, ines_results, inev_results):
                         )
             return max_distance
 
-        # Update transmission latency for both strategies (add cloud transmission)
-        inev_transmission_latency += additional_latency
-
+        # Update transmission latency for INES (add cloud transmission)
         ines_transmission_latency = 0.0
         for query in query_workload:
             base_latency = _lookup_base_latency(query)
             cloud_latency = _cloud_hop_latency(query)
             candidate_latency = base_latency + cloud_latency
             ines_transmission_latency = max(ines_transmission_latency, candidate_latency)
+
+        # ===== FORMAT INEV RESULTS (NO ADJUSTMENTS) =====
+        # INEv results are already adjusted in the placement algorithm
+        # Just extract and format them
+        inev_total_costs = inev_results['cost']
+        inev_calculation_time = inev_results['computing_time']
+        inev_transmission_latency = inev_results['transmission_latency']
+        inev_processing_latency = inev_results['processing_latency']
 
         # Create return dictionaries
         ines_dict = {
@@ -1359,42 +1355,42 @@ class Simulation:
             if self.latency_threshold is not None and not self.config.run_latency_tradeoff_study:
                 self.latency_threshold *= all_push_latency
             print("--- ALL PUSH COMPUTATION COMPLETE ---")
-            #
-            # # ----- INEV COMPUTATION -----#
-            # print("--- Running INEv Computation ---")
-            # inev_start_time = time.time()
-            # ines_start_time = inev_start_time  # For consistency in logging
-            # (self.eval_plan, self.central_eval_plan, self.experiment_result,
-            #  self.results, self.inev_results) = calculate_operatorPlacement(self, "test", 0)
-            # inev_end_time = time.time()
-            # print("--- INEV COMPUTATION COMPLETE ---")
-            #
-            # # ----- INES COMPUTATION (using INEv results) -----#
-            # print("--- Running INES Computation ---")
-            # plan, reused_section = generate_eval_plan(
-            #     self.network, self.selectivities, self.eval_plan,
-            #     self.central_eval_plan, self.query_workload
-            # )
-            # deterministic_flag = self.config.is_selectivities_fixed()
-            # ines_results = generate_prePP(
-            #     plan, "ppmuse", "e", 1, 0, 1, True, self.allPairs, deterministic_flag
-            # )
-            #
-            # # Update both INES and INEv results with topology adjustments
-            # self.raw_ines_prepp_result = ines_results
-            # ines_dict, inev_dict = update_results_for_topology(self, ines_results, self.inev_results)
-            # ines_end_time = time.time()
-            # inev_dict["computing_time"] = inev_end_time - inev_start_time
-            # ines_dict["computing_time"] = ines_end_time - ines_start_time
-            # self.ines_results = ines_dict
-            # self.inev_results = inev_dict
-            #
-            # print("--- INES COMPUTATION COMPLETE ---")
-            #
-            # # ----- SOLELY PREPP COMPUTATION (from cloud) -----#
-            # print("--- Running PrePP from Cloud Computation ---")
-            # self.prepp_from_cloud_result = calculate_prepp_from_cloud(self, reused_section)
-            # print("--- PREPP FROM CLOUD COMPUTATION COMPLETE ---")
+
+            # ----- INEV COMPUTATION -----#
+            print("--- Running INEv Computation ---")
+            inev_start_time = time.time()
+            ines_start_time = inev_start_time  # For consistency in logging
+            (self.eval_plan, self.central_eval_plan, self.experiment_result,
+             self.results, self.inev_results) = calculate_operatorPlacement(self, "test", 0)
+            inev_end_time = time.time()
+            print("--- INEV COMPUTATION COMPLETE ---")
+
+            # ----- INES COMPUTATION (using INEv results) -----#
+            print("--- Running INES Computation ---")
+            plan, reused_section = generate_eval_plan(
+                self.network, self.selectivities, self.eval_plan,
+                self.central_eval_plan, self.query_workload
+            )
+            deterministic_flag = self.config.is_selectivities_fixed()
+            ines_results = generate_prePP(
+                plan, "ppmuse", "e", 1, 0, 1, True, self.allPairs, deterministic_flag
+            )
+
+            # Update both INES and INEv results with topology adjustments
+            self.raw_ines_prepp_result = ines_results
+            ines_dict, inev_dict = update_results_for_topology(self, ines_results, self.inev_results)
+            ines_end_time = time.time()
+            inev_dict["computing_time"] = inev_end_time - inev_start_time
+            ines_dict["computing_time"] = ines_end_time - ines_start_time
+            self.ines_results = ines_dict
+            self.inev_results = inev_dict
+
+            print("--- INES COMPUTATION COMPLETE ---")
+
+            # ----- SOLELY PREPP COMPUTATION (from cloud) -----#
+            print("--- Running PrePP from Cloud Computation ---")
+            self.prepp_from_cloud_result = calculate_prepp_from_cloud(self, reused_section)
+            print("--- PREPP FROM CLOUD COMPUTATION COMPLETE ---")
 
             # ----- KRAKEN COMPUTATION -----#
             print("--- Running Kraken Computation ---")
@@ -1429,7 +1425,7 @@ class Simulation:
             self.entire_simulation_time = self.start_time_setup - time.time()
 
             # ----- WRITE RESULTS -----#
-            self._write_results()
+            self._write_results(output_dataset_name="fixed_unified_results")
             print("--- All computations complete and results saved. ---")
         except Exception as e:
             logger.error(msg=e, exc_info=True)
