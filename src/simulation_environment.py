@@ -1408,9 +1408,7 @@ class Simulation:
                 self.kraken_results = run_kraken_solver(
                     ines_context=self,
                     strategies_to_run=[
-                        {"name": "greedy"},
-                        {"name": "k_beam", "k": 3},
-                        {"name": "k_beam", "k": 5}
+                        {"name": "greedy"}
                     ],
                     compare_within_kraken=True
                 )
