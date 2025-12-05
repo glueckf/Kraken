@@ -1344,8 +1344,9 @@ class Simulation:
         5. Kraken
         6. Write Results
         """
-        # ----- ALL PUSH CALCULATION -----#
+
         try:
+            # ----- ALL PUSH CALCULATION -----#
             print("--- Running All Push Computation ---")
             self.all_push_results = compute_all_push(self)
             all_push_latency = self.all_push_results.get("transmission_latency", 0.0)
@@ -1355,6 +1356,7 @@ class Simulation:
             if self.latency_threshold is not None and not self.config.run_latency_tradeoff_study:
                 self.latency_threshold *= all_push_latency
             print("--- ALL PUSH COMPUTATION COMPLETE ---")
+
 
             # ----- INEV COMPUTATION -----#
             print("--- Running INEv Computation ---")
@@ -1384,7 +1386,6 @@ class Simulation:
             ines_dict["computing_time"] = ines_end_time - ines_start_time
             self.ines_results = ines_dict
             self.inev_results = inev_dict
-
             print("--- INES COMPUTATION COMPLETE ---")
 
             # ----- SOLELY PREPP COMPUTATION (from cloud) -----#
@@ -1410,20 +1411,14 @@ class Simulation:
                     strategies_to_run=[
                         {"name": "greedy"}
                     ],
-                    compare_within_kraken=True
+                    compare_within_kraken=False
                 )
-
             print(f"--- KRAKEN COMPUTATION COMPLETE ---")
-            print(f"DEBUG: Kraken results keys: {self.kraken_results.keys() if self.kraken_results else 'None'}")
-            if self.kraken_results and "strategies" in self.kraken_results:
-                print(f"DEBUG: Strategies run: {list(self.kraken_results['strategies'].keys())}")
-                for strat_name, strat_result in self.kraken_results['strategies'].items():
-                    print(f"DEBUG: Strategy '{strat_name}' - Status: {strat_result.get('status', 'unknown')}")
 
             self.entire_simulation_time = self.start_time_setup - time.time()
 
             # ----- WRITE RESULTS -----#
-            self._write_results(output_dataset_name="fixed_unified_results")
+            self._write_results()
             print("--- All computations complete and results saved. ---")
         except Exception as e:
             logger.error(msg=e, exc_info=True)
