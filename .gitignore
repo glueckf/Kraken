@@ -11,6 +11,7 @@ CLAUDE.md
 analysis
 
 sync_remote_results.sh
-
+count_experiments.sh
+download_kraken_comparison.sh
 
 __pycache__/
