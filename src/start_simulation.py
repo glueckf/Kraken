@@ -596,23 +596,6 @@ def main() -> None:
     )
 
     run_parameter_study(
-        network_sizes=[1000],
-        workload_sizes=[5],
-        parent_factors=[1.8],
-        query_lengths=[5],
-        runs_per_combination=30,
-        node_event_ratios=[0.7],
-        num_event_types=[6],
-        event_skews=[2],
-        mode=SimulationMode.RANDOM,
-        enable_parallel=True,
-        max_workers=14,
-        xi=0,
-        cost_weight=1,
-        output_dataset_name="fixed_unified_results"
-    )
-
-    run_parameter_study(
         network_sizes=[100],
         workload_sizes=[3, 5, 7, 10, 20, 40],
         parent_factors=[1.8],
@@ -706,6 +689,23 @@ def main() -> None:
         node_event_ratios=[0.7],
         num_event_types=[6],
         event_skews=[1.0, 1.2, 1.4, 1.6, 1.8, 2.0],
+        mode=SimulationMode.RANDOM,
+        enable_parallel=True,
+        max_workers=14,
+        xi=0,
+        cost_weight=1,
+        output_dataset_name="fixed_unified_results"
+    )
+
+    run_parameter_study(
+        network_sizes=[10, 30, 50, 100, 200, 500, 1000],
+        workload_sizes=[5],
+        parent_factors=[1.8],
+        query_lengths=[5],
+        runs_per_combination=runs,
+        node_event_ratios=[0.7],
+        num_event_types=[6],
+        event_skews=[2],
         mode=SimulationMode.RANDOM,
         enable_parallel=True,
         max_workers=14,
