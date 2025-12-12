@@ -1,0 +1,124 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{geometry}
+\geometry{left=1in, right=1in, top=1in, bottom=1in}
+\usepackage{amsmath, amssymb, amsfonts, amsthm}
+\usepackage[linesnumbered,ruled,vlined]{algorithm2e}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{todonotes}
+
+% Custom commands
+\newcommand{\inev}{INEv}%
+\newcommand{\prepp}{PrePP}%
+\newcommand{\we}{\texttt{KRAKEN}}%
+\newcommand{\dist}{\text{dist}}
+\newcommand{\req}{\text{req}}
+\newcommand{\res}{\text{res}}
+\newcommand{\ariane}[1]{#1} % Placeholder for reviewer comments/changes
+\newcommand{\boxaround}[1]{\fbox{#1}} % Placeholder for circled numbers
+\newcommand{\circlearound}[1]{\fbox{#1}} % Placeholder for circled numbers
+\newcommand{\circlearoundBlue}[1]{\fbox{\color{blue}#1}} % Placeholder
+\newcommand{\circlearoundYellow}[1]{\fbox{\color{yellow}#1}} % Placeholder
+\newcommand{\circlearoundGray}[1]{\fbox{\color{gray}#1}} % Placeholder
+
+\newtheorem*{theorem*}{Theorem}
+\newtheorem*{proofsketch*}{Proof Sketch}
+
+\title{Kraken: Unified Cost Evaluation Framework}
+\author{Your Name}
+\date{\today}
+
+\begin{document}
+\maketitle
+% -------------------------------------------------------------------------
+% 4.3 Unified Cost Evaluation Framework (REPLACED CONTENT)
+% -------------------------------------------------------------------------
+\subsection{Unified Cost Model (C1)}
+\label{sec:unified_cost_framework}
+
+We present the Unified Cost Model, which forms the analytic core of \we.
+This model evaluates a specific placement decision—assigning a subquery $p$ to a node $n$—by modeling the vertex $v = (p, n, v_{\text{steps}})$ as a flow processing unit defined by its \textbf{Ingress} (acquisition of inputs), \textbf{Processing} (computation load), and \textbf{Egress} (dissemination of results).
+
+\we~determines the optimal communication strategy for a vertex via a \emph{dual-strategy evaluation}. For every candidate pair $(p, n)$, it generates two distinct acquisition sequences: an all-push sequence ($v_{\text{steps}}^{\text{push}}$) and an optimized push-pull sequence ($v_{\text{steps}}^{\text{ppc}}$) derived via \prepp~\cite{PushPullSamira}. Both sequences are evaluated under the unified cost model, and the sequence yielding the lower weighted score is selected for the final vertex $v$.
+
+\paragraph{Vertex Metrics.}
+The vertex cost $C_v$ sums the transmission overhead of the chosen acquisition sequence and the sink forwarding. The vertex latency $L_v$ is defined recursively to capture the critical path, including local processing $\ell^p_v$ and transmission delays:
+\begin{equation}\label{eq:vertex_cost}
+    C_v = \underbrace{C_{\text{acq}}(v_{\text{steps}}, n, s)}_{\text{Ingress}} + \underbrace{C_{\text{diss}}(p, n)}_{\text{Egress}}
+\end{equation}
+\begin{equation}\label{eq:vertex_latency}
+    L_v = \xi \cdot \ell^p_v + \underbrace{\left(\ell^t_{\text{acq}}(v_{\text{steps}}, n, s) + \ell^t_{\text{diss}}(p, n)\right)}_{\ell^t_v} + \max_{u \in \delta(p)} L_u
+\end{equation}
+Here, $\xi \in \{0,1\}$ allows weighting of processing latency (set to $\xi=0$ for transmission-dominant optimization).
+
+\paragraph{Ingress: Locality-Aware Acquisition.}
+Ingress metrics quantify the cost of the acquisition steps $v_{\text{steps}}$ required to retrieve input events.
+A key contribution of this model is the rigorous handling of \emph{fragmented physical streams} via topology-aware locality.
+To evaluate a logical stream $S$ at node $n$, the system must acquire all its physical fragments. However, if $S$ has been reassembled at $n$ by a prior subquery (i.e., $S \in \mathcal{T}_s(n)$), no transmission is required.
+
+We define the \textbf{Remote Source Set} $\Phi_{\text{remote}}$ as the set of physical nodes that must transmit data to $n$. This set filters the global source mapping $\phi(S)$ against the local state $\mathcal{T}_s(n)$ and the node's own identity:
+\begin{equation}\label{eq:remote_source_set}
+    \Phi_{\text{remote}}(a_i, n, s) = \bigcup_{S \in \rho_i}
+    \begin{cases}
+        \emptyset & \text{if } S \in \mathcal{T}_s(n) \quad (\text{Stream Reassembled}) \\
+        \phi(S) \setminus \{n\} & \text{otherwise} \quad (\text{Acquire Missing Fragments})
+    \end{cases}
+\end{equation}
+If $S$ is already reassembled locally ($S \in \mathcal{T}_s$), the set is empty (cost is zero). If $S$ is scattered, we must fetch from all sources $\phi(S)$ except $n$ itself (partial locality).
+
+\paragraph{Acquisition Cost ($C_{\text{acq}}$).}
+The acquisition cost aggregates the communication overhead for all steps in the sequence. We decompose the cost of a single step $a_i = (\Psi_i, \rho_i)$ into a \emph{Request} component (broadcasting predicates) and a \emph{Response} component (transmitting filtered events):
+\begin{equation}
+    C_{\text{acq}}(v_{\text{steps}}, n, s) = \sum_{a_i \in v_{\text{steps}}} \left( C_{\text{req}}(a_i) + C_{\text{res}}(a_i) \right)
+\end{equation}
+
+The \textbf{Request Cost} captures the transmission of predicate tuples from the logical streams in $\Psi_i$ to all relevant remote sources. Crucially, we scale the volume of these predicates by their \emph{current selectivity} $\sigma(\Psi_i)$ to account for prior filtering in the acquisition chain:
+\begin{equation}
+    C_{\text{req}}(a_i) = \sum_{S \in \Psi_i} R(S) \cdot \sigma(\Psi_i) \sum_{n^+ \in \Phi_{\text{remote}}} \dist(n, n^+)
+\end{equation}
+Here, $\sigma(\Psi_i)$ represents the cumulative selectivity of the streams in $\Psi_i$ based on the steps executed so far. If $\Psi_i = \emptyset$ (all-push), the request cost is 0.
+
+The \textbf{Response Cost} accounts for the transmission of the filtered physical streams from their specific source nodes back to $n$:
+\begin{equation}
+    C_{\text{res}}(a_i) = \sum_{S \in \rho_i} \sum_{n^+ \in \Phi_{\text{remote}} \cap \phi(S)} r(n^+, S) \cdot \sigma_i \cdot \dist(n^+, n)
+\end{equation}
+Here, $\sigma_i = \sigma(S \cup \Psi_i)$ denotes the joint selectivity of the stream $S$ and the pull predicate.
+The \textbf{Acquisition Latency} $\ell^t_{\text{acq}}$ is the round-trip time to the furthest source node in $\Phi_{\text{remote}}$:
+\begin{equation}
+    \ell^t_{\text{acq}}(v_{\text{steps}}, n, s) = \sum_{a_i \in v_{\text{steps}}} \left(
+        \max_{n^+ \in \Phi_{\text{remote}}} \dist(n, n^+) + \max_{n^+ \in \Phi_{\text{remote}}} \dist(n^+, n)
+    \right)
+\end{equation}
+
+\paragraph{Egress: Sink-Aware Dissemination.}
+Egress metrics account for delivering the result of a root projection $p \in Q$ to the system sinks $N^-$.
+Standard placement algorithms often assume the evaluation node is the final destination. In hierarchical fog-cloud topologies, however, placing a high-fan-out query in the fog is only beneficial if the cost of forwarding results to the cloud does not negate the savings.
+\we\ explicitly models this dissemination cost:
+\begin{equation}
+    C_{\text{diss}}(p, n) =
+    \begin{cases}
+        r^{\text{out}}(p) \cdot \sum_{n^- \in N^-} \dist(n, n^-) & \text{if } p \in Q \wedge n \notin N^- \\
+        0 & \text{otherwise}
+    \end{cases}
+\end{equation}
+Similarly, the dissemination latency $\ell^t_{\text{diss}}(p, n)$ is the time required to reach the furthest sink.
+
+\paragraph{State Aggregation and Scoring.}
+The search algorithm explores the solution space by iteratively extending a partial plan $s_{\text{base}}$ with a new vertex $v$.
+The successor state $s_{\text{next}}$ aggregates the metrics by summing the transmission costs, $C(s_{\text{next}}) = C(s_{\text{base}}) + C_v$, and re-evaluating the end-to-end latency as the critical path among all placed projections $P'$, i.e., $L(s_{\text{next}}) = \max_{p \in P'} L_{v(p)}$.
+
+To guide the search, \we\ ranks candidate states in the pool $S_{\text{cand}}$ using a multi-objective scoring function $F(s)$. We normalize costs and latencies relative to the current candidate pool bounds to ensure dimensional consistency:
+\begin{equation}\label{eq:scoring_function}
+    F(s) = \alpha \cdot \frac{C_s - C_{\min}}{C_{\max} - C_{\min}} + (1-\alpha) \cdot \frac{L_s - L_{\min}}{L_{\max} - L_{\min}}
+\end{equation}
+This function allows the planner to dynamically trade off bandwidth conservation ($\alpha \to 1$) against real-time responsiveness ($\alpha \to 0$) based on application requirements.
+
+% replaces \subsection{State-Aware Cost Adjustments}\label{sec:fixesInevPrepp}
+%ich würde es aber nochmal in context stellen
+\paragraph{Summary.}
+In sum, \we's dual-strategy evaluation uses a unified topology-aware cost model to assess each placement $(p,n)$ under both the all-push strategy $v_{\text{steps}}^{\text{push}}$ and the predicate-based push–pull strategy $v_{steps}^{\text{ppc}}$. This allows \we~to select configurations that may look suboptimal under all-push alone but become superior once communication is optimized. Our cost model adapts the state-of-the-art formulations of \inev and \prepp to fog–cloud constraints by (i) generalizing \prepp's local-event subtraction from centralized queries to intermediate subqueries, thereby exploiting event reuse and eliminating redundant transmissions when event types are co-located, and (ii) adding an explicit sink-cost term that accounts for forwarding final outputs from in-network nodes to fixed cloud sinks, correcting the systematic underestimation of communication costs in \inev.
+
+Focusing on transmission cost and transmission latency as potentially conflicting objectives, \we~employs a multi-objective scoring function $F(s)$ that exposes a tunable trade-off between them~\cite{cugola2013deployment,akdere2008plan}. This enables deployments to prioritize low transmission cost, low latency, or a balanced compromise, while extending \inev\ with predicate-based PPC via \prepp~\cite{DBLP:journals/pacmmod/AkiliP023,PushPullSamira}.
+
+\end{document}
