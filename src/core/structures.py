@@ -10,7 +10,7 @@ from core.util import column1s, column
 import numpy as np
 
 
-def initEventNodes(
+def init_event_nodes(
     nodes, network
 ):  # matrice: comlumn indices are node ids, row indices correspond to etbs, for a given etb use IndexEventNodes to get row ID for given ETB
     # Storign all nodes producing a given event type with a 1 in the corresponding list
@@ -38,7 +38,7 @@ def initEventNodes(
     return (myEventNodes, myIndexEventNodes)
 
 
-def getETBs(node, EventNodes, IndexEventNodes):
+def get_etbs(node, EventNodes, IndexEventNodes):
     mylist = column1s(column(EventNodes, node))
     return [
         list(IndexEventNodes.keys())[list(IndexEventNodes.values()).index(x)]
@@ -46,19 +46,19 @@ def getETBs(node, EventNodes, IndexEventNodes):
     ]  # index from row id <-> etb
 
 
-def getNodes(etb, EventNodes, IndexEventNodes):
+def get_nodes(etb, EventNodes, IndexEventNodes):
     return column1s(EventNodes[IndexEventNodes[etb]])
 
 
-def setEventNodes(node, etb, EventNodes, IndexEventNodes):
+def set_event_nodes(node, etb, EventNodes, IndexEventNodes):
     EventNodes[IndexEventNodes[etb]][node] = 1
 
 
-def unsetEventNodes(node, etb, EventNodes, IndexEventNodes):
+def unset_event_nodes(node, etb, EventNodes, IndexEventNodes):
     EventNodes[IndexEventNodes[etb]][node] = 0
 
 
-def addETB(etb, etype, EventNodes, IndexEventNodes, network):
+def add_etb(etb, etype, EventNodes, IndexEventNodes, network):
     mylist = [0 for x in range(len(network.keys()))]
     EventNodes.append(mylist)
     index = len(EventNodes) - 1
@@ -69,25 +69,25 @@ def addETB(etb, etype, EventNodes, IndexEventNodes, network):
         IndexEventNodes[etype].append(etb)
 
 
-def SiSManageETBs(projection, node, IndexEventNodes, EventNodes, network):
-    etbID = genericETB("", projection, node)[0]
-    addETB(etbID, projection, EventNodes, IndexEventNodes, network)
-    setEventNodes(node, etbID, EventNodes, IndexEventNodes)
+def sis_manage_etbs(projection, node, IndexEventNodes, EventNodes, network):
+    etbID = generic_etb("", projection, node)[0]
+    add_etb(etbID, projection, EventNodes, IndexEventNodes, network)
+    set_event_nodes(node, etbID, EventNodes, IndexEventNodes)
 
 
-def MSManageETBs(self, projection, parttype):
+def ms_manage_etbs(self, projection, parttype):
     nodes = self.h_nodes
     network = self.h_network_data
     eventNodes = self.h_eventNodes
     IndexEventNodes = self.h_IndexEventNodes
-    etbIDs = genericETB(parttype, projection, nodes)
+    etbIDs = generic_etb(parttype, projection, nodes)
     for projectionETB in etbIDs:
-        addETB(projectionETB, projection, eventNodes, IndexEventNodes, network)
+        add_etb(projectionETB, projection, eventNodes, IndexEventNodes, network)
     for i in range(len(nodes[parttype])):
-        setEventNodes(nodes[parttype][i], etbIDs[i], eventNodes, IndexEventNodes)
+        set_event_nodes(nodes[parttype][i], etbIDs[i], eventNodes, IndexEventNodes)
 
 
-def genericETB(partType, projection, nodes):
+def generic_etb(partType, projection, nodes):
     ETBs = []
     if len(partType) == 0 or partType not in projection.leafs():
         myID = ""
@@ -105,14 +105,14 @@ def genericETB(partType, projection, nodes):
     return ETBs
 
 
-def getNumETBs(projection, IndexEventNodes):
+def get_num_etbs(projection, IndexEventNodes):
     num = 1
     for etype in projection.leafs():
         num *= len(IndexEventNodes[etype])
     return num
 
 
-def NumETBsByKey(etb, projection, IndexEventNodes):
+def num_etbs_by_key(etb, projection, IndexEventNodes):
     instancedEvents = []
     index = 0
     if len(projection) == 1:
@@ -127,13 +127,13 @@ def NumETBsByKey(etb, projection, IndexEventNodes):
         elif etb[i] in projection.leafs():
             index = i
 
-    num = getNumETBs(projection, IndexEventNodes)
+    num = get_num_etbs(projection, IndexEventNodes)
     for etype in instancedEvents:
         num = num / len(IndexEventNodes[etype])
     return num
 
 
-def getLongest(allPairs):
+def get_longest(allPairs):
     avs = []
     for i in allPairs:
         avs.append(np.average(i))

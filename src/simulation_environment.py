@@ -22,15 +22,15 @@ import numpy as np
 from core.node import Node
 from core.network import generate_eventrates, create_random_tree
 from core.graph import create_fog_graph
-from core.all_pairs import populate_allPairs
+from core.all_pairs import populate_all_pairs
 from core.query_workload import generate_workload
 from ines.selectivity import initialize_selectivities
 from core.write_config import generate_config_buffer
-from ines.single_selectivities import initializeSingleSelectivity
+from ines.single_selectivities import initialize_single_selectivity
 from core.parse_network import initialize_globals
-from core.structures import initEventNodes, getLongest
-from ines.combigen import populate_projFilterDict, removeFilters, generate_combigen
-from ines.operator_placement import calculate_operatorPlacement
+from core.structures import init_event_nodes, get_longest
+from ines.combigen import populate_proj_filter_dict, remove_filters, generate_combigen
+from ines.operator_placement import calculate_operator_placement
 from prepp.prepp import generate_prePP
 from prepp.generate_eval_plan import generate_eval_plan
 
@@ -143,7 +143,7 @@ def resolve_projection_rate_tuple(context: Any, query: Any) -> Any:
 
     if hasattr(query, "stripKL_simple"):
         try:
-            stripped = query.stripKL_simple()
+            stripped = query.strip_kl_simple()
             candidates.append(stripped)
         except Exception:
             pass
@@ -1304,7 +1304,7 @@ class Simulation:
                 string.ascii_uppercase[: config.num_event_types]
             )
 
-            self.single_selectivity = initializeSingleSelectivity(
+            self.single_selectivity = initialize_single_selectivity(
                 CURRENT_SECTION=self.CURRENT_SECTION,
                 config_single=self.config_single,
                 workload=self.query_workload,
@@ -1321,7 +1321,7 @@ class Simulation:
                 self.h_nodes,
                 self.h_etb_rates,
             ) = initialize_globals(self.network)
-            self.h_eventNodes, self.h_IndexEventNodes = initEventNodes(
+            self.h_eventNodes, self.h_IndexEventNodes = init_event_nodes(
                 self.h_nodes, self.h_network_data
             )
             (
@@ -1331,8 +1331,8 @@ class Simulation:
                 self.h_sharedProjectionsDict,
                 self.h_sharedProjectionsList,
             ) = generate_all_projections(self)
-            self.h_projFilterDict = populate_projFilterDict(self)
-            self.h_projFilterDict = removeFilters(self)
+            self.h_projFilterDict = populate_proj_filter_dict(self)
+            self.h_projFilterDict = remove_filters(self)
 
             start_time_generate_combigen = time.time()
             (
@@ -1411,7 +1411,7 @@ class Simulation:
                 self.experiment_result,
                 self.results,
                 self.inev_results,
-            ) = calculate_operatorPlacement(self, "test", 0)
+            ) = calculate_operator_placement(self, "test", 0)
             inev_end_time = time.time()
             print("--- INEV COMPUTATION COMPLETE ---")
 
@@ -2020,8 +2020,8 @@ class Simulation:
     def _initialize_network_graph(self):
         """Initialize network graph and distance calculations."""
         self.graph = create_fog_graph(self.network)
-        self.allPairs = populate_allPairs(self.graph)
-        self.h_longestPath = getLongest(self.allPairs)
+        self.allPairs = populate_all_pairs(self.graph)
+        self.h_longestPath = get_longest(self.allPairs)
 
     def _initialize_query_workload(self):
         """Generate query workload based on configuration mode."""

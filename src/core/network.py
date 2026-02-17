@@ -230,7 +230,7 @@ def compressed_graph(G, eList):
     return G
 
 
-def treeDict(network_data, eList):
+def tree_dict(network_data, eList):
     # dict with nodes as key and their events
     treeAsDict = {}
 

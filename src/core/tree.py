@@ -3,7 +3,7 @@ Implementation of Query-Tree
 
 """
 
-from core.proj_string import filter_numbers, getdoubles_k
+from core.proj_string import filter_numbers, get_doubles_k
 import copy
 import numpy as np
 
@@ -48,55 +48,55 @@ class Tree:
     def __len__(self):
         return len(self.leafs())  # orleafs?
 
-    def isleaf(self, node):
+    def is_leaf(self, node):
         if not hasattr(node, "children"):
             return True
         else:
             return False
 
-    def getleafs(self):
+    def get_leafs(self):
         leafs = []
         if isinstance(self, PrimEvent):
             return [self]
         for i in self.children:
             if hasattr(i, "children"):
-                leafs = leafs + i.getleafs()
+                leafs = leafs + i.get_leafs()
             else:
                 leafs.append(i)
         return leafs
 
-    def getnodes(self):
+    def get_tree_nodes(self):
         nodes = [self]
         for i in self.children:
             if hasattr(i, "children"):
-                nodes = nodes + i.getnodes()
+                nodes = nodes + i.get_tree_nodes()
         return nodes
 
     def leafs(self):
         s = []
-        leafs = self.getleafs()
+        leafs = self.get_leafs()
         for i in leafs:
             s.append(str(i))
         return s
 
-    def getparent(self, node):
-        for i in self.getnodes():
+    def get_parent(self, node):
+        for i in self.get_tree_nodes():
             if node in i.children:
                 return i
 
-    def getancestors(self, node):
+    def get_ancestors(self, node):
         ancestors = []
         if self.is_root(node):
             return ancestors
         else:
-            mypar = self.getparent(node)
+            mypar = self.get_parent(node)
             ancestors.append(mypar)
-            ancestors += self.getancestors(mypar)
+            ancestors += self.get_ancestors(mypar)
         return ancestors
 
     def getrev_ancestors(self, node):
         rev_ancestors = []
-        if self.isleaf(node):
+        if self.is_leaf(node):
             return rev_ancestors
         else:
             mychildren = node.children
@@ -106,7 +106,7 @@ class Tree:
             return rev_ancestors
 
     def is_root(self, node):
-        if self.getparent(node) is None:
+        if self.get_parent(node) is None:
             return True
         else:
             return False
@@ -115,15 +115,15 @@ class Tree:
         if self.is_root(node):
             return 0
         else:
-            return self.level(self.getparent(node)) + 1
+            return self.level(self.get_parent(node)) + 1
 
     def getsiblings(self, node):
-        parent = self.getparent(node)
+        parent = self.get_parent(node)
         siblings = list(parent.children)
         siblings.remove(node)
         return siblings
 
-    def getsubop(self, *nodes):
+    def get_sub_op(self, *nodes):
         """
         Return projection for given query and set of leafs (primitive event types of query).
         """
@@ -131,18 +131,18 @@ class Tree:
         subop = copy.deepcopy(self)
         if len(nodes) == 1:
             nodes = nodes[0]
-            if self.getleafs().count(nodes) > 1:
-                nodes = [nodes for i in range(self.getleafs().count(nodes))]
-        for i in sorted(subop.getleafs(), key=lambda x: self.level(x), reverse=True):
+            if self.get_leafs().count(nodes) > 1:
+                nodes = [nodes for i in range(self.get_leafs().count(nodes))]
+        for i in sorted(subop.get_leafs(), key=lambda x: self.level(x), reverse=True):
             if i not in nodes:
-                parent = subop.getparent(i)
+                parent = subop.get_parent(i)
                 li = list(parent.children)
                 li.remove(i)
                 parent.children = li
 
-        for i in sorted(subop.getnodes(), key=lambda x: subop.level(x), reverse=True):
+        for i in sorted(subop.get_tree_nodes(), key=lambda x: subop.level(x), reverse=True):
             if not list(i.children):
-                parent = subop.getparent(i)
+                parent = subop.get_parent(i)
                 lp = list(parent.children)
                 lp.remove(i)
                 parent.children = lp
@@ -151,7 +151,7 @@ class Tree:
                     subop = i.children[0]
 
                 else:
-                    parent = subop.getparent(i)
+                    parent = subop.get_parent(i)
                     lx = list(parent.children)
                     ind = lx.index(i)
                     lx[ind] = i.children[0]
@@ -159,10 +159,10 @@ class Tree:
 
         return subop
 
-    def rename_leafs(self, newleaflist):
-        doubles = getdoubles_k(newleaflist)
+    def rename_leaves(self, newleaflist):
+        doubles = get_doubles_k(newleaflist)
         counts = {}
-        for i in self.getleafs():
+        for i in self.get_leafs():
             my_i = filter_numbers(str(i))
             if my_i not in counts.keys():
                 counts[my_i] = 0
@@ -181,11 +181,11 @@ class Tree:
             if mychildren.count(i) > 1 and i not in doubles:
                 doubles.append(i)
         mychildren = filter(lambda x: x not in doubles, mychildren)
-        return self.rename_leafs(mychildren)
+        return self.rename_leaves(mychildren)
 
     def getsequences(self):
         mysequence = {}
-        for i in sorted(self.getnodes(), key=lambda x: self.level(x), reverse=True):
+        for i in sorted(self.get_tree_nodes(), key=lambda x: self.level(x), reverse=True):
             if isinstance(i, SEQ):
                 for childindex in range(len(i.children)):
                     mysequence[str(i.children[childindex])] = []
@@ -266,12 +266,12 @@ class Tree:
                         return False
         return True
 
-    def stripKL_simple(self):
+    def strip_kl_simple(self):
         me = copy.deepcopy(self)
-        nodes = me.getnodes()
+        nodes = me.get_tree_nodes()
         for i in nodes:
             if isinstance(i, KL):
-                myparent = me.getparent(i)
+                myparent = me.get_parent(i)
                 myind = myparent.children.index(i)
                 newchildren = [x for x in myparent.children]
                 newchildren[myind] = i.children[0]
@@ -280,10 +280,10 @@ class Tree:
 
     def strip_NSEQ(self):
         me = copy.deepcopy(self)
-        nodes = me.getnodes()
+        nodes = me.get_tree_nodes()
         for i in nodes:
             if isinstance(i, NSEQ):
-                myparent = me.getparent(i)
+                myparent = me.get_parent(i)
                 myind = myparent.children.index(i)
                 newchildren = [x for x in myparent.children]
                 newme = SEQ()
@@ -294,36 +294,36 @@ class Tree:
 
     def get_original(self, wl):
         for query in wl:
-            if query.stripKL_simple() == self:
+            if query.strip_kl_simple() == self:
                 return query
         return self
 
     def get_negated(self):
         negated = []
-        for i in self.getnodes():
+        for i in self.get_tree_nodes():
             if isinstance(i, NSEQ):
                 negated.append(i.children[1])
         return negated
 
-    def hasNegation(self):
+    def has_negation(self):
         if self.get_negated():
             return True
         else:
             return False
 
-    def hasKleene(self):
+    def has_kleene(self):
         if self.kleene_components():
             return True
         else:
             return False
 
     def get_context(self, negated):
-        for i in self.getnodes():
+        for i in self.get_tree_nodes():
             if isinstance(i, NSEQ) and negated in i.children:
                 return [i.children[0]] + [i.children[2]]
 
     def kleene_components(self):
-        return [x.children[0] for x in self.getnodes() if isinstance(x, KL)]
+        return [x.children[0] for x in self.get_tree_nodes() if isinstance(x, KL)]
 
 
 class AND(Tree):
@@ -387,8 +387,8 @@ class KL(Tree):
         # rate = 1
         # for i in self.children:
         #     rate *= 2^(i.evaluate())
-        print(self.stripKL_simple())
-        return self.stripKL_simple().evaluate(rates)
+        print(self.strip_kl_simple())
+        return self.strip_kl_simple().evaluate(rates)
 
 
 class NSEQ(Tree):

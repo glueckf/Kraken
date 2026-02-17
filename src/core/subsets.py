@@ -1,4 +1,4 @@
-def combinationUtil(arr, n, r, index, data, i, blub):
+def combination_util(arr, n, r, index, data, i, blub):
     if index == r:
         bla = ""
 
@@ -11,9 +11,9 @@ def combinationUtil(arr, n, r, index, data, i, blub):
         return
 
     data[index] = arr[i]
-    combinationUtil(arr, n, r, index + 1, data, i + 1, blub)
+    combination_util(arr, n, r, index + 1, data, i + 1, blub)
 
-    combinationUtil(arr, n, r, index, data, i + 1, blub)
+    combination_util(arr, n, r, index, data, i + 1, blub)
 
 
 def printcombination(arr, i):
@@ -21,11 +21,11 @@ def printcombination(arr, i):
     n = len(arr)
     data = list(range(r))
     blub = []
-    combinationUtil(arr, n, r, 0, data, 0, blub)
+    combination_util(arr, n, r, 0, data, 0, blub)
     return blub
 
 
-def combinationUtil2(arr, n, r, index, data, i, blub):
+def combination_util2(arr, n, r, index, data, i, blub):
     if index == r:
         bla = []
 
@@ -38,9 +38,9 @@ def combinationUtil2(arr, n, r, index, data, i, blub):
         return
 
     data[index] = arr[i]
-    combinationUtil2(arr, n, r, index + 1, data, i + 1, blub)
+    combination_util2(arr, n, r, index + 1, data, i + 1, blub)
 
-    combinationUtil2(arr, n, r, index, data, i + 1, blub)
+    combination_util2(arr, n, r, index, data, i + 1, blub)
 
 
 def printcombination2(arr, i):
@@ -48,7 +48,7 @@ def printcombination2(arr, i):
     n = len(arr)
     data = list(range(r))
     blub = []
-    combinationUtil2(arr, n, r, 0, data, 0, blub)
+    combination_util2(arr, n, r, 0, data, 0, blub)
     return blub
 
 

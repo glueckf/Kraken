@@ -34,7 +34,7 @@ def get_prim_variable(primitive_events_data):
     return prim
 
 
-def getPrim(PrimitiveEvents, Prim):
+def get_prim(PrimitiveEvents, Prim):
     x = rd.uniform(0, len(PrimitiveEvents))
     x = int(x)
     return PrimEvent(Prim[x])
@@ -55,7 +55,7 @@ def generate_workload(size, maxlength, primitive_events_data):  # count, lenthh
             query = SEQ()
         else:
             query = AND()
-        query.children = generateQ(
+        query.children = generate_q(
             query, int(nesting_depth), mylength, primitiveEvents, prim
         )
 
@@ -66,7 +66,7 @@ def generate_workload(size, maxlength, primitive_events_data):  # count, lenthh
     return qwl
 
 
-def generate_BalancedWorkload(size, maxlength):  # count, lenthh
+def generate_balanced_workload(size, maxlength):  # count, lenthh
     qwl = []
     kleene = []
     negation = []
@@ -82,16 +82,16 @@ def generate_BalancedWorkload(size, maxlength):  # count, lenthh
             query = SEQ()
         else:
             query = AND()
-        # query.children = generateQ(query, int(nesting_depth), mylength)
+        # query.children = generate_q(query, int(nesting_depth), mylength)
 
-        query.children = generateQKL(query, int(nesting_depth), mylength, False, False)
+        query.children = generate_q_kl(query, int(nesting_depth), mylength, False, False)
         query = number_children(query)
         if not hasdoubles(query):  # changed
             qwl.append(query)
     for i in qwl:
-        if i.hasKleene():
+        if i.has_kleene():
             kleene.append(i)
-        if i.hasNegation():
+        if i.has_negation():
             negation.append(i)
         if i not in negation and i not in kleene:
             none.append(i)
@@ -107,7 +107,7 @@ def generate_BalancedWorkload(size, maxlength):  # count, lenthh
                 query = SEQ()
             else:
                 query = AND()
-            query.children = getKleeneQuery(query, int(nesting_depth), maxlength, False)
+            query.children = get_kleene_query(query, int(nesting_depth), maxlength, False)
             if not hasdoubles(query):
                 kleene.append(query)
                 if none:
@@ -124,7 +124,7 @@ def generate_BalancedWorkload(size, maxlength):  # count, lenthh
                 query = SEQ()
             else:
                 query = AND()
-            query.children = getNSEQQuery(query, int(nesting_depth), maxlength, False)
+            query.children = get_nseq_query(query, int(nesting_depth), maxlength, False)
             if not hasdoubles(query):  # changed
                 negation.append(query)
                 if none:
@@ -144,7 +144,7 @@ def hasdoubles(query):
 
 def number_children(query):
     mychildren = query.leafs()
-    children = query.getleafs()
+    children = query.get_leafs()
     types = list(set(mychildren))
     for i in types:
         mycount = mychildren.count(i)
@@ -159,13 +159,13 @@ def number_children(query):
     return query
 
 
-def generateQ(query, nestingdepth, maxlength, PrimitiveEvent, Prim):
+def generate_q(query, nestingdepth, maxlength, PrimitiveEvent, Prim):
     count = 0
     children = []
     remainingPrims = maxlength - 1 - nestingdepth
     if nestingdepth == 1:
         for i in range(maxlength):
-            newchild = getPrim(PrimitiveEvent, Prim)
+            newchild = get_prim(PrimitiveEvent, Prim)
 
             children.append(newchild)
         return children
@@ -174,7 +174,7 @@ def generateQ(query, nestingdepth, maxlength, PrimitiveEvent, Prim):
         x = rd.uniform(0, remainingPrims)
 
         for i in range(int(x) + 1):
-            newchild = getPrim(PrimitiveEvent, Prim)
+            newchild = get_prim(PrimitiveEvent, Prim)
 
             children.append(newchild)
             count += 1
@@ -183,7 +183,7 @@ def generateQ(query, nestingdepth, maxlength, PrimitiveEvent, Prim):
             myquery = SEQ()
         elif isinstance(query, SEQ):
             myquery = AND()
-        myquery.children = generateQ(
+        myquery.children = generate_q(
             myquery, nestingdepth - 1, maxlength - count, PrimitiveEvent, Prim
         )
         children.append(myquery)
@@ -191,13 +191,13 @@ def generateQ(query, nestingdepth, maxlength, PrimitiveEvent, Prim):
         return children
 
 
-def generateQKL(query, nestingdepth, maxlength, negation, kleene):
+def generate_q_kl(query, nestingdepth, maxlength, negation, kleene):
     count = 0
     children = []
     remainingPrims = maxlength - 1 - nestingdepth
     if nestingdepth == 1:
         for i in range(maxlength):
-            newchild = getPrim()
+            newchild = get_prim()
 
             children.append(newchild)
         return children
@@ -206,21 +206,21 @@ def generateQKL(query, nestingdepth, maxlength, negation, kleene):
         x = rd.uniform(0, remainingPrims)
         negKL = rd.uniform(0, 1)
         for i in range(int(x) + 1):
-            newchild = getPrim()
+            newchild = get_prim()
 
             children.append(newchild)
             count += 1
 
         if not kleene:
             if negKL < 1 and maxlength - count - 1 >= remainingPrims:  # Kleene
-                newchild = getPrim()
+                newchild = get_prim()
                 children.append(KL(newchild))
                 count += 1
                 kleene = True
         if not negation:
             if negKL < 1 and maxlength - count - 3 >= remainingPrims:  # negation
                 myq = NSEQ()
-                myq.children = [getPrim(), getPrim(), getPrim()]
+                myq.children = [get_prim(), get_prim(), get_prim()]
                 children.append(myq)
                 count += 3
                 negation = True
@@ -231,7 +231,7 @@ def generateQKL(query, nestingdepth, maxlength, negation, kleene):
         nestingdepth = min(nestingdepth, maxlength - count - 1)
         if nestingdepth < 2:
             nestingdepth = 2
-        myquery.children = generateQKL(
+        myquery.children = generate_q_kl(
             myquery, nestingdepth - 1, maxlength - count, negation, kleene
         )
         children.append(myquery)
@@ -239,24 +239,24 @@ def generateQKL(query, nestingdepth, maxlength, negation, kleene):
         return children
 
 
-def getKleeneQuery(query, nestingdepth, maxlength, kleene):
+def get_kleene_query(query, nestingdepth, maxlength, kleene):
     count = 0
     children = []
     remainingPrims = maxlength - 1 - nestingdepth
     if nestingdepth == 1:
         if not kleene:
-            newchild = getPrim()
+            newchild = get_prim()
             children.append(KL(newchild))
             count += 1
             kleene = True
         for i in range(maxlength - count):
-            newchild = getPrim()
+            newchild = get_prim()
 
             children.append(newchild)
         return children
     else:
         if not kleene:
-            newchild = getPrim()
+            newchild = get_prim()
             children.append(KL(newchild))
             count += 1
             kleene = True
@@ -267,7 +267,7 @@ def getKleeneQuery(query, nestingdepth, maxlength, kleene):
         nestingdepth = min(nestingdepth, maxlength - count - 1)
         if nestingdepth < 2:
             nestingdepth = 2
-        myquery.children = getKleeneQuery(
+        myquery.children = get_kleene_query(
             myquery, nestingdepth - 1, maxlength - count, kleene
         )
         children.append(myquery)
@@ -275,26 +275,26 @@ def getKleeneQuery(query, nestingdepth, maxlength, kleene):
         return children
 
 
-def getNSEQQuery(query, nestingdepth, maxlength, negation):
+def get_nseq_query(query, nestingdepth, maxlength, negation):
     count = 0
     children = []
     if nestingdepth == 1:
         if not negation:
             myq = NSEQ()
-            myq.children = [getPrim(), getPrim(), getPrim()]
+            myq.children = [get_prim(), get_prim(), get_prim()]
             children.append(myq)
             negation = True
             count += 3
 
         for i in range(maxlength - count):
-            newchild = getPrim()
+            newchild = get_prim()
 
             children.append(newchild)
         return children
     else:
         if not negation:
             myq = NSEQ()
-            myq.children = [getPrim(), getPrim(), getPrim()]
+            myq.children = [get_prim(), get_prim(), get_prim()]
             children.append(myq)
             count += 3
             negation = True
@@ -308,7 +308,7 @@ def getNSEQQuery(query, nestingdepth, maxlength, negation):
 
         if nestingdepth < 2:
             nestingdepth = 2
-        myquery.children = getNSEQQuery(
+        myquery.children = get_nseq_query(
             myquery, nestingdepth - 1, maxlength - count, negation
         )
         children.append(myquery)
@@ -316,7 +316,7 @@ def getNSEQQuery(query, nestingdepth, maxlength, negation):
         return children
 
 
-def makeLong(count, length):
+def make_long(count, length):
     wl = generate_workload(count, length)
     while True:
         for i in wl:
@@ -325,8 +325,8 @@ def makeLong(count, length):
         wl = generate_workload(count, length)
 
 
-def makeLongBalanced(count, length):
-    wl = generate_BalancedWorkload(count, length)
+def make_long_balanced(count, length):
+    wl = generate_balanced_workload(count, length)
     return wl
 
 

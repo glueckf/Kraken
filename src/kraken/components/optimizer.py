@@ -88,7 +88,7 @@ class PlacementOptimizer:
         Returns:
             List of node IDs that have access to all required events
         """
-        from core.structures import getNodes
+        from core.structures import get_nodes
 
         # Extract parameters
         network_data = params["network_data"]
@@ -113,7 +113,7 @@ class PlacementOptimizer:
         for ev in required_events:
             for etb in index_event_nodes.get(ev, ()):
                 if etb not in etb_sources_cache:
-                    etb_sources_cache[etb] = getNodes(
+                    etb_sources_cache[etb] = get_nodes(
                         etb, event_nodes, index_event_nodes
                     )
                 required_sources.update(etb_sources_cache[etb])

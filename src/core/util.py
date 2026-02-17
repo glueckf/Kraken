@@ -15,7 +15,7 @@ def column1s(mylist):
     return [x for x in range(len(mylist)) if mylist[x] == 1]
 
 
-def reverseDict(myDict):
+def reverse_dict(myDict):
     MyReversed = {}
     for i in myDict.keys():
         if myDict[i] not in MyReversed.keys():

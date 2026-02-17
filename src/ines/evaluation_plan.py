@@ -12,35 +12,35 @@ class EvaluationPlan:
         self.projections = projections
         self.instances = instances
 
-    def addProjection(self, projectionName):
+    def add_projection(self, projectionName):
         p = Projection(projectionName, {}, [], [], [])
         self.projections.append(p)
         # init spawned projections
 
-    def getProjection(self, projectionName):
+    def get_projection(self, projectionName):
         for i in self.projections:
             if i.name.name == projectionName:
                 return i
 
-    def addInstances(self, proj, name):
+    def add_instances(self, proj, name):
         self.instances.append(
             Instance(proj, name, [], {})
         )  # we could actually add one source here already...
 
-    def getByName(self, newname):
+    def get_by_name(self, newname):
         for i in self.instances:
             if i.name == newname:
                 return i
 
-    def updateInstances(self, newInstances):
+    def update_instances(self, newInstances):
         for i in newInstances:
-            myInstance = self.getByName(i.name)
+            myInstance = self.get_by_name(i.name)
             if (
                 myInstance
             ):  # TODO remove later when instances for peojwctions also there
                 myInstance.update(i)
 
-    def initInstances(self, InstanceDict):
+    def init_instances(self, InstanceDict):
         for name in InstanceDict.keys():
             if len(name) > 1:
                 newInstance = Instance(name[0], name, [InstanceDict[name]], {})
@@ -61,19 +61,19 @@ class Projection:
         self.spawnedInstances = spawnedInstances
         self.Filters = Filters
 
-    def addSinks(self, sink):
+    def add_sinks(self, sink):
         self.sinks.append(sink)
 
-    def addProjection(self, combination):
+    def add_projection(self, combination):
         self.combination[combination] = ""
 
-    def addInstances(self, projection, instances):
+    def add_instances(self, projection, instances):
         self.combination[projection] = instances
 
-    def addSpawned(self, spawned):
+    def add_spawned(self, spawned):
         self.spawnedInstances += spawned
 
-    def getInputInstances(self):
+    def get_input_instances(self):
         myInstances = []
         for key in self.combination.keys():
             for instance in self.combination[key]:

@@ -6,15 +6,15 @@ Created on Mon Aug 16 11:47:10 2021
 @author: samira
 """
 
-from ines.projections import returnPartitioning, settoproj, totalRate
+from ines.projections import return_partitioning, set_to_proj, total_rate
 import copy
 from inev.filter import (
-    getMaximalFilter,
-    getDecomposed,
+    get_maximal_filter,
+    get_decomposed,
 )
 import string
 from core.tree import Tree
-from core.structures import getNumETBs
+from core.structures import get_num_etbs
 import numpy as np
 
 
@@ -45,7 +45,7 @@ def compute_dependencies(
     for proj in levels.keys():
         levels[proj] = levels[proj] * 2
     for proj in levels.keys():
-        if not returnPartitioning(
+        if not return_partitioning(
             self, proj, combiDict[proj], self.h_projrates, criticalMSTypes
         ):
             levels[proj] = levels[proj] + 1
@@ -66,7 +66,7 @@ def copy_allAncestors(projection, mycombi):
     return list(set(ancestors))
 
 
-def prePone(mylist, index1, index2):
+def pre_pone(mylist, index1, index2):
     toPop = mylist[index2]
     return (
         [mylist[x] for x in range(len(mylist)) if x < index1]
@@ -100,18 +100,18 @@ def compute_dependencies_simple(combiDict):  # has as input a final combination
     return levels
 
 
-def getSharedMSinput(self, combiDict, myProjFilters):
+def get_shared_ms_input(self, combiDict, myProjFilters):
     """for each ms projection in final combination, check if there is an input in the current combination, that is shared with another ms projection, output is shared dict, which is used for MS placements"""
     sharedInput = {}
     criticalMSTypes = self.h_criticalMSTypes
     projrates = self.h_projrates
     for proj in combiDict.keys():
-        part = returnPartitioning(
+        part = return_partitioning(
             self, proj, combiDict[proj], projrates, criticalMSTypes
         )
         if part:  # only MS projections
             # for event in combiDict[proj]:
-            for event in combiDict[proj] + list(getMaximalFilter(myProjFilters, proj)):
+            for event in combiDict[proj] + list(get_maximal_filter(myProjFilters, proj)):
                 if event not in sharedInput and not part[0] == event:
                     sharedInput[event] = [part[0]]
                 elif not part[0] == event:
@@ -119,7 +119,7 @@ def getSharedMSinput(self, combiDict, myProjFilters):
     return sharedInput
 
 
-def makeUnredundant(combi):
+def make_unredundant(combi):
     toRemove = []
     for i in combi:
         myset = set([x if len(x) == 1 else x.leafs() for x in [i]][0])
@@ -130,7 +130,7 @@ def makeUnredundant(combi):
     return [x for x in combi if x not in toRemove]
 
 
-def removeLayer(combiDict, layer):  # make sure, that no query is removed from
+def remove_layer(combiDict, layer):  # make sure, that no query is removed from
     levels = compute_dependencies_simple(combiDict)
     # levels = compute_dependencies(combiDict)
     projections = [x for x in levels.keys() if levels[x] in layer and x not in wl]
@@ -152,13 +152,13 @@ def removeLayer(combiDict, layer):  # make sure, that no query is removed from
             )
         myCombination = copy.deepcopy(newCombination)
     newCombination = {
-        x: makeUnredundant(list(set(newCombination[x])))
+        x: make_unredundant(list(set(newCombination[x])))
         for x in list(newCombination.keys())
     }
     return newCombination
 
 
-def removeProjection(combiDict, projection):
+def remove_projection(combiDict, projection):
     combi = mycombi[projection]
     myCombination = copy.deepcopy(combiDict)
     newCombination = {}
@@ -167,12 +167,12 @@ def removeProjection(combiDict, projection):
             [[x] if not (x == projection) else combi for x in myCombination[i]], []
         )
     return {
-        x: makeUnredundant(list(set(newCombination[x])))
+        x: make_unredundant(list(set(newCombination[x])))
         for x in list(newCombination.keys())
     }
 
 
-def hasMSParent(projection):  # checks for a projection if it is input to a MS placement
+def has_ms_parent(projection):  # checks for a projection if it is input to a MS placement
     for i in mycombi.keys():
         if projection in mycombi[i]:
             if originalDict[i][1] and i not in criticalMSProjections:
@@ -181,7 +181,7 @@ def hasMSParent(projection):  # checks for a projection if it is input to a MS p
         return False
 
 
-def removeSisChains():
+def remove_sis_chains():
     levels = compute_dependencies_simple(mycombi)
     newlevels = {}
     toRemove = []
@@ -194,7 +194,7 @@ def removeSisChains():
     for i in [x for x in newlevels.keys() if not x == max(newlevels.keys())]:
         count = 0
         for proj in [x for x in newlevels[i] if x not in wl]:
-            if originalDict[proj][1] or hasMSParent(proj):  # has multisink placement
+            if originalDict[proj][1] or has_ms_parent(proj):  # has multisink placement
                 break
             elif proj in criticalMSProjections:
                 count += 1
@@ -204,25 +204,25 @@ def removeSisChains():
             toRemove.append(i)
     newcombi = copy.deepcopy(mycombi)
     if toRemove:
-        newcombi = removeLayer(mycombi, toRemove)
-    newcombi = removeSiSfamilies(newcombi)
+        newcombi = remove_layer(mycombi, toRemove)
+    newcombi = remove_sis_families(newcombi)
     return newcombi
 
 
-def removeSiSfamilies(combi):
+def remove_sis_families(combi):
     toRemove = []
     for i in [x for x in combi.keys() if x not in wl]:
-        if not originalDict[i][1] and not hasMSParent(i):
+        if not originalDict[i][1] and not has_ms_parent(i):
             toRemove.append(i)
         elif i in criticalMSProjections:
             toRemove.append(i)
     newcombi = combi
     for i in toRemove:
-        newcombi = removeProjection(newcombi, i)
+        newcombi = remove_projection(newcombi, i)
     return newcombi
 
 
-def strToProj(subProj, projection):
+def str_to_proj(subProj, projection):
     if isinstance(subProj, Tree):
         return subProj
     elif len(subProj) == 1:
@@ -235,10 +235,10 @@ def strToProj(subProj, projection):
                     i + 1
                 ] not in list(string.ascii_uppercase):
                     evlist.append(subProj[i])
-        return settoproj(evlist, projection)
+        return set_to_proj(evlist, projection)
 
 
-def getDiv(i, partType):
+def get_div(i, partType):
     if len(i) == 1:
         if i == partType:
             return instances[partType]
@@ -248,54 +248,54 @@ def getDiv(i, partType):
     return 1
 
 
-def getFilteredRate(projection, diamond, filtered):
+def get_filtered_rate(projection, diamond, filtered):
     if len(diamond) == 1:
         if diamond in filtered:
             return singleSelectivities[
-                getKeySingleSelect(diamond, projection)
-            ] * totalRate(diamond)
-        return totalRate(diamond)
+                get_key_single_select(diamond, projection)
+            ] * total_rate(diamond)
+        return total_rate(diamond)
 
     lst = [
         x for x in diamond.leafs() if x in filtered
     ]  # return list of filtered events contained in projection
     filter_lst = [x for x in diamond.leafs() if x not in lst]
     lst = list(
-        map(lambda x: singleSelectivities[getKeySingleSelect(x, projection)], lst)
+        map(lambda x: singleSelectivities[get_key_single_select(x, projection)], lst)
     )
     filter_lst = list(
-        map(lambda x: singleSelectivities[getKeySingleSelect(x, diamond)], filter_lst)
+        map(lambda x: singleSelectivities[get_key_single_select(x, diamond)], filter_lst)
     )
     prod = 1
     for i in lst + filter_lst:
         prod *= i
-    return diamond.evaluate() * getNumETBs(diamond) * prod
+    return diamond.evaluate() * get_num_etbs(diamond) * prod
 
 
-def Diamond_costsFiltered(projection, diamonds, filtered):
+def diamond_costs_filtered(projection, diamonds, filtered):
     costs = 0
     for diamond in diamonds:
-        diamond1 = getFilteredRate(projection, diamond[0], filtered)
-        diamond2 = getFilteredRate(projection, diamond[1], filtered)
+        diamond1 = get_filtered_rate(projection, diamond[0], filtered)
+        diamond2 = get_filtered_rate(projection, diamond[1], filtered)
         costs += diamond1 + diamond2 + diamond1 * diamond2
     return costs
 
 
-def Diamond_costs(projection, diamonds, partType):
+def diamond_costs(projection, diamonds, partType):
     costs = 0
     div = False
     for i in diamonds:
-        div0 = getDiv(i[0], partType)
-        div1 = getDiv(i[1], partType)
+        div0 = get_div(i[0], partType)
+        div1 = get_div(i[1], partType)
         costs += (
-            totalRate(i[0]) / div0
-            + totalRate(i[1]) / div1
-            + totalRate(i[0]) / div0 * totalRate(i[1]) / div1
+            total_rate(i[0]) / div0
+            + total_rate(i[1]) / div1
+            + total_rate(i[0]) / div0 * total_rate(i[1]) / div1
         )
     return costs
 
 
-def getMiniDiamonds(
+def get_mini_diamonds(
     projection, partType, combination, *args
 ):  # args is list of filtered events
     samplingSize = (
@@ -315,21 +315,21 @@ def getMiniDiamonds(
     for i in range(samplingSize):
         originalDiamonds = copy.deepcopy(diamonds)
         mycosts = 0
-        myDiamonds = getMiniDiamonds_rec(
+        myDiamonds = get_mini_diamonds_rec(
             projection, partType, combination, originalDiamonds
         )
         if filteredEvents:
-            mycosts = Diamond_costsFiltered(projection, myDiamonds, filteredEvents)
+            mycosts = diamond_costs_filtered(projection, myDiamonds, filteredEvents)
         else:
-            mycosts = Diamond_costs(projection, myDiamonds, partType)
+            mycosts = diamond_costs(projection, myDiamonds, partType)
         if mycosts < costs:
             outDiamonds = myDiamonds
             costs = mycosts
     return outDiamonds
 
 
-def getMiniDiamonds_rec(projection, partType, combination, diamonds):
-    combination = list(map(lambda x: strToProj(x, projection), combination))
+def get_mini_diamonds_rec(projection, partType, combination, diamonds):
+    combination = list(map(lambda x: str_to_proj(x, projection), combination))
     if len(combination) == 2:
         diamondTuple = combination
         diamonds.append(diamondTuple)
@@ -347,16 +347,16 @@ def getMiniDiamonds_rec(projection, partType, combination, diamonds):
         combination = [x for x in combination if x not in diamondTuple]
         # print([x.leafs() if len(x)> 1 else [x] for x in diamondTuple])
         combination.append(
-            settoproj(
+            set_to_proj(
                 sum([x.leafs() if len(x) > 1 else [x] for x in diamondTuple], []),
                 projection,
             )
         )
 
-        return getMiniDiamonds_rec(projection, partType, combination, diamonds)
+        return get_mini_diamonds_rec(projection, partType, combination, diamonds)
 
 
-def getMSInputs():
+def get_ms_inputs():
     out = []
     for proj in mycombi.keys():
         part = originalDict[proj][1]
@@ -370,14 +370,14 @@ def getMSInputs():
     return sum(out, [])
 
 
-def augmentProjFilters(old, additional, mylist):
+def augment_proj_filters(old, additional, mylist):
     for proj in mycombi.keys():
         additionalFilters = []
         for event in mylist:
             if event in additional[proj].keys():
                 additionalFilters.append(event)
-        oldFilter = getMaximalFilter(old, proj, 0)
+        oldFilter = get_maximal_filter(old, proj, 0)
         additionalFilters = [x for x in additionalFilters if x not in oldFilter]
         newFilter = "".join(additionalFilters)
-        old[proj][newFilter] = getDecomposed(additionalFilters, proj)
+        old[proj][newFilter] = get_decomposed(additionalFilters, proj)
     return old

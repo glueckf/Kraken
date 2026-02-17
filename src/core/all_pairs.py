@@ -152,7 +152,7 @@ def compute_distances_for_node(routingDict, G, node):
     return create_myDistances(routingDict, G, node)
 
 
-def populate_allPairs(graph: nx.digraph):
+def populate_all_pairs(graph: nx.digraph):
     # "TODO No globals"
     # global routingDict
     # global G

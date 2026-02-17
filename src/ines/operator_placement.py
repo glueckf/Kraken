@@ -1,20 +1,20 @@
 import uuid
 
 from inev.placement_aug import (
-    NEWcomputeCentralCosts,
-    ComputeSingleSinkPlacement,
-    computeMSplacementCosts,
+    new_compute_central_costs,
+    compute_single_sink_placement,
+    compute_ms_placement_costs,
 )
-from inev.process_combination import compute_dependencies, getSharedMSinput
+from inev.process_combination import compute_dependencies, get_shared_ms_input
 import time
 from ines.evaluation_plan import EvaluationPlan
-from ines.projections import returnPartitioning, totalRate
+from ines.projections import return_partitioning, total_rate
 
 
 # maxDist = max([max(x) for x in allPairs])
 
 
-def getLowerBound(
+def get_lower_bound(
     query, self
 ):  # lower bound -> for multiple projections, keep track of events sent as single sink and do not add up
     projsPerQuery = self.h_projsPerQuery
@@ -24,7 +24,7 @@ def getLowerBound(
     MS = []
     for e in query.leafs():
         # myprojs = [p for p in list(set(projsPerQuery[query]).difference(set([query]))) if
-        #            totalRate(p) < rates[e] and not e in p.leafs()]
+        #            total_rate(p) < rates[e] and not e in p.leafs()]
 
         # Step 1: Get projects for this query
         projects_for_query = projsPerQuery[query]
@@ -43,12 +43,12 @@ def getLowerBound(
         myprojs = []
 
         for p in filtered_projects_list:
-            if totalRate(self, p, self.h_projrates) < rates[e] and e not in p.leafs():
+            if total_rate(self, p, self.h_projrates) < rates[e] and e not in p.leafs():
                 myprojs.append(p)
         if myprojs:
             MS.append(e)
         for p in [x for x in projsPerQuery[query] if e in x.leafs()]:
-            part = returnPartitioning(
+            part = return_partitioning(
                 self, p, p.leafs(), self.h_projrates, self.h_combiDict
             )
 
@@ -60,7 +60,7 @@ def getLowerBound(
             sum(
                 sorted(
                     [
-                        totalRate(self, e, self.h_projrates)
+                        total_rate(self, e, self.h_projrates)
                         for e in query.leafs()
                         if e not in MS
                     ]
@@ -70,12 +70,12 @@ def getLowerBound(
         )
     else:
         minimalRate = (
-            min([totalRate(self, e, self.h_projrates) for e in query.leafs()])
+            min([total_rate(self, e, self.h_projrates) for e in query.leafs()])
             * longestPath
         )
     minimalProjs = sorted(
         [
-            totalRate(self, p, self.h_projrates)
+            total_rate(self, p, self.h_projrates)
             for p in projsPerQuery[query]
             if not p == query
         ]
@@ -86,7 +86,7 @@ def getLowerBound(
     return minimalRate  # , nonMS)
 
 
-def calculate_operatorPlacement(self, file_path: str, max_parents: int):
+def calculate_operator_placement(self, file_path: str, max_parents: int):
     wl = self.query_workload
     allPairs = self.allPairs
     # getNetworkParameters, selectivityParameters, combigenParameters
@@ -123,7 +123,7 @@ def calculate_operatorPlacement(self, file_path: str, max_parents: int):
     print(f"[SEQUENTIAL] Query workload: {[str(q) for q in wl]}")
     print(f"[SEQUENTIAL] Network nodes: {len(network)} nodes")
     print(f"[SEQUENTIAL] Available event nodes: {list(IndexEventNodes.keys())}")
-    ccosts = NEWcomputeCentralCosts(
+    ccosts = new_compute_central_costs(
         wl, IndexEventNodes, allPairs, rates, EventNodes, self.graph
     )
     centralHopLatency = max(allPairs[ccosts[1]])
@@ -141,8 +141,8 @@ def calculate_operatorPlacement(self, file_path: str, max_parents: int):
 
     hopLatency = {}
 
-    # Reduce calls of initEventNodes
-    # init_eventNodes = initEventNodes()
+    # Reduce calls of init_event_nodes
+    # init_eventNodes = init_event_nodes()
     EventNodes = self.h_eventNodes
     IndexEventNodes = self.h_IndexEventNodes
 
@@ -150,14 +150,14 @@ def calculate_operatorPlacement(self, file_path: str, max_parents: int):
 
     # transforming indexeventnodes into EvaluationPLan object with all entries as a instance
     # jede instance ist eine node ein event (nodes * events die produziert werden pro node)
-    myPlan.initInstances(
+    myPlan.init_instances(
         IndexEventNodes
     )  # init with instances for primitive event types
 
     # mycombi = removeSisChains()
     unfolded = self.h_mycombi
     criticalMSTypes = self.h_criticalMSTypes
-    sharedDict = getSharedMSinput(self, unfolded, projFilterDict)
+    sharedDict = get_shared_ms_input(self, unfolded, projFilterDict)
     dependencies = compute_dependencies(self, unfolded, criticalMSTypes)
     processingOrder = sorted(
         dependencies.keys(), key=lambda x: dependencies[x]
@@ -191,15 +191,15 @@ def calculate_operatorPlacement(self, file_path: str, max_parents: int):
                 [hopLatency[x] for x in unfolded[projection] if x in hopLatency.keys()]
             )
 
-        # partType = returnPartitioning(self,projection, unfolded[projection], self.h_projrates,criticalMSTypes)
+        # partType = return_partitioning(self,projection, unfolded[projection], self.h_projrates,criticalMSTypes)
 
         # ComputeMSPlacement
         # TODO: Currntly leave out MS placement for integrated approach, as it is not yet implemented
-        # partType,_,_ = returnPartitioning(self, projection, unfolded[projection], projrates ,criticalMSTypes)
+        # partType,_,_ = return_partitioning(self, projection, unfolded[projection], projrates ,criticalMSTypes)
         partType = False
         if partType:
             MSPlacements[projection] = partType
-            result = computeMSplacementCosts(
+            result = compute_ms_placement_costs(
                 self,
                 projection,
                 unfolded[projection],
@@ -213,12 +213,12 @@ def calculate_operatorPlacement(self, file_path: str, max_parents: int):
             costs += additional
             hopLatency[projection] += result[1]
 
-            myPlan.addProjection(result[2])  #!
+            myPlan.add_projection(result[2])  #!
 
             for newin in result[2].spawnedInstances:  # add new spawned instances
-                myPlan.addInstances(projection, newin)
+                myPlan.add_instances(projection, newin)
 
-            myPlan.updateInstances(result[3])  #! update instances
+            myPlan.update_instances(result[3])  #! update instances
 
             Filters += result[4]
             # if partType, and projection in wl and partType kleene component of projection, add sink
@@ -226,17 +226,17 @@ def calculate_operatorPlacement(self, file_path: str, max_parents: int):
             if projection.get_original(wl) in wl and partType[0] in list(
                 map(lambda x: str(x), projection.get_original(wl).kleene_components())
             ):
-                result = ComputeSingleSinkPlacement(
+                result = compute_single_sink_placement(
                     projection.get_original(wl), [projection], noFilter
                 )
                 additional = result[0]
                 costs += additional
 
         else:
-            # INFO: ComputeSingleSinkPlacement is called for the sequential approach.
+            # INFO: compute_single_sink_placement is called for the sequential approach.
             # Implementing a new function for the integrated approach
 
-            result = ComputeSingleSinkPlacement(
+            result = compute_single_sink_placement(
                 projection,
                 unfolded[projection],
                 noFilter,
@@ -264,11 +264,11 @@ def calculate_operatorPlacement(self, file_path: str, max_parents: int):
             additional = result[0]
             costs += additional
             hopLatency[projection] += result[2]
-            myPlan.addProjection(result[3])  #!
+            myPlan.add_projection(result[3])  #!
             for newin in result[3].spawnedInstances:  # add new spawned instances
-                myPlan.addInstances(projection, newin)
+                myPlan.add_instances(projection, newin)
 
-            myPlan.updateInstances(result[4])  #! update instances
+            myPlan.update_instances(result[4])  #! update instances
             Filters += result[5]
 
     # SEQUENTIAL APPROACH - FINAL PLACEMENT DECISIONS
@@ -312,11 +312,11 @@ def calculate_operatorPlacement(self, file_path: str, max_parents: int):
     print(f"[SEQUENTIAL] Central Cost Baseline: {ccosts[0]:.2f}")
     print(f"[SEQUENTIAL] Cost Reduction Ratio: {mycosts:.4f}")
 
-    if len(wl) > 1 or wl[0].hasKleene() or wl[0].hasNegation():
+    if len(wl) > 1 or wl[0].has_kleene() or wl[0].has_negation():
         lowerBound = 0
     else:
         for query in wl:
-            lowerBound = getLowerBound(query, self)
+            lowerBound = get_lower_bound(query, self)
     print(f"[SEQUENTIAL] Lower Bound Efficiency: {lowerBound / ccosts[0]:.4f}")
 
     # Calculate and display savings

@@ -4,7 +4,7 @@ Initialize selectivities for given tuple of primitive event types (projlist) wit
 
 import random as rd
 import numpy as np
-from core.proj_string import generate_twosets, changeorder
+from core.proj_string import generate_twosets, change_order
 from core.query_workload import get_primitive_events
 
 
@@ -39,11 +39,11 @@ def initialize_selectivities(primEvents, x=0.2, y=0.05):
         if random_float > 0.3:
             selectivity = 1
             selectivities[str(i)] = selectivity
-            selectivities[str(changeorder(i))] = selectivity
+            selectivities[str(change_order(i))] = selectivity
         if random_float <= 0.3:
             selectivity = float(rd.uniform(x, y) / max_rate)
             selectivities[str(i)] = selectivity
-            selectivities[str(changeorder(i))] = selectivity
+            selectivities[str(change_order(i))] = selectivity
     selectivitiesExperimentData = [x, float(np.median(list(selectivities.values())))]
     return selectivities, selectivitiesExperimentData
 

@@ -42,7 +42,7 @@ def generate_config_buffer(network, query_workload, selectivities):
     config_buffer.write("\nqueries\n")
     for query in query_workload:
         query = query.strip_NSEQ()
-        config_buffer.write(f"{query.stripKL_simple()}\n")
+        config_buffer.write(f"{query.strip_kl_simple()}\n")
 
     config_buffer.write("\nmuse graph\n")
     config_buffer.write(

@@ -12,7 +12,7 @@ def filter_numbers(in_string):
     return "".join(x)
 
 
-def changeorder(duo):
+def change_order(duo):
     temp = []
     duolist = list(duo)
     temp.append(duolist[1])
@@ -21,9 +21,9 @@ def changeorder(duo):
     return temp
 
 
-def getdoubles_k(subopkey):
+def get_doubles_k(subopkey):
     doubles = {}
-    mylist = sepnumbers(subopkey)
+    mylist = sep_numbers(subopkey)
     mylist = map(lambda y: filter_numbers(y), mylist)
     myevents = list(set(mylist))
     for i in myevents:
@@ -34,7 +34,7 @@ def getdoubles_k(subopkey):
 
 def rename_without_numbers(projkey):
     """take care of query projections: input string "A1B2C3A2" -> "A1BCA2", but also "A1A3C" -> "A1A2C" """
-    doubles = getdoubles_k(projkey)
+    doubles = get_doubles_k(projkey)
     newlist = []
     for i in projkey:
         if filter_numbers(i) not in doubles.keys():
@@ -63,7 +63,7 @@ def add_numbering(projkey):
     return "".join(projkey)
 
 
-def sepnumbers(evlist):
+def sep_numbers(evlist):
     """ "A1B" -> [A1,B]"""
     newevlist = []
     if len(evlist) > len(filter_numbers(evlist)):
@@ -79,7 +79,7 @@ def sepnumbers(evlist):
     return newevlist
 
 
-def combinationUtil(arr, n, r, index, data, i, b1):
+def combination_util(arr, n, r, index, data, i, b1):
     if index == r:
         b2 = ""
         for j in range(r):
@@ -91,9 +91,9 @@ def combinationUtil(arr, n, r, index, data, i, b1):
         return
 
     data[index] = arr[i]
-    combinationUtil(arr, n, r, index + 1, data, i + 1, b1)
+    combination_util(arr, n, r, index + 1, data, i + 1, b1)
 
-    combinationUtil(arr, n, r, index, data, i + 1, b1)
+    combination_util(arr, n, r, index, data, i + 1, b1)
 
 
 def printcombination(arr):
@@ -102,11 +102,11 @@ def printcombination(arr):
     data = list(range(r))
     b1 = []
 
-    combinationUtil(arr, n, r, 0, data, 0, b1)
+    combination_util(arr, n, r, 0, data, 0, b1)
     return b1
 
 
-def combinationUtil2(arr, n, r, index, data, i, b1):
+def combination_util2(arr, n, r, index, data, i, b1):
     if index == r:
         b2 = ""
         for j in range(r):
@@ -118,6 +118,6 @@ def combinationUtil2(arr, n, r, index, data, i, b1):
         return
 
     data[index] = arr[i]
-    combinationUtil(arr, n, r, index + 1, data, i + 1, b1)
+    combination_util(arr, n, r, index + 1, data, i + 1, b1)
 
-    combinationUtil(arr, n, r, index, data, i + 1, b1)
+    combination_util(arr, n, r, index, data, i + 1, b1)

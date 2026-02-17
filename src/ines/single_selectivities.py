@@ -589,14 +589,14 @@ def determine_all_single_selectivities_for_projection(
             )
 
 
-def initializeSingleSelectivity(
+def initialize_single_selectivity(
     CURRENT_SECTION,
     config_single,
     workload,
     is_deterministic=False,
     all_events_array_string=None,
 ):
-    # print(f"[SELECTIVITY_DEBUG] initializeSingleSelectivity called with is_deterministic={is_deterministic}")
+    # print(f"[SELECTIVITY_DEBUG] initialize_single_selectivity called with is_deterministic={is_deterministic}")
 
     # Clear all global variables to ensure clean state
     global \
@@ -667,7 +667,7 @@ def initializeSingleSelectivity(
             # print(line)
             extract_muse_graph_selectivities(line)
 
-    workload = [x.stripKL_simple() for x in workload]
+    workload = [x.strip_kl_simple() for x in workload]
     workload = [x.strip_NSEQ() for x in workload]
 
     """

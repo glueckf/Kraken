@@ -12,18 +12,18 @@ Generate beneficial projections for given query workload.
 import core.subsets as sbs
 import multiprocessing
 
-from inev.filter import getMaximalFilter, getDecomposedTotal
-from core.structures import getNumETBs, getNodes, getLongest
+from inev.filter import get_maximal_filter, get_decomposed_total
+from core.structures import get_num_etbs, get_nodes, get_longest
 from core.proj_string import (
     filter_numbers,
-    sepnumbers,
+    sep_numbers,
     rename_without_numbers,
-    getdoubles_k,
+    get_doubles_k,
 )
 from core.tree import PrimEvent
 
 
-def optimisticTotalRate(self, projection):  # USE FILTERED RATE FOR ESTIMATION
+def optimistic_total_rate(self, projection):  # USE FILTERED RATE FOR ESTIMATION
     rates = self.h_rates_data
     nodes = self.h_nodes
     projlist = self.h_projlist
@@ -34,19 +34,19 @@ def optimisticTotalRate(self, projection):  # USE FILTERED RATE FOR ESTIMATION
         for i in projFilterDict.keys():
             if i == projection:
                 myproj = i
-                if getMaximalFilter(projFilterDict, myproj):
-                    return getDecomposedTotal(
-                        getMaximalFilter(projFilterDict, myproj), myproj
+                if get_maximal_filter(projFilterDict, myproj):
+                    return get_decomposed_total(
+                        get_maximal_filter(projFilterDict, myproj), myproj
                     )
                 else:
                     return projFilterDict[myproj][
-                        getMaximalFilter(projFilterDict, myproj)
-                    ][0] * getNumETBs(myproj, IndexEventNodes)  # TODO change
+                        get_maximal_filter(projFilterDict, myproj)
+                    ][0] * get_num_etbs(myproj, IndexEventNodes)  # TODO change
     else:
         return rates[projection.leafs()[0]] * len(nodes[projection.leafs()[0]])
 
 
-def optimisticTotalRate_single(self, projection):  # USE FILTERED RATE FOR ESTIMATION
+def optimistic_total_rate_single(self, projection):  # USE FILTERED RATE FOR ESTIMATION
     rates = self.h_rates_data
     nodes = self.h_nodes
     projrates = self.h_projrates
@@ -55,12 +55,12 @@ def optimisticTotalRate_single(self, projection):  # USE FILTERED RATE FOR ESTIM
     for i in projFilterDict.keys():
         if i == projection:
             myproj = i
-            if getMaximalFilter(projFilterDict, myproj):
-                return getDecomposedTotal(
-                    getMaximalFilter(projFilterDict, myproj), myproj
+            if get_maximal_filter(projFilterDict, myproj):
+                return get_decomposed_total(
+                    get_maximal_filter(projFilterDict, myproj), myproj
                 )
             else:
-                return projrates[myproj][1] * getNumETBs(
+                return projrates[myproj][1] * get_num_etbs(
                     myproj, IndexEventNodes
                 )  # TODO change
     else:
@@ -68,7 +68,7 @@ def optimisticTotalRate_single(self, projection):  # USE FILTERED RATE FOR ESTIM
         return rates[projection.leafs()[0]] * len(nodes[projection.leafs()[0]])
 
 
-def returnPartitioning(self, proj, combi, projrates: dict, *args):
+def return_partitioning(self, proj, combi, projrates: dict, *args):
     """returns list containing partitioning input type of proj generated with combi, args contains critical eventtypes, if potential eventtype in critical events, return False"""
 
     DistMatrices = None
@@ -80,13 +80,13 @@ def returnPartitioning(self, proj, combi, projrates: dict, *args):
         args = args[0]
         if myevents:
             if myevents[0] in args:
-                res, DistMatrices, MSTrees = NEW_isPartitioning(
+                res, DistMatrices, MSTrees = new_is_partitioning(
                     self, myevents[0], combi, proj, projrates
                 )
                 return [], DistMatrices, MSTrees  # ,DistMatrices,MSTrees
 
     if myevents:
-        res, DistMatrices, MSTrees = NEW_isPartitioning(
+        res, DistMatrices, MSTrees = new_is_partitioning(
             self, myevents[0], combi, proj, projrates
         )
         # res = NEW_isPartitioning_alt(myevents[0], combi, proj, myprojFilterDict)
@@ -95,7 +95,7 @@ def returnPartitioning(self, proj, combi, projrates: dict, *args):
     return [], DistMatrices, MSTrees
 
 
-def isPartitioning(self, element, combi, proj):
+def is_partitioning(self, element, combi, proj):
     """returns true if element partitioning input of proj generated with combi"""
     projrates = self.h_projrates
     rates = self.h_rates_data
@@ -108,12 +108,12 @@ def isPartitioning(self, element, combi, proj):
             mysum += additional
 
         else:
-            additional = projrates[i][1] * getNumETBs(i, IndexEventNodes)
+            additional = projrates[i][1] * get_num_etbs(i, IndexEventNodes)
             mysum += additional  #  len(returnETBs(projection, network))
 
     mysum -= rates[element] * instances[element]
     mysum += (
-        projrates[proj][1] * getNumETBs(proj, IndexEventNodes)
+        projrates[proj][1] * get_num_etbs(proj, IndexEventNodes)
     )  # additional constraint about ratio of partitioning event type and outputrate of projection
     if rates[element] > mysum:
         return True
@@ -122,7 +122,7 @@ def isPartitioning(self, element, combi, proj):
         return False
 
 
-def isPartitioning_customRates(self, element, combi, proj, myrates):
+def is_partitioning_custom_rates(self, element, combi, proj, myrates):
     """returns true if element partitioning input of proj generated with combi"""
     rates = self.h_rates_data
     instances = self.h_instances
@@ -135,11 +135,11 @@ def isPartitioning_customRates(self, element, combi, proj, myrates):
             mysum += additional
 
         else:
-            additional = myrates[i] * getNumETBs(i, IndexEventNodes)
+            additional = myrates[i] * get_num_etbs(i, IndexEventNodes)
             mysum += additional  #  len(returnETBs(projection, network))
     mysum -= rates[element] * instances[element]
     mysum += (
-        myrates[proj] * getNumETBs(proj, IndexEventNodes)
+        myrates[proj] * get_num_etbs(proj, IndexEventNodes)
     )  # additional constraint about ratio of partitioning event type and outputrate of projection
     if rates[element] > mysum:
         return True
@@ -149,19 +149,19 @@ def isPartitioning_customRates(self, element, combi, proj, myrates):
 
 
 """ 
-def NEW_isPartitioning_customRates(self, element, combi, proj, myrates):
+def new_is_partitioning_custom_rates(self, element, combi, proj, myrates):
 		''' returns true if element partitioning input of proj generated with combi '''
 		from networkx.algorithms.approximation import steiner_tree
 
 		rates = self.h_rates_data
 		nodes = self.h_nodes
-		longestPath = getLongest(self.allPairs)
+		longestPath = get_longest(self.allPairs)
 		G = self.graph
 		wl = self.query_workload
 		projrates = self.h_projrates
 		IndexEventNodes = self.h_IndexEventNodes
 		etbs = IndexEventNodes[element]
-		myNodes = [getNodes(x)[0] for x in etbs]   
+		myNodes = [get_nodes(x)[0] for x in etbs]   
 		if element not in MSTrees.keys():
 			myTree = steiner_tree(G, myNodes)
 			MSTrees[element] = myTree
@@ -169,7 +169,7 @@ def NEW_isPartitioning_customRates(self, element, combi, proj, myrates):
 			myTree =  MSTrees[element]
 		
 		if myTree not in DistMatrices.keys():           
-			myAllPairs = fillMyDistMatrice(myTree)
+			myAllPairs = fill_my_dist_matrice(myTree)
 			DistMatrices[myTree] = myAllPairs
 		else:
 			myAllPairs = DistMatrices[myTree]       
@@ -183,14 +183,14 @@ def NEW_isPartitioning_customRates(self, element, combi, proj, myrates):
 				additional = rates[i] * len(nodes[i])              
 				mysum += additional              
 			else:
-				additional = myrates[i] * getNumETBs(i)
+				additional = myrates[i] * get_num_etbs(i)
 				mysum += additional
 
 		myproj  = 0 #costs for outputrates
 		if proj.get_original(wl) not in wl:
-			myproj =   myrates[proj] * (getNumETBs(proj)) # additional constraint about ratio of partitioning event type and outputrate of projection
+			myproj =   myrates[proj] * (get_num_etbs(proj)) # additional constraint about ratio of partitioning event type and outputrate of projection
 
-		if totalRate(element,projrates) * longestPath > (mysum * costs) + myproj * longestPath :  
+		if total_rate(element,projrates) * longestPath > (mysum * costs) + myproj * longestPath :  
 			
 			return [costs]
 
@@ -250,7 +250,7 @@ def minimum_subgraph(G, nodes_list):
     return subgraph
 
 
-def NEW_isPartitioning(self, element, combi, proj, projrates: dict):
+def new_is_partitioning(self, element, combi, proj, projrates: dict):
     """returns true if element partitioning input of proj generated with combi"""
     MSTrees = {}
     DistMatrices = {}
@@ -273,10 +273,10 @@ def NEW_isPartitioning(self, element, combi, proj, projrates: dict):
     IndexEventNodes = self.h_IndexEventNodes
     EventNodes = self.h_eventNodes
 
-    longestPath = getLongest(self.allPairs)
+    longestPath = get_longest(self.allPairs)
 
     etbs = IndexEventNodes[element]
-    myNodes = [getNodes(x, EventNodes, IndexEventNodes)[0] for x in etbs]
+    myNodes = [get_nodes(x, EventNodes, IndexEventNodes)[0] for x in etbs]
     if element not in MSTrees.keys():
         myTree = minimum_subgraph(G, myNodes)
         MSTrees[element] = myTree
@@ -284,7 +284,7 @@ def NEW_isPartitioning(self, element, combi, proj, projrates: dict):
         myTree = MSTrees[element]
 
     if myTree not in DistMatrices.keys():
-        myAllPairs = fillMyDistMatrice(myTree)
+        myAllPairs = fill_my_dist_matrice(myTree)
         DistMatrices[myTree] = myAllPairs
     else:
         myAllPairs = DistMatrices[myTree]
@@ -298,17 +298,17 @@ def NEW_isPartitioning(self, element, combi, proj, projrates: dict):
             additional = rates[i] * len(nodes[i])
             mysum += additional
         else:
-            additional = projrates[i][1] * getNumETBs(i, IndexEventNodes)
+            additional = projrates[i][1] * get_num_etbs(i, IndexEventNodes)
             mysum += additional
 
     myproj = 0  # costs for outputrates
     if proj.get_original(wl) not in wl:
         myproj = (
-            projrates[proj][1] * (getNumETBs(proj, IndexEventNodes))
+            projrates[proj][1] * (get_num_etbs(proj, IndexEventNodes))
         )  # additional constraint about ratio of partitioning event type and outputrate of projection
 
     if (
-        totalRate(self, element, projrates) * longestPath
+        total_rate(self, element, projrates) * longestPath
         > (mysum * costs) + myproj * longestPath
     ):
         return [costs], MSTrees, DistMatrices
@@ -317,7 +317,7 @@ def NEW_isPartitioning(self, element, combi, proj, projrates: dict):
         return False, MSTrees, DistMatrices
 
 
-def fillMyMatrice(myNodes, myEdges, me):
+def fill_my_matrice(myNodes, myEdges, me):
     import networkx as nx
 
     myG = nx.Graph()
@@ -329,7 +329,7 @@ def fillMyMatrice(myNodes, myEdges, me):
     return (me, myDistances)
 
 
-def fillMyDistMatrice(
+def fill_my_dist_matrice(
     myG,
 ):  # all pairs shortest path distance matrice -> also slow for big graphs
     myNodes = list(myG.nodes)
@@ -338,19 +338,19 @@ def fillMyDistMatrice(
     args = [(mytuple[0], mytuple[1], x) for x in myNodes]
     if __name__ == "__main__":
         with multiprocessing.Pool() as pool:
-            result = pool.starmap(fillMyMatrice, args)
+            result = pool.starmap(fill_my_matrice, args)
         for i in result:
             myPairs.append(i[1])
     else:
         # Run sequentially when imported as module to avoid multiprocessing issues
         for nodes_arg, edges_arg, node in args:
-            result = fillMyMatrice(nodes_arg, edges_arg, node)
+            result = fill_my_matrice(nodes_arg, edges_arg, node)
             myPairs.append(result[1])
     return myPairs
 
 
 def min_max_doubles(query, projevents):
-    doubles = getdoubles_k(projevents)
+    doubles = get_doubles_k(projevents)
     leafs = map(lambda x: filter_numbers(x), query.leafs())
     for event in doubles.keys():
         if not doubles[event] == leafs.count(event):
@@ -358,23 +358,23 @@ def min_max_doubles(query, projevents):
     return True
 
 
-def settoproj(evlist, query):
+def set_to_proj(evlist, query):
     """take query and list of prim events and return projection"""
 
     leaflist = []
-    evlist = sepnumbers(evlist)
+    evlist = sep_numbers(evlist)
     evlist = list(map(lambda x: str(x), evlist))
     for i in evlist:
         leaflist.append(PrimEvent(i))
-    newproj = query.getsubop(leaflist)
+    newproj = query.get_sub_op(leaflist)
     return newproj
 
 
-def isBeneficial(self, projection, rate):
+def is_beneficial(self, projection, rate):
     """determines for a projection based on the if it is beneficial"""
     rates = self.h_rates_data
     nodes = self.h_nodes
-    totalProjrate = rate * getNumETBs(projection, self.h_IndexEventNodes)
+    totalProjrate = rate * get_num_etbs(projection, self.h_IndexEventNodes)
     sumrates = sum(map(lambda x: rates[x] * float(len(nodes[x])), projection.leafs()))
     if sumrates > totalProjrate:
         return True
@@ -382,7 +382,7 @@ def isBeneficial(self, projection, rate):
         return False
 
 
-def totalRate(self, projection, projrates: dict):
+def total_rate(self, projection, projrates: dict):
     rates = self.h_rates_data
     nodes = self.h_nodes
     IndexEventNodes = self.h_IndexEventNodes
@@ -399,7 +399,7 @@ def totalRate(self, projection, projrates: dict):
 
     if projection in projrates.keys():  # is complex event
         try:
-            return projrates[projection][1] * getNumETBs(projection, IndexEventNodes)
+            return projrates[projection][1] * get_num_etbs(projection, IndexEventNodes)
         except KeyError as e:
             # print(f"[ERROR] KeyError accessing projrates['{projection}']. Available keys: {list(projrates.keys())}")
             # print(f"[DEBUG] projection type: {type(projection)}, len: {len(str(projection))}")
@@ -415,7 +415,7 @@ def totalRate(self, projection, projrates: dict):
             return 0  # or some default value
         return rates[proj_str] * len(nodes[proj_str])
     else:
-        outrate = projection.evaluate() * getNumETBs(projection, IndexEventNodes)
+        outrate = projection.evaluate() * get_num_etbs(projection, IndexEventNodes)
         selectivity = return_selectivity(projection.leafs())
         myrate = outrate * selectivity
         return myrate
@@ -449,15 +449,15 @@ def generate_projections(self, query):
             projevents = rename_without_numbers(
                 "".join(sorted(list(set(curcom))))
             )  # A1BC becomes ABC and A1B1CA2 becomes A1BCA2
-            mysubop = settoproj(curcom, query)
-            # mysubop = mysubop.rename_leafs(sepnumbers(projevents)) #renaming on tree > A1BC becomes ABC and A1B1CA2 becomes A1BCA2
+            mysubop = set_to_proj(curcom, query)
+            # mysubop = mysubop.rename_leafs(sep_numbers(projevents)) #renaming on tree > A1BC becomes ABC and A1B1CA2 becomes A1BCA2
             for neg in negated:  # if negated type in projection
-                if neg in mysubop.getleafs():
+                if neg in mysubop.get_leafs():
                     mycontext = query.get_context(neg)
                     if not set(
                         mycontext
                     ).issubset(
-                        set(mysubop.getleafs())
+                        set(mysubop.get_leafs())
                     ):  # if conext of negated event not in projection, exclude projection
                         nseq_violated = True
             outrate = mysubop.evaluate(self.h_rates_data)
@@ -465,7 +465,7 @@ def generate_projections(self, query):
             # outrate = mysubop.evaluate(self.h_rates_data)
             selectivity = return_selectivity(self, curcom)
             rate = outrate * selectivity
-            placement_options = isBeneficial(self, mysubop, rate)
+            placement_options = is_beneficial(self, mysubop, rate)
 
             if (
                 placement_options
@@ -487,7 +487,7 @@ def generate_projections(self, query):
     return projections, projrates
 
 
-def returnSubProjections(proj, projlist):
+def return_sub_projections(proj, projlist):
     """return list of projection keys that can be used in a combination of a given projection"""
     myprojlist = [
         x
@@ -521,7 +521,7 @@ def generate_all_projections(self):
 
     wl = self.query_workload
     for query in wl:
-        query = query.stripKL_simple()
+        query = query.strip_kl_simple()
         result = generate_projections(self, query)
 
         # projsPerQuery[query] = result[0]
@@ -536,7 +536,7 @@ def generate_all_projections(self):
                         sharedProjectionsDict[mykey].append(query)
     # print(projrates)
     for query in wl:
-        query = query.stripKL_simple()
+        query = query.strip_kl_simple()
         projsPerQuery[query] = [x for x in projlist if query.can_be_used(x)]
 
     for projection in sharedProjectionsDict.keys():
