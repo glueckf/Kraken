@@ -1,8 +1,8 @@
 import time
-from helper.filter import getMaximalFilter, getDecomposedTotal, returnProjFilterDict
-from helper.structures import getNumETBs
-from helper.Tree import PrimEvent
-from projections import totalRate, returnPartitioning
+from inev.filter import getMaximalFilter, getDecomposedTotal, returnProjFilterDict
+from core.structures import getNumETBs
+from core.tree import PrimEvent
+from ines.projections import totalRate, returnPartitioning
 import numpy as np
 
 

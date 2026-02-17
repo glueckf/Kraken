@@ -6,16 +6,15 @@ Created on Mon Aug 16 11:47:10 2021
 @author: samira
 """
 
-# from generate_projections import *
-from projections import returnPartitioning, settoproj, totalRate
+from ines.projections import returnPartitioning, settoproj, totalRate
 import copy
-from helper.filter import (
+from inev.filter import (
     getMaximalFilter,
     getDecomposed,
 )
 import string
-from helper.Tree import Tree
-from helper.structures import getNumETBs
+from core.tree import Tree
+from core.structures import getNumETBs
 import numpy as np
 
 

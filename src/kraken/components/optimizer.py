@@ -88,7 +88,7 @@ class PlacementOptimizer:
         Returns:
             List of node IDs that have access to all required events
         """
-        from helper.structures import getNodes
+        from core.structures import getNodes
 
         # Extract parameters
         network_data = params["network_data"]

@@ -1,5 +1,5 @@
-from helper.Tree import PrimEvent, SEQ, AND, NSEQ, KL
-from helper.projString import filter_numbers
+from core.tree import PrimEvent, SEQ, AND, NSEQ, KL
+from core.proj_string import filter_numbers
 import string
 import random as rd
 

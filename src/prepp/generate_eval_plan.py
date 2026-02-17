@@ -1,4 +1,4 @@
-import helper.subsets as sbs
+import core.subsets as sbs
 
 
 def getCom(mylist):

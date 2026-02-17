@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, List
 from .base import SearchStrategy
 
 if TYPE_CHECKING:
-    from kraken2_0.data.state import SolutionCandidate
+    from kraken.data.state import SolutionCandidate
 
 
 class BeamSearch(SearchStrategy):

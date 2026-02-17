@@ -5,12 +5,12 @@ import hashlib
 import re
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from kraken2_0.data.acquisition_step import (
+from kraken.data.acquisition_step import (
     AcquisitionSet,
     AcquisitionStep,
     PullResponse,
 )
-from kraken2_0.data.state import SolutionCandidate
+from kraken.data.state import SolutionCandidate
 
 
 class CostCalculator:
@@ -94,7 +94,7 @@ class CostCalculator:
             return [all_push_result]
 
         # Run PrePP for push-pull optimization
-        from prepp import generate_prePP
+        from prepp.prepp import generate_prePP
 
         prepp_output = generate_prePP(
             input_buffer=input_buffer,

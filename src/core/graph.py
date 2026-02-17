@@ -1,5 +1,5 @@
 import networkx as nx
-from Node import Node
+from core.node import Node
 
 
 def create_fog_graph(nodes_list: list[Node]):

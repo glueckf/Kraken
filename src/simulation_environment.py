@@ -19,20 +19,20 @@ from typing import Any, Dict, List, Optional
 import networkx as nx
 import numpy as np
 
-from Node import Node
-from network import generate_eventrates, create_random_tree
-from graph import create_fog_graph
-from allPairs import populate_allPairs
-from queryworkload import generate_workload
-from selectivity import initialize_selectivities
-from write_config_single import generate_config_buffer
-from singleSelectivities import initializeSingleSelectivity
-from helper.parse_network import initialize_globals
-from helper.structures import initEventNodes, getLongest
-from combigen import populate_projFilterDict, removeFilters, generate_combigen
-from operatorplacement import calculate_operatorPlacement
-from prepp import generate_prePP
-from generateEvalPlan import generate_eval_plan
+from core.node import Node
+from core.network import generate_eventrates, create_random_tree
+from core.graph import create_fog_graph
+from core.all_pairs import populate_allPairs
+from core.query_workload import generate_workload
+from ines.selectivity import initialize_selectivities
+from core.write_config import generate_config_buffer
+from ines.single_selectivities import initializeSingleSelectivity
+from core.parse_network import initialize_globals
+from core.structures import initEventNodes, getLongest
+from ines.combigen import populate_projFilterDict, removeFilters, generate_combigen
+from ines.operator_placement import calculate_operatorPlacement
+from prepp.prepp import generate_prePP
+from prepp.generate_eval_plan import generate_eval_plan
 
 # ==================== SIMULATION CONFIGURATION ====================
 
@@ -715,7 +715,7 @@ def create_hardcoded_tree():
 
     Based on expected output structure where all intermediate nodes connect to all leaf nodes.
     """
-    from Node import Node
+    from core.node import Node
     import math
 
     # Initialize network and event tracking
@@ -836,8 +836,8 @@ def generate_hardcoded_workload():
 
     Queries share common subexpressions for optimization potential.
     """
-    from helper.Tree import PrimEvent, SEQ, AND
-    from queryworkload import number_children
+    from core.tree import PrimEvent, SEQ, AND
+    from core.query_workload import number_children
 
     queries = []
 
@@ -1252,7 +1252,7 @@ class Simulation:
             ]
 
             # Initialize core simulation parameters
-            from projections import generate_all_projections
+            from ines.projections import generate_all_projections
 
             eventrates_per_source = generate_eventrates(
                 config.event_skew, config.num_event_types
@@ -1450,7 +1450,7 @@ class Simulation:
 
             # ----- KRAKEN COMPUTATION -----#
             print("--- Running Kraken Computation ---")
-            from src.kraken2_0.run import run_kraken_solver
+            from src.kraken.run import run_kraken_solver
 
             # Check if running latency trade-off study
             if self.config.run_latency_tradeoff_study:
@@ -1933,7 +1933,7 @@ class Simulation:
             Dictionary mapping each query object to the sum of its primitive event rates.
             Example: {query1: 1845.0, query2: 1002.0, ...}
         """
-        from helper.projString import filter_numbers
+        from core.proj_string import filter_numbers
 
         sum_of_input_rates = {}
 

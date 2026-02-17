@@ -9,20 +9,18 @@ Generate beneficial projections for given query workload.
 
 """
 
-import helper.subsets as sbs
+import core.subsets as sbs
 import multiprocessing
 
-# from processCombination import *
-# from filter import *
-from helper.filter import getMaximalFilter, getDecomposedTotal
-from helper.structures import getNumETBs, getNodes, getLongest
-from helper.projString import (
+from inev.filter import getMaximalFilter, getDecomposedTotal
+from core.structures import getNumETBs, getNodes, getLongest
+from core.proj_string import (
     filter_numbers,
     sepnumbers,
     rename_without_numbers,
     getdoubles_k,
 )
-from helper.Tree import PrimEvent
+from core.tree import PrimEvent
 
 
 def optimisticTotalRate(self, projection):  # USE FILTERED RATE FOR ESTIMATION

@@ -2,12 +2,12 @@ import re
 from timeit import default_timer as timer
 import random
 import copy
-import helper.push_pull_plan_generator as push_pull_plan_generator
+import prepp.push_pull_plan_generator as push_pull_plan_generator
 import time
 from itertools import chain, combinations
 import logging
 
-from kraken2_0.data.acquisition_step import (
+from kraken.data.acquisition_step import (
     AcquisitionStep,
     AcquisitionSet,
     PullRequest,

@@ -4,8 +4,8 @@ Initialize selectivities for given tuple of primitive event types (projlist) wit
 
 import random as rd
 import numpy as np
-from helper.projString import generate_twosets, changeorder
-from queryworkload import get_primitive_events
+from core.proj_string import generate_twosets, changeorder
+from core.query_workload import get_primitive_events
 
 
 def initialize_selectivities(primEvents, x=0.2, y=0.05):

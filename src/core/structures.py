@@ -6,7 +6,7 @@ Created on Thu Aug 19 11:45:00 2021
 @author: samira
 """
 
-from helper.util import column1s, column
+from core.util import column1s, column
 import numpy as np
 
 

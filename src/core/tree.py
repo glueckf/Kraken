@@ -3,7 +3,7 @@ Implementation of Query-Tree
 
 """
 
-from helper.projString import filter_numbers, getdoubles_k
+from core.proj_string import filter_numbers, getdoubles_k
 import copy
 import numpy as np
 

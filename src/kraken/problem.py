@@ -1,11 +1,11 @@
 import math
 from typing import List, Any, Dict
 
-from kraken2_0.components.event_stack_manager import update_event_stack
-from kraken2_0.components.cost_calculator import CostCalculator
-from kraken2_0.components.optimizer import PlacementOptimizer
-from kraken2_0.components.sorter import EventPlacementSorter
-from kraken2_0.data.state import SolutionCandidate, PlacementInfo
+from kraken.components.event_stack_manager import update_event_stack
+from kraken.components.cost_calculator import CostCalculator
+from kraken.components.optimizer import PlacementOptimizer
+from kraken.components.sorter import EventPlacementSorter
+from kraken.data.state import SolutionCandidate, PlacementInfo
 
 
 class PlacementProblem:

@@ -1,6 +1,6 @@
 import logging
 
-from helper.structures import getNumETBs
+from core.structures import getNumETBs
 
 
 logger = logging.getLogger(__name__)

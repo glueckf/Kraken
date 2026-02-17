@@ -10,12 +10,12 @@ from typing import Any, Dict, List
 import time
 import uuid
 
-from helper.processCombination_aug import compute_dependencies
-from allPairs import create_routing_dict
+from inev.process_combination import compute_dependencies
+from core.all_pairs import create_routing_dict
 
-from kraken2_0.problem import PlacementProblem
-from kraken2_0.data.state import SolutionCandidate
-from kraken2_0.utils.results_logger import (
+from kraken.problem import PlacementProblem
+from kraken.data.state import SolutionCandidate
+from kraken.utils.results_logger import (
     initialize_logging,
     write_detailed_log,
     write_run_results,
@@ -98,7 +98,7 @@ def run_kraken_solver(
 
         baseline_results = {}
         try:
-            from kraken2_0.search.greedy import GreedySearch
+            from kraken.search.greedy import GreedySearch
 
             strategy = GreedySearch()
             baseline_start = time.time()
@@ -133,7 +133,7 @@ def run_kraken_solver(
 
         constrained_results = {}
         try:
-            from kraken2_0.search.greedy import GreedySearch
+            from kraken.search.greedy import GreedySearch
 
             strategy = GreedySearch()
             constrained_start = time.time()
@@ -368,7 +368,7 @@ def _select_strategy(strategy_config: Any):
         NotImplementedError: If the strategy is not yet implemented.
         ValueError: If the algorithm enum is not recognized.
     """
-    from kraken2_0.search import GreedySearch, BeamSearch
+    from kraken.search import GreedySearch, BeamSearch
 
     k_value = None
     if isinstance(strategy_config, dict):

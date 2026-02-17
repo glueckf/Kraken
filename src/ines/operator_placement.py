@@ -1,14 +1,14 @@
 import uuid
 
-from helper.placement_aug import (
+from inev.placement_aug import (
     NEWcomputeCentralCosts,
     ComputeSingleSinkPlacement,
     computeMSplacementCosts,
 )
-from helper.processCombination_aug import compute_dependencies, getSharedMSinput
+from inev.process_combination import compute_dependencies, getSharedMSinput
 import time
-from EvaluationPlan import EvaluationPlan
-from projections import returnPartitioning, totalRate
+from ines.evaluation_plan import EvaluationPlan
+from ines.projections import returnPartitioning, totalRate
 
 
 # maxDist = max([max(x) for x in allPairs])

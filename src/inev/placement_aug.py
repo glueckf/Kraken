@@ -6,16 +6,15 @@ Created on Tue Aug 10 13:16:11 2021
 @author: samira
 """
 
-# from helper.processCombination_aug import *
-from helper.filter import getMaximalFilter, getDecomposedTotal
-from helper.structures import getNodes, NumETBsByKey, setEventNodes, SiSManageETBs
-from projections import returnPartitioning
-from allPairs import find_shortest_path_or_ancestor
-from EvaluationPlan import Instance, Projection
+from inev.filter import getMaximalFilter, getDecomposedTotal
+from core.structures import getNodes, NumETBsByKey, setEventNodes, SiSManageETBs
+from ines.projections import returnPartitioning
+from core.all_pairs import find_shortest_path_or_ancestor
+from ines.evaluation_plan import Instance, Projection
 import numpy as np
-from helper.filter import getKeySingleSelect
+from inev.filter import getKeySingleSelect
 import networkx as nx
-from helper.structures import MSManageETBs, getETBs
+from core.structures import MSManageETBs, getETBs
 
 
 class PlacementDecision:
@@ -261,7 +260,7 @@ def computeMSplacementCosts(
 def NEWcomputeMSplacementCosts(
     self, projection, sourcetypes, destinationtypes, noFilter, G
 ):
-    from allPairs import create_routing_dict
+    from core.all_pairs import create_routing_dict
 
     routingDict = create_routing_dict(G)
     routingAlgo = dict(nx.all_pairs_shortest_path(G))
@@ -646,7 +645,7 @@ def ComputeSingleSinkPlacement(
     network,
     self=None,
 ):
-    from allPairs import create_routing_dict
+    from core.all_pairs import create_routing_dict
 
     routingDict = create_routing_dict(Graph)
     costs = np.inf

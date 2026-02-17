@@ -5,7 +5,7 @@ number of event types (num_eventtypes), event rate skew (eventskew)-
 
 import numpy as np
 import random
-from Node import Node
+from core.node import Node
 import pandas as pd
 
 
