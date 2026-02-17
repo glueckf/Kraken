@@ -1,5 +1,6 @@
-src/__pycache__/
-src/helper/__pycache__/
+__pycache__/
+*.pyc
+.DS_Store
 *.png
 *.vscode
 CLAUDE.md
@@ -13,5 +14,3 @@ analysis
 sync_remote_results.sh
 count_experiments.sh
 download_kraken_comparison.sh
-
-__pycache__/
