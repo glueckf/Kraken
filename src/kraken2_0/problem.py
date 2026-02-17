@@ -136,18 +136,25 @@ class PlacementProblem:
                 # Perform the accurate, step-by-step latency checkx.
                 max_latency_so_far = s_next_temp.get_critical_path_latency(self)
 
+                # Look-ahead pruning: for intermediate projections, add minimum
+                # remaining distance to sink as a lower bound on final latency.
+                # Skip for workload projections where sink cost is already included.
+                lookahead_latency = max_latency_so_far
+                if p not in self.query_workload:
+                    lookahead_latency += self._get_min_distance_to_sink(n)
+
                 # Determine if this decision will be pruned
                 is_pruned = False
 
                 if (
                     result["strategy"] == "all_push"
-                    and max_latency_so_far > self.latency_threshold
+                    and lookahead_latency > self.latency_threshold
                 ):
                     # Pruning condition achieved, we can prune everything.
                     pruning = True
                     is_pruned = True
 
-                if max_latency_so_far > self.latency_threshold:
+                if lookahead_latency > self.latency_threshold:
                     is_pruned = True
 
                 # Log this placement decision if logging is enabled
@@ -177,16 +184,17 @@ class PlacementProblem:
                         "cumulative_processing_latency_after": s_next_temp.cumulative_processing_latency,
                         # Overall latency
                         "max_latency_so_far": max_latency_so_far,
+                        "lookahead_latency": lookahead_latency,
                     }
                     self.detailed_log.append(log_entry)
 
                 if (
                     result["strategy"] == "all_push"
-                    and max_latency_so_far > self.latency_threshold
+                    and lookahead_latency > self.latency_threshold
                 ):
                     break
 
-                if max_latency_so_far <= self.latency_threshold:
+                if lookahead_latency <= self.latency_threshold:
                     s_next_options.append(s_next_temp)
 
             if pruning:
@@ -200,7 +208,9 @@ class PlacementProblem:
         max_cost = max(costs)
         cost_range = max_cost - min_cost
 
-        latencies = [candidate.get_critical_path_latency(self) for candidate in s_next_options]
+        latencies = [
+            candidate.get_critical_path_latency(self) for candidate in s_next_options
+        ]
         min_latency = min(latencies)
         max_latency = max(latencies)
         latency_range = max_latency - min_latency
@@ -259,3 +269,18 @@ class PlacementProblem:
             + placement_info.individual_processing_latency,
             event_stack=new_event_stack,
         )
+
+    def _get_min_distance_to_sink(self, node: int) -> float:
+        """Get minimum hop distance from a node to any sink node.
+
+        Args:
+            node: The network node to measure from.
+
+        Returns:
+            Minimum distance to any sink, or 0.0 if no sinks exist.
+        """
+        sink_nodes = self.cost_calculator.params["sink_nodes"]
+        distances = self.cost_calculator.params["pairwise_distance_matrix"]
+        if not sink_nodes:
+            return 0.0
+        return min(distances[node][sink] for sink in sink_nodes)
