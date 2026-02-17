@@ -242,7 +242,6 @@ def generate_q_kl(query, nestingdepth, maxlength, negation, kleene):
 def get_kleene_query(query, nestingdepth, maxlength, kleene):
     count = 0
     children = []
-    remainingPrims = maxlength - 1 - nestingdepth
     if nestingdepth == 1:
         if not kleene:
             newchild = get_prim()

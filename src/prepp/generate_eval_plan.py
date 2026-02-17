@@ -1,3 +1,4 @@
+import string
 import core.subsets as sbs
 
 
@@ -42,10 +43,10 @@ def process_instance(instance, forwardingDict):
     instanceDict = forwardingDict[instance.projname][instance.name]
 
     for path in instance.routingDict.values():
-        if type(path[0]) == list:
+        if isinstance(path[0], list):
             for mypath in path:
                 routingTuples.append(traverse_list([mypath[len(mypath) - 1]], mypath))
-        elif type(path[0]) == int:
+        elif isinstance(path[0], int):
             routingTuples.append(traverse_list(instance.sources, path))
         else:
             routingTuples.append(traverse_list_tuples(instance.sources, path))
@@ -67,19 +68,6 @@ def get_selection_rate(projection, combination, selectivities):
     for i in [selectivities[x] for x in subsProj]:
         res *= i
     return res
-
-
-# filterdict: proj: [filter, remainingproj, resultingcombination]
-def new_filter_dict():
-    newDict = {}
-    for proj in filterDict.keys():
-        myfilter = filterDict[proj]
-        # subproj = set_to_proj(list(set(proj.leafs()).difference(set(list(myfilter)))), proj)
-        subproj = list(
-            set(proj.leafs()).difference(set(list(myfilter)))
-        )  # atm only single events send for filters
-        newDict[str(proj)] = [myfilter, subproj, [subproj] + list(myfilter)]
-    return newDict
 
 
 def sep_numbers(evlist):
@@ -138,44 +126,6 @@ def list_str(mylist):
     for i in mylist:
         text += str(i) + ","
     return text[:-1]
-
-
-def forwarding_rule(i):
-    text = "Forward rules:\n"
-    for projection in forwardingDict.keys():
-        for instance in forwardingDict[projection].keys():
-            post = []
-            instanceText = ""
-            if str(projection) in filterDict.keys():
-                instanceText += (
-                    list_str((filterDict[str(projection)][1]))
-                    + "|"
-                    + str(projection)
-                    + " - [ETB:"
-                    + to_etb(instance)
-                    + " FROM:"
-                )
-            else:
-                instanceText += (
-                    str(projection) + " - [ETB:" + to_etb(instance) + " FROM:"
-                )
-            for node in forwardingDict[projection][instance].values():
-                pre = [
-                    p
-                    for p in forwardingDict[projection][instance].keys()
-                    if i in forwardingDict[projection][instance][p]
-                ]
-                if i in forwardingDict[projection][instance].keys():
-                    post = forwardingDict[projection][instance][i]
-                else:
-                    post = []
-
-            if post:
-                if not pre:
-                    pre = [i]
-                instanceText += nodelist(pre) + " TO:" + nodelist(post) + "] \n"
-                text += instanceText
-    return text
 
 
 def forwarding_rule_central(i, myForwardingDict):
@@ -273,15 +223,10 @@ def generate_plan(
 def generate_eval_plan(nw, selectivities, myPlan, centralPlan, workload):
     import io
 
-    ID = "curr"
-    MSPlacements = myPlan[2]
     myplan = myPlan[0]
 
     print(f"Myplan is {myplan}")
 
-    cdict = centralPlan[1]
-    csource = centralPlan[0]
-    wl = centralPlan[2]
     evaluationDict = {}
     combinationDict = {}
     evaluationDict = {x: [] for x in range(len(nw))}

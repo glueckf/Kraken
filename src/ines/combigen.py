@@ -104,7 +104,6 @@ def promising_chain_projection(self, projection):
     singleSelectivities = self.single_selectivity
     instances = self.h_instances
 
-    cheapRests = {}
     for eventtype in query.leafs():
         if eventtype not in projection.leafs():
             for i in projFilterDict.keys():
@@ -208,19 +207,18 @@ def get_savings(
     #     print(f"[DEBUG] MSTrees[{partType}] found in DistMatrices")
 
     # Debug projection.get_original(wl)
-    proj_original = projection.get_original(wl)
     # if proj_original not in wl:
     #     print(f"[WARNING] Projection '{proj_original}' not found in workload")
 
     # Debug total_rate calls
     try:
-        rate = total_rate(self, partType, self.h_projrates)
+        _ = total_rate(self, partType, self.h_projrates)
     except KeyError as e:
         print(f"[ERROR] KeyError in total_rate: {e}")
         print(f"[DEBUG] Available projrates keys: {list(self.h_projrates.keys())}")
 
     try:
-        opt_rate = optimistic_total_rate(self, projection)
+        _ = optimistic_total_rate(self, projection)
     except KeyError as e:
         print(f"[ERROR] KeyError in optimisticTotalRate: {e}")
 
@@ -333,7 +331,6 @@ def get_best_chain_combis(self, query, shared, criticalMSTypes, noFilter):
                         self.h_projrates,
                         criticalMSTypes,
                     )
-                    curMSTypes = [eventtype]
                     if res:
                         curcosts = get_savings(
                             self,
@@ -778,10 +775,6 @@ def get_expensive_projs(self, criticals):  # only on criticalTypes
 
 
 def out_rate_high(self, projection):
-    combiDict = self.h_combiDict
-    combi = combiDict[projection][0]
-    partType = return_partitioning(projection, combiDict[projection][0])
-    outRate = total_rate(self, projection, self.h_projrates)
     return []
 
 

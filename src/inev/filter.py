@@ -134,7 +134,6 @@ def get_maximal_filter(filterdict, proj, *args):
 
 
 def get_pms(projection, myfilter):
-    totalETBs = num_etbs("", projection)
     return 0
 
 

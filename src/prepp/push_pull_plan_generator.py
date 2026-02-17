@@ -127,16 +127,12 @@ class Initiate:
 
     def measure_mu(self, acquired_eventtypes, type_to_acquire, node):
         best_multiple_single_selectivities = 1
-        best_single_sel_key = ""
-        best_single_sel_keys = []
         lowest_costs = float("inf")
         if not acquired_eventtypes:
             return self.outputrate_map[
                 type_to_acquire
             ] * self.determine_correct_number_of_sources(node, type_to_acquire)
         else:
-            single_selectivity_key = ""
-
             multiple_single_selectivities = 1
             possible_pull_combinations = determine_permutations_of_all_relevant_lengths(
                 acquired_eventtypes, 1, end_length=(min(len(acquired_eventtypes), 3))
@@ -172,10 +168,6 @@ class Initiate:
                         sorted_all_eventtypes_key
                     )
 
-                    single_selectivity_key = (
-                        str(prim_event_type) + "|" + sorted_all_eventtypes_key
-                    )
-
                     multiple_single_selectivities *= self.get_selectivity_with_fallback(
                         prim_event_type, sorted_all_eventtypes_key
                     )
@@ -196,8 +188,6 @@ class Initiate:
                     old_source_sent_this_type_to_node_map
                 )
 
-                single_selectivity_key = ""
-                multiple_single_selectivities = 1
             self.source_sent_this_type_to_node = copy.deepcopy(
                 old_source_sent_this_type_to_node_map
             )
@@ -290,10 +280,6 @@ class Initiate:
     def get_push_costs(self, projection_to_process, node, allPairs):
         push_costs = 0
         for eventtype_to_acquire in projection_to_process:
-            number_of_sources = self.determine_correct_number_of_sources(
-                node, eventtype_to_acquire
-            )
-
             for source in self.eventtype_to_sources_map[eventtype_to_acquire]:
                 key = str(source) + "~" + str(node) + "~" + str(eventtype_to_acquire)
                 if key not in self.source_sent_this_type_to_node and source is not node:
@@ -527,11 +513,6 @@ class Initiate:
                 )
                 minimized_pull_request += cost_component
             else:
-                single_selectivity_key = (
-                    str(eventtype_to_pull_with)
-                    + "|"
-                    + self.remove_duplicates_and_sort_key(acquired_eventtypes)
-                )
                 selectivity = self.get_selectivity_with_fallback(
                     eventtype_to_pull_with,
                     self.remove_duplicates_and_sort_key(acquired_eventtypes),
@@ -570,10 +551,6 @@ class Initiate:
 
         optimized_pull_answer = 0
         for next_eventtype in next_eventtype_to_pull_key:
-            single_selectivity_key = (
-                str(next_eventtype) + "|" + str(sorted_all_eventtypes_key)
-            )
-
             "TODO hinzufügen von anzahl Hops pro Source durch das Netzwerk"
             selectivity = self.get_selectivity_with_fallback(
                 next_eventtype, sorted_all_eventtypes_key
@@ -660,13 +637,6 @@ class Initiate:
             self.source_sent_this_type_to_node = copy.deepcopy(
                 old_source_sent_this_type_to_node_map
             )
-
-        optimal_pull_request_size = self.determine_optimized_pull_request_size_for_step(
-            acquired_eventtypes, best_step, node
-        )
-        optimal_pull_answer_size = self.determine_optimized_pull_answer_size_for_step(
-            best_step, eventtype_to_acquire, node
-        )
 
         optimal_push_pull_decision = CachedOptimalStep(
             lowest_costs_for_step, best_step, step_latency
@@ -755,9 +725,6 @@ class Initiate:
             used_eventtypes = []
             for eventtype in eventtype_group:
                 if push:
-                    number_of_sources = self.determine_correct_number_of_sources(
-                        node, eventtype
-                    )
                     for source in self.eventtype_to_sources_map[eventtype]:
                         key = str(source) + "~" + str(node) + "~" + str(eventtype)
 
@@ -948,7 +915,6 @@ class Initiate:
             yield partition
 
     def single_step_factorial_plan_sampling_generator(self, s, eventtypes):
-        counter = 0
         possible_ordering = []
         for eventtype_group in eventtypes:
             for eventtype in eventtype_group:

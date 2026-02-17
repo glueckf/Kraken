@@ -18,7 +18,6 @@ def init_event_nodes(
     myEventNodes = []
     # Storing a dictionary with the event type and node id as key and the index in the myEventNodes type for the list.
     myIndexEventNodes = {}
-    offset = 0
     index = 0
     # For each primitve event
     for etype in nodes.keys():

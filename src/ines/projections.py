@@ -440,7 +440,6 @@ def generate_projections(self, query):
     projections = []
     projrates = {}
     match = query.leafs()
-    projlist = match
     for i in range(2, len(match)):
         iset = sbs.boah(match, i)
         for k in range(len(iset)):

@@ -156,12 +156,7 @@ def compute_ms_placement_costs(
     projFilterDict = self.h_projFilterDict
     IndexEventNodes = self.h_IndexEventNodes
     nodes = self.h_nodes
-    eventNodes = self.h_eventNodes
 
-    projrates = self.h_projrates
-    mycombi = self.h_mycombi
-    singleSelectivities = self.single_selectivity
-    rates = self.h_rates_data
     if not hasattr(self, "assigned_queries_per_node"):
         self.assigned_queries_per_node = {}
 
@@ -188,9 +183,7 @@ def compute_ms_placement_costs(
                 intercombi.append(etype)
     combination = list(set(intercombi))
     myPathLength = 0
-
-    totalInstances = []  #!
-    myNodes = []
+    totalInstances = []
 
     # for eventtype in mycombi.get(projection, []):
     #     if eventtype not in IndexEventNodes:
@@ -277,9 +270,6 @@ def new_compute_ms_placement_costs_internal(
     rates = self.h_rates_data
     placementTreeDict = self.h_placementTreeDict
     eventNodes = self.h_eventNodes
-    routingInfo = []
-    dest = 0
-    costs_per_sink = {}
 
     # Check filter
     etype = sourcetypes[0]
@@ -889,11 +879,6 @@ def compute_single_sink_placement(
         # Add only the longest path to sink (representing worst-case end-to-end latency)
         longestPath += max_hops_to_sink
 
-    hops = (
-        len(find_shortest_path_or_ancestor(routingAlgo, 0, node)) - 1
-        if len(find_shortest_path_or_ancestor(routingAlgo, 0, node)) > 1
-        else 0
-    )
     myProjection.add_spawned([IndexEventNodes[projection][0]])  #!
 
     # Calculate the processing latency
@@ -930,7 +915,6 @@ def new_compute_central_costs(workload, IndexEventNodes, allPairs, rates, EventN
     destination = 0
     mycosts = 0
     for eventtype in eventtypes:
-        oldcosts = mycosts
         for etb in IndexEventNodes[eventtype]:
             possibleSources = get_nodes(etb, EventNodes, IndexEventNodes)
             mySource = possibleSources[0]

@@ -253,7 +253,6 @@ class Tree:
 
         mysequence = self.getsequences()
         othersequence = other.getsequences()
-        newothersequence = {}
 
         if len(self.leafs()) == len(
             list(map(lambda x: filter_numbers(x), self.leafs()))

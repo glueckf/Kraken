@@ -513,7 +513,6 @@ def determine_randomized_distribution_push_pull_costs(
                 # print(f"[DEBUG] Skipping empty query {i}")
                 continue
             old_copy = copy.deepcopy(query.primitive_operators)
-            top_k = int(k)
 
             for current_node in query.node_placement:
                 query.primitive_operators = copy.deepcopy(old_copy)
@@ -744,13 +743,11 @@ def determine_randomized_single_selectivities_within_all_projections(
     total_sel = projection_selectivity
 
     delta = 0
-    decreasing_value = 1
     while not solution_found:
         delta += 1
         first_n_random_values = []
         product = 1
 
-        current_idx = 0
         chosen_indices = [ele for ele in range(0, limit)]
         if not is_deterministic:
             random.shuffle(chosen_indices)
@@ -1115,7 +1112,7 @@ def generate_prePP(
                         )
                     )
 
-                if extract_muse_graph_sources(line) != None:
+                if extract_muse_graph_sources(line) is not None:
                     query_obj.primitive_operators = extract_muse_graph_sub_queries(line)
 
                 # If primitive_operators is still None (new format without FROM), derive from query
@@ -1134,10 +1131,10 @@ def generate_prePP(
                     else:
                         query_obj.primitive_operators = []
 
-                if extract_muse_graph_sources(line) != None:
+                if extract_muse_graph_sources(line) is not None:
                     query_obj.node_placement = extract_muse_graph_sources(line)
 
-                if extract_muse_graph_forbidden(line) != None:
+                if extract_muse_graph_forbidden(line) is not None:
                     query_obj.forbidden_event_types = extract_muse_graph_forbidden(line)
 
                 # print(f"[DEBUG] Adding query to network: query='{query_obj.query}', node_placement={getattr(query_obj, 'node_placement', 'None')}")
@@ -1178,7 +1175,6 @@ def generate_prePP(
                     central_latency = max(central_latency, hops)
                     cost = hops * rate
                     total_cost += cost
-        filtered_dict = {k: v for k, v in query_node_dict.items() if v != [0]}
 
         # print(f"total central push cost is {total_cost}")
         central_push_costs = total_cost
@@ -1189,7 +1185,6 @@ def generate_prePP(
             reversed_query_network.append(query_network[i])
             if query_network[i].query == "":
                 continue
-            multi_sink_placement = is_single_sink_placement(query_network[i])
 
             eventtype_to_sources_map[query_network[i].query] = query_network[
                 i
@@ -1221,7 +1216,6 @@ def generate_prePP(
 
         query_network_copy = copy.deepcopy(query_network)
         single_sink_query_network_copy = copy.deepcopy(single_sink_query_network)
-        all_costs = []
 
         highest_primitive_eventtype_to_be_processed = all_needed_primitive_events[
             len(all_needed_primitive_events) - 1

@@ -9,7 +9,6 @@ strategies are run sequentially.
 import io
 import logging
 import string
-import math
 import time
 from enum import Enum
 from dataclasses import dataclass
@@ -481,7 +480,6 @@ def calculate_prepp_from_cloud(context, reused_buffer_section):
 
         # Extract results (prepp_results format: [cost, time, latency, ratio, push_costs, central_latency, steps])
         exact_cost = prepp_results[0]
-        computing_time = prepp_results[1]
         max_latency_tuple = prepp_results[2]
         acquisition_steps = prepp_results[6]  # Dictionary: {query_str: AcquisitionSet}
 
@@ -620,17 +618,12 @@ def update_results_for_topology(context, ines_results, inev_results):
         ines_total_costs += additional_costs
 
         # Calculate additional latency for sending to cloud (INES only)
-        additional_latency = 0
         if (
             isinstance(ines_max_latency_tuple, tuple)
             and len(ines_max_latency_tuple) > 0
         ):
             node_with_max_latency = ines_max_latency_tuple[0]
-            if isinstance(node_with_max_latency, int):
-                additional_latency = context.allPairs[node_with_max_latency][
-                    CLOUD_NODE_ID
-                ]
-            else:
+            if not isinstance(node_with_max_latency, int):
                 logger.debug(
                     "INES max latency node is not an integer (value=%s); skipping cloud latency adjustment",
                     node_with_max_latency,
@@ -715,8 +708,8 @@ def create_hardcoded_tree():
 
     Based on expected output structure where all intermediate nodes connect to all leaf nodes.
     """
-    from core.node import Node
     import math
+    from core.node import Node
 
     # Initialize network and event tracking
     nw = []
@@ -836,9 +829,6 @@ def generate_hardcoded_workload():
 
     Queries share common subexpressions for optimization potential.
     """
-    from core.tree import PrimEvent, SEQ, AND
-    from core.query_workload import number_children
-
     queries = []
 
     # # Query 1: Simple SEQ - SEQ(A, B, C)
@@ -1465,7 +1455,7 @@ class Simulation:
                     strategies_to_run=[{"name": "greedy"}],
                     compare_within_kraken=False,
                 )
-            print(f"--- KRAKEN COMPUTATION COMPLETE ---")
+            print("--- KRAKEN COMPUTATION COMPLETE ---")
 
             self.entire_simulation_time = self.start_time_setup - time.time()
 

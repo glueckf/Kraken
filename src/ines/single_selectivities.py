@@ -394,13 +394,11 @@ def determine_randomized_single_selectivities_within_all_projections(
     total_sel = projection_selectivity
 
     delta = 0
-    decreasing_value = 1
     while not solution_found:
         delta += 1
         first_n_random_values = []
         product = 1
 
-        current_idx = 0
         chosen_indices = [ele for ele in range(0, limit)]
         if not is_deterministic:
             random.shuffle(chosen_indices)
@@ -481,7 +479,6 @@ def determine_permutations_of_all_relevant_lengths(eventtypes):
     result = []
     already_created = {}
     tmp = ""
-    purged_result = []
 
     # decreases the number of single selectivties that have to be calculated
     # in order to speed up the sampling of different selectivities
@@ -502,8 +499,6 @@ def determine_permutations_of_all_relevant_lengths(eventtypes):
             result.append(tmp)
             tmp = ""
 
-        res = ""
-
     return result
 
 
@@ -511,7 +506,6 @@ def determine_next_smaller_dependencies(eventtypes):
     result = []
     already_created = {}
     tmp = ""
-    purged_result = []
     start = len(eventtypes) - 1
     length = len(eventtypes)
     for current_length in range(start, length):
@@ -528,8 +522,6 @@ def determine_next_smaller_dependencies(eventtypes):
             already_created[tmp] = "key created!"
             result.append(tmp)
             tmp = ""
-
-        res = ""
 
     return result
 
@@ -552,8 +544,6 @@ def determine_all_single_selectivities_for_projection(
         tmp = projection
     else:
         tmp = determine_all_primitive_events_of_projection(projection)
-
-    global_total_query_length = len(tmp)
 
     all_possible_projections = determine_permutations_of_all_relevant_lengths(tmp)
 
@@ -626,7 +616,6 @@ def initialize_single_selectivity(
 
     current_node = 0
 
-    content = config_single.getvalue()
     # CURRENT_SECTION = ''
     for line in config_single:
         OLD_SECTION = CURRENT_SECTION

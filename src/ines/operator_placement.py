@@ -106,7 +106,6 @@ def calculate_operator_placement(self, file_path: str, max_parents: int):
     G = self.graph
 
     Filters = []
-    writeExperimentData = 0
 
     filename = "results"
     noFilter = 0  # NO FILTER
@@ -136,7 +135,6 @@ def calculate_operator_placement(self, file_path: str, max_parents: int):
     print(f"  Target: Beat central cost of {ccosts[0]:.2f}")
     print("=" * 60 + "\n")
     MSPlacements = {}
-    curcosts = 1
     start_time = time.time()
 
     hopLatency = {}

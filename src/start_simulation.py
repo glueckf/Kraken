@@ -8,9 +8,8 @@ import multiprocessing
 import time
 import logging
 import threading
-import numpy as np
 
-from simulation_environment import SimulationConfig, SimulationMode, Simulation
+from simulation_environment import SimulationConfig, SimulationMode
 
 logger = logging.getLogger(__name__)
 
