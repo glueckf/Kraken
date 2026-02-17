@@ -7,7 +7,12 @@ import time
 from itertools import chain, combinations
 import logging
 
-from kraken2_0.data.acquisition_step import AcquisitionStep, AcquisitionSet, PullRequest, PullResponse
+from kraken2_0.data.acquisition_step import (
+    AcquisitionStep,
+    AcquisitionSet,
+    PullRequest,
+    PullResponse,
+)
 
 # Set up module logger
 logger = logging.getLogger(__name__)
@@ -527,14 +532,17 @@ def determine_randomized_distribution_push_pull_costs(
 
                     # Costs seem fishy, skip this function for now and use the determine exact push pull plan function
                     # exact_costs, used_eventtypes_to_pull,latency = push_pull_plan_generator_exact.determine_costs_for_projection_on_node(exact_push_pull_plan_for_a_projection, query, current_node, already_received_eventtypes,allPairs)
-                    (costs, used_eventtypes_to_pull, latency, node_received_eventtypes) = (
-                        push_pull_plan_generator_exact.determine_costs_for_projection_on_node(
-                            exact_push_pull_plan_for_a_projection,
-                            query,
-                            current_node,
-                            already_received_eventtypes,
-                            allPairs,
-                        )
+                    (
+                        costs,
+                        used_eventtypes_to_pull,
+                        latency,
+                        node_received_eventtypes,
+                    ) = push_pull_plan_generator_exact.determine_costs_for_projection_on_node(
+                        exact_push_pull_plan_for_a_projection,
+                        query,
+                        current_node,
+                        already_received_eventtypes,
+                        allPairs,
                     )
                     if latency > max_latency[1]:
                         max_latency = (current_node, latency)
@@ -556,7 +564,9 @@ def determine_randomized_distribution_push_pull_costs(
                             # to match the exact_push_pull_plan_for_a_projection
                             used_eventtypes_to_pull = [
                                 []
-                                for _ in range(len(exact_push_pull_plan_for_a_projection))
+                                for _ in range(
+                                    len(exact_push_pull_plan_for_a_projection)
+                                )
                             ]
                             print(
                                 "[DEBUG] Adjusted used_eventtypes_to_pull to match exact_push_pull_plan_for_a_projection length"
@@ -1304,10 +1314,9 @@ def generate_prePP(
                             "samples": samples,
                             "top_k": top_k,
                             "runs": runs,
-                        }
+                        },
                     )
                     return None
-
 
                 (
                     greedy_costs,
@@ -1386,6 +1395,6 @@ def generate_prePP(
                 "samples": samples,
                 "top_k": top_k,
                 "runs": runs,
-            }
+            },
         )
         return None

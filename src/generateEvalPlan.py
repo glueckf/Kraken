@@ -325,7 +325,9 @@ def generate_eval_plan(nw, selectivities, myPlan, centralPlan, workload):
 
     config_buffer = io.StringIO()
 
-    text_buffer, reused_text = generatePlan(nw, selectivities, workload, combinationDict, sinkDict, selectionRate)
+    text_buffer, reused_text = generatePlan(
+        nw, selectivities, workload, combinationDict, sinkDict, selectionRate
+    )
 
     config_buffer.write(text_buffer)
     config_buffer.seek(0)

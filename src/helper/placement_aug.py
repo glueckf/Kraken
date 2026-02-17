@@ -644,7 +644,7 @@ def ComputeSingleSinkPlacement(
     projrates,
     Graph,
     network,
-    self = None
+    self=None,
 ):
     from allPairs import create_routing_dict
 
@@ -660,7 +660,9 @@ def ComputeSingleSinkPlacement(
     output_rate = projrates[projection][1]
     baseline_input_events = self.sum_of_input_rates_per_query.get(projection)
     if baseline_input_events is None:
-        baseline_input_events = self.sum_of_input_rates_per_query.get(str(projection), 0.0)
+        baseline_input_events = self.sum_of_input_rates_per_query.get(
+            str(projection), 0.0
+        )
     best_actual_input_costs = 0.0
 
     original_input_objects = set(combination)
@@ -756,8 +758,7 @@ def ComputeSingleSinkPlacement(
                 or eventtype_str in original_input_keys
             )
             is_filter_input = (
-                eventtype in filter_input_objects
-                or eventtype_str in filter_input_keys
+                eventtype in filter_input_objects or eventtype_str in filter_input_keys
             )
             for etb_idx, etb in enumerate(IndexEventNodes[eventtype]):
                 possibleSources = getNodes(etb, EventNodes, IndexEventNodes)
@@ -898,11 +899,21 @@ def ComputeSingleSinkPlacement(
 
     # Calculate the processing latency
     if baseline_input_events > 0:
-        processing_latency = output_rate * (best_actual_input_costs / baseline_input_events)
+        processing_latency = output_rate * (
+            best_actual_input_costs / baseline_input_events
+        )
     else:
         processing_latency = 0.0
 
-    return costs, node, longestPath, myProjection, newInstances, Filters, processing_latency
+    return (
+        costs,
+        node,
+        longestPath,
+        myProjection,
+        newInstances,
+        Filters,
+        processing_latency,
+    )
 
 
 def NEWcomputeCentralCosts(workload, IndexEventNodes, allPairs, rates, EventNodes, G):

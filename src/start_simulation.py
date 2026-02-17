@@ -436,22 +436,22 @@ def run_single_simulation(
 
 
 def run_parameter_study(
-        network_sizes: List[int] = [12],
-        workload_sizes: List[int] = [5],
-        parent_factors: List[float] = [1.8],
-        query_lengths: List[int] = [5],
-        runs_per_combination: int = 5,
-        node_event_ratios: List[float] = [0.5],
-        num_event_types: List[int] = [6],
-        event_skews: List[float] = [2.0],
-        xi: float = 0,
-        latency_threshold: float = None,
-        cost_weight: float = 0.5,
-        mode: SimulationMode = SimulationMode.FULLY_DETERMINISTIC,
-        enable_parallel: bool = False,
-        max_workers: int = 1,
-        run_latency_tradeoff_study: bool = False,
-        output_dataset_name: Optional[str] = None,
+    network_sizes: List[int] = [12],
+    workload_sizes: List[int] = [5],
+    parent_factors: List[float] = [1.8],
+    query_lengths: List[int] = [5],
+    runs_per_combination: int = 5,
+    node_event_ratios: List[float] = [0.5],
+    num_event_types: List[int] = [6],
+    event_skews: List[float] = [2.0],
+    xi: float = 0,
+    latency_threshold: float = None,
+    cost_weight: float = 0.5,
+    mode: SimulationMode = SimulationMode.FULLY_DETERMINISTIC,
+    enable_parallel: bool = False,
+    max_workers: int = 1,
+    run_latency_tradeoff_study: bool = False,
+    output_dataset_name: Optional[str] = None,
 ) -> None:
     """
     Run a full parameter study, sorted by a complexity score.
@@ -459,7 +459,9 @@ def run_parameter_study(
     This function generates all parameter combinations, sorts them by a calculated
     score to run simpler experiments first, and then executes them.
     """
-    logger.info("[PARAMETER_STUDY] Starting full parameter study (sorted by complexity score)")
+    logger.info(
+        "[PARAMETER_STUDY] Starting full parameter study (sorted by complexity score)"
+    )
     logger.info(f"[PARAMETER_STUDY] Network sizes: {network_sizes}")
     logger.info(f"[PARAMETER_STUDY] Workload sizes: {workload_sizes}")
     logger.info(f"[PARAMETER_STUDY] Parent factors: {parent_factors}")
@@ -469,12 +471,9 @@ def run_parameter_study(
     # --- START: Modified Logic ---
 
     # 1. Generate combinations for the parameters included in the score
-    scored_param_combinations = list(itertools.product(
-        network_sizes,
-        workload_sizes,
-        query_lengths,
-        num_event_types
-    ))
+    scored_param_combinations = list(
+        itertools.product(network_sizes, workload_sizes, query_lengths, num_event_types)
+    )
 
     # 2. Calculate the score for each combination and store it
     scored_combinations_with_score = []
@@ -487,7 +486,9 @@ def run_parameter_study(
     # 3. Sort the combinations based on the score (ascending)
     scored_combinations_with_score.sort(key=lambda x: x[0])
 
-    logger.info(f"Generated and sorted {len(scored_combinations_with_score)} parameter sets by complexity score.")
+    logger.info(
+        f"Generated and sorted {len(scored_combinations_with_score)} parameter sets by complexity score."
+    )
 
     # 4. Generate ALL jobs upfront based on the sorted order
     jobs = []
@@ -541,14 +542,14 @@ def run_parameter_study(
 
     total_jobs = len(jobs)
     expected_jobs = (
-            len(network_sizes)
-            * len(workload_sizes)
-            * len(parent_factors)
-            * len(query_lengths)
-            * len(node_event_ratios)
-            * len(num_event_types)
-            * len(event_skews)
-            * runs_per_combination
+        len(network_sizes)
+        * len(workload_sizes)
+        * len(parent_factors)
+        * len(query_lengths)
+        * len(node_event_ratios)
+        * len(num_event_types)
+        * len(event_skews)
+        * runs_per_combination
     )
 
     logger.info(
@@ -609,7 +610,7 @@ def main() -> None:
         max_workers=14,
         xi=0,
         cost_weight=1,
-        output_dataset_name="fixed_unified_results"
+        output_dataset_name="fixed_unified_results",
     )
 
     run_parameter_study(
@@ -626,7 +627,7 @@ def main() -> None:
         max_workers=14,
         xi=0,
         cost_weight=1,
-        output_dataset_name="fixed_unified_results"
+        output_dataset_name="fixed_unified_results",
     )
 
     run_parameter_study(
@@ -645,6 +646,7 @@ def main() -> None:
         cost_weight=1,
         output_dataset_name="fixed_unified_results",
     )
+
 
 if __name__ == "__main__":
     # Configure logging for server runs

@@ -251,7 +251,7 @@ def calculate_operatorPlacement(self, file_path: str, max_parents: int):
                 projrates,
                 self.graph,
                 self.network,
-                self
+                self,
             )
 
             placement_costs = result[0]
@@ -383,6 +383,12 @@ def calculate_operatorPlacement(self, file_path: str, max_parents: int):
         "transmission_latency": centralHopLatency,
         "processing_latency": processing_latency,
         "computing_time": end_time - start_time,
-        "status": "success"
+        "status": "success",
     }
-    return eval_Plan, central_eval_plan, experiment_result, myResult, logging_result_inev
+    return (
+        eval_Plan,
+        central_eval_plan,
+        experiment_result,
+        myResult,
+        logging_result_inev,
+    )

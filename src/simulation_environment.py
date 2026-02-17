@@ -5,6 +5,7 @@ This module provides a clean, well-structured orchestrator for the entire simula
 It separates the simulation setup phase from the execution phase, where different placement
 strategies are run sequentially.
 """
+
 import io
 import logging
 import string
@@ -133,7 +134,9 @@ def resolve_projection_rate_tuple(context: Any, query: Any) -> Any:
     projrates = getattr(context, "h_projrates", None)
     if not projrates:
         query_repr = _safe_to_str(query) or repr(query)
-        raise ProjectionRateLookupError(f"Projection rates are not initialized; failed for query '{query_repr}'.")
+        raise ProjectionRateLookupError(
+            f"Projection rates are not initialized; failed for query '{query_repr}'."
+        )
 
     candidates: List[Any] = []
     candidates.append(query)
@@ -330,7 +333,7 @@ def compute_all_push(context):
                 node_list = context.h_eventNodes[index]
 
                 # Find source with minimum distance in one pass
-                min_distance = float('inf')
+                min_distance = float("inf")
                 best_source = None
 
                 for node_id, has_event in enumerate(node_list):
@@ -368,7 +371,9 @@ def compute_all_push(context):
 
             # Calculate processing latency: output_rate × (costs / sum_input_rates)
             if sum_input_rates > 0:
-                processing_latency += query_output_rate * (query_event_cost / sum_input_rates)
+                processing_latency += query_output_rate * (
+                    query_event_cost / sum_input_rates
+                )
 
         # Longest path is simply the maximum distance from destination
         longest_path = max(dest_distances)
@@ -382,7 +387,7 @@ def compute_all_push(context):
             "transmission_latency": longest_path,
             "processing_latency": processing_latency,
             "computing_time": end_time - start_time,
-            "status": "success"
+            "status": "success",
         }
     except Exception as e:
         logger.error(
@@ -412,11 +417,10 @@ def calculate_prepp_from_cloud(context, reused_buffer_section):
         # The reused section may contain numpy type representations like 'np.int64(113)'
         # which cannot be parsed by prepp.py. Replace them with plain numbers.
         import re
+
         # Match patterns like 'np.int64(123)' or 'np.float64(1.5)' and extract just the number
         reused_buffer_section = re.sub(
-            r'np\.\w+\(([^)]+)\)',
-            r'\1',
-            reused_buffer_section
+            r"np\.\w+\(([^)]+)\)", r"\1", reused_buffer_section
         )
 
         # Build buffer content using list for efficient concatenation
@@ -463,12 +467,17 @@ def calculate_prepp_from_cloud(context, reused_buffer_section):
             runs=1,
             plan_print=True,
             allPairs=context.allPairs,
-            is_deterministic=is_deterministic
+            is_deterministic=is_deterministic,
         )
 
         if prepp_results is None or len(prepp_results) < 7:
-            return {"cost": 0, "transmission_latency": 0, "processing_latency": 0,
-                    "computing_time": 0, "status": "failed"}
+            return {
+                "cost": 0,
+                "transmission_latency": 0,
+                "processing_latency": 0,
+                "computing_time": 0,
+                "status": "failed",
+            }
 
         # Extract results (prepp_results format: [cost, time, latency, ratio, push_costs, central_latency, steps])
         exact_cost = prepp_results[0]
@@ -511,11 +520,15 @@ def calculate_prepp_from_cloud(context, reused_buffer_section):
             max_latency = max(max_latency, transmission_latency)
 
             # Get the sum of primitive input rates for this query
-            sum_input_rates_per_query = context.sum_of_input_rates_per_query.get(query, 1.0)
+            sum_input_rates_per_query = context.sum_of_input_rates_per_query.get(
+                query, 1.0
+            )
 
             # Calculate the input ratio
             if sum_input_rates_per_query > 0:
-                input_ratio = sum_of_acquisition_step_response_cost / sum_input_rates_per_query
+                input_ratio = (
+                    sum_of_acquisition_step_response_cost / sum_input_rates_per_query
+                )
             else:
                 input_ratio = 0.0
 
@@ -533,7 +546,7 @@ def calculate_prepp_from_cloud(context, reused_buffer_section):
             "transmission_latency": max_latency,
             "processing_latency": processing_latency,
             "computing_time": prepp_end_time - prepp_start_time,
-            "status": "success"
+            "status": "success",
         }
     except Exception as e:
         logger.error(
@@ -582,7 +595,9 @@ def update_results_for_topology(context, ines_results, inev_results):
         ines_max_latency_tuple = ines_results[2]
 
         # Calculate INES latencies (returns tuple of transmission and processing latencies)
-        ines_transmission_latency_per_query, ines_processing_latency = calculate_ines_max_latency(context, ines_results)
+        ines_transmission_latency_per_query, ines_processing_latency = (
+            calculate_ines_max_latency(context, ines_results)
+        )
 
         # ===== ADJUST INES RESULTS ONLY =====
         # Calculate additional costs for sending query results to cloud
@@ -593,8 +608,12 @@ def update_results_for_topology(context, ines_results, inev_results):
             if projection_name in query_workload:
                 placement_nodes = projection.name.sinks
                 for placed_node in placement_nodes:
-                    hops_from_node_to_cloud = context.allPairs[placed_node][CLOUD_NODE_ID]
-                    query_output_rate = context.h_projrates.get(projection_name, (1.0, 1.0))[1]
+                    hops_from_node_to_cloud = context.allPairs[placed_node][
+                        CLOUD_NODE_ID
+                    ]
+                    query_output_rate = context.h_projrates.get(
+                        projection_name, (1.0, 1.0)
+                    )[1]
                     additional_costs += hops_from_node_to_cloud * query_output_rate
 
         # Update costs for INES only
@@ -602,10 +621,15 @@ def update_results_for_topology(context, ines_results, inev_results):
 
         # Calculate additional latency for sending to cloud (INES only)
         additional_latency = 0
-        if isinstance(ines_max_latency_tuple, tuple) and len(ines_max_latency_tuple) > 0:
+        if (
+            isinstance(ines_max_latency_tuple, tuple)
+            and len(ines_max_latency_tuple) > 0
+        ):
             node_with_max_latency = ines_max_latency_tuple[0]
             if isinstance(node_with_max_latency, int):
-                additional_latency = context.allPairs[node_with_max_latency][CLOUD_NODE_ID]
+                additional_latency = context.allPairs[node_with_max_latency][
+                    CLOUD_NODE_ID
+                ]
             else:
                 logger.debug(
                     "INES max latency node is not an integer (value=%s); skipping cloud latency adjustment",
@@ -643,15 +667,17 @@ def update_results_for_topology(context, ines_results, inev_results):
             base_latency = _lookup_base_latency(query)
             cloud_latency = _cloud_hop_latency(query)
             candidate_latency = base_latency + cloud_latency
-            ines_transmission_latency = max(ines_transmission_latency, candidate_latency)
+            ines_transmission_latency = max(
+                ines_transmission_latency, candidate_latency
+            )
 
         # ===== FORMAT INEV RESULTS (NO ADJUSTMENTS) =====
         # INEv results are already adjusted in the placement algorithm
         # Just extract and format them
-        inev_total_costs = inev_results['cost']
-        inev_calculation_time = inev_results['computing_time']
-        inev_transmission_latency = inev_results['transmission_latency']
-        inev_processing_latency = inev_results['processing_latency']
+        inev_total_costs = inev_results["cost"]
+        inev_calculation_time = inev_results["computing_time"]
+        inev_transmission_latency = inev_results["transmission_latency"]
+        inev_processing_latency = inev_results["processing_latency"]
 
         # Create return dictionaries
         ines_dict = {
@@ -659,7 +685,7 @@ def update_results_for_topology(context, ines_results, inev_results):
             "transmission_latency": ines_transmission_latency,
             "processing_latency": ines_processing_latency,
             "computing_time": ines_calculation_time,
-            "status": "success"
+            "status": "success",
         }
 
         inev_dict = {
@@ -667,15 +693,12 @@ def update_results_for_topology(context, ines_results, inev_results):
             "transmission_latency": inev_transmission_latency,
             "processing_latency": inev_processing_latency,
             "computing_time": inev_calculation_time,
-            "status": "success"
+            "status": "success",
         }
 
         return ines_dict, inev_dict
     except Exception as e:
-        logger.error(
-            msg=e,
-            exc_info=True
-        )
+        logger.error(msg=e, exc_info=True)
         raise
 
 
@@ -968,7 +991,8 @@ def calculate_ines_max_latency(context, ines_results):
         if output_rate_tuple:
             output_rate = (
                 output_rate_tuple[1]
-                if isinstance(output_rate_tuple, (list, tuple)) and len(output_rate_tuple) > 1
+                if isinstance(output_rate_tuple, (list, tuple))
+                and len(output_rate_tuple) > 1
                 else output_rate_tuple[0]
                 if isinstance(output_rate_tuple, (list, tuple)) and output_rate_tuple
                 else float(output_rate_tuple)
@@ -1019,7 +1043,9 @@ def calculate_ines_max_latency(context, ines_results):
         if proj_key in critical_latency_cache:
             return critical_latency_cache[proj_key]
 
-        metrics = per_projection_metrics.get(proj_key, {"transmission": 0.0, "processing": 0.0})
+        metrics = per_projection_metrics.get(
+            proj_key, {"transmission": 0.0, "processing": 0.0}
+        )
         transmission_latency = metrics["transmission"]
         processing_latency = metrics["processing"]
 
@@ -1030,7 +1056,11 @@ def calculate_ines_max_latency(context, ines_results):
                 calculate_critical_latency(predecessor),
             )
 
-        critical_latency = (processing_latency * xi) + transmission_latency + latest_predecessor_latency
+        critical_latency = (
+            (processing_latency * xi)
+            + transmission_latency
+            + latest_predecessor_latency
+        )
         critical_latency_cache[proj_key] = critical_latency
         return critical_latency
 
@@ -1042,7 +1072,9 @@ def calculate_ines_max_latency(context, ines_results):
     # This matches Kraken's logic of summing individual processing latencies for all placements
     for proj_key in processing_order:
         # Get the individual processing latency for this projection
-        individual_processing = per_projection_metrics.get(proj_key, {}).get("processing", 0.0)
+        individual_processing = per_projection_metrics.get(proj_key, {}).get(
+            "processing", 0.0
+        )
         total_processing_latency += individual_processing
 
     # Still calculate critical latency per query for transmission latency reporting
@@ -1078,7 +1110,10 @@ def calculate_global_eventrates(context):
             # Take every eventrate from the node
             global_event_rates = np.add(global_event_rates, node.eventrates)
     # Convert numpy types to Python native types to avoid 'np.int64(...)' in strings
-    result = [int(x) if isinstance(x, (np.integer, np.int64, np.int32)) else float(x) for x in global_event_rates]
+    result = [
+        int(x) if isinstance(x, (np.integer, np.int64, np.int32)) else float(x)
+        for x in global_event_rates
+    ]
     return result
 
 
@@ -1265,7 +1300,9 @@ class Simulation:
             This is a quick fix to ensure that all selectivities are initialized properly.
             """
             # Get all events
-            all_events_array_string = list(string.ascii_uppercase[: config.num_event_types])
+            all_events_array_string = list(
+                string.ascii_uppercase[: config.num_event_types]
+            )
 
             self.single_selectivity = initializeSingleSelectivity(
                 CURRENT_SECTION=self.CURRENT_SECTION,
@@ -1282,7 +1319,7 @@ class Simulation:
                 self.h_primEvents,
                 self.h_instances,
                 self.h_nodes,
-                self.h_etb_rates
+                self.h_etb_rates,
             ) = initialize_globals(self.network)
             self.h_eventNodes, self.h_IndexEventNodes = initEventNodes(
                 self.h_nodes, self.h_network_data
@@ -1307,7 +1344,9 @@ class Simulation:
             ) = generate_combigen(self)
 
             end_time_generate_combigen = time.time()
-            self.combigen_computation_time = end_time_generate_combigen - start_time_generate_combigen
+            self.combigen_computation_time = (
+                end_time_generate_combigen - start_time_generate_combigen
+            )
 
             self.h_criticalMSTypes, self.h_criticalMSProjs = (
                 self.h_criticalMSTypes_criticalMSProjs
@@ -1325,7 +1364,9 @@ class Simulation:
             self.setup_time = end_time_setup - start_time_setup
 
             # calculate the average selectivity
-            self.average_selectivity = sum(self.selectivities.values())/len(self.selectivities)
+            self.average_selectivity = sum(self.selectivities.values()) / len(
+                self.selectivities
+            )
 
             print("--- SETUP COMPLETE ---")
         except Exception as e:
@@ -1353,25 +1394,35 @@ class Simulation:
 
             # Only multiply threshold here for normal simulations
             # For trade-off study, multiplication happens inside run_kraken_solver
-            if self.latency_threshold is not None and not self.config.run_latency_tradeoff_study:
+            if (
+                self.latency_threshold is not None
+                and not self.config.run_latency_tradeoff_study
+            ):
                 self.latency_threshold *= all_push_latency
             print("--- ALL PUSH COMPUTATION COMPLETE ---")
-
 
             # ----- INEV COMPUTATION -----#
             print("--- Running INEv Computation ---")
             inev_start_time = time.time()
             ines_start_time = inev_start_time  # For consistency in logging
-            (self.eval_plan, self.central_eval_plan, self.experiment_result,
-             self.results, self.inev_results) = calculate_operatorPlacement(self, "test", 0)
+            (
+                self.eval_plan,
+                self.central_eval_plan,
+                self.experiment_result,
+                self.results,
+                self.inev_results,
+            ) = calculate_operatorPlacement(self, "test", 0)
             inev_end_time = time.time()
             print("--- INEV COMPUTATION COMPLETE ---")
 
             # ----- INES COMPUTATION (using INEv results) -----#
             print("--- Running INES Computation ---")
             plan, reused_section = generate_eval_plan(
-                self.network, self.selectivities, self.eval_plan,
-                self.central_eval_plan, self.query_workload
+                self.network,
+                self.selectivities,
+                self.eval_plan,
+                self.central_eval_plan,
+                self.query_workload,
             )
             deterministic_flag = self.config.is_selectivities_fixed()
             ines_results = generate_prePP(
@@ -1380,7 +1431,9 @@ class Simulation:
 
             # Update both INES and INEv results with topology adjustments
             self.raw_ines_prepp_result = ines_results
-            ines_dict, inev_dict = update_results_for_topology(self, ines_results, self.inev_results)
+            ines_dict, inev_dict = update_results_for_topology(
+                self, ines_results, self.inev_results
+            )
             ines_end_time = time.time()
             inev_dict["computing_time"] = inev_end_time - inev_start_time
             ines_dict["computing_time"] = ines_end_time - ines_start_time
@@ -1390,7 +1443,9 @@ class Simulation:
 
             # ----- SOLELY PREPP COMPUTATION (from cloud) -----#
             print("--- Running PrePP from Cloud Computation ---")
-            self.prepp_from_cloud_result = calculate_prepp_from_cloud(self, reused_section)
+            self.prepp_from_cloud_result = calculate_prepp_from_cloud(
+                self, reused_section
+            )
             print("--- PREPP FROM CLOUD COMPUTATION COMPLETE ---")
 
             # ----- KRAKEN COMPUTATION -----#
@@ -1401,17 +1456,14 @@ class Simulation:
             if self.config.run_latency_tradeoff_study:
                 # Run dual-run experiment: baseline + constrained
                 self.kraken_results = run_kraken_solver(
-                    ines_context=self,
-                    run_latency_tradeoff_study=True
+                    ines_context=self, run_latency_tradeoff_study=True
                 )
             else:
                 # Normal multi-strategy run
                 self.kraken_results = run_kraken_solver(
                     ines_context=self,
-                    strategies_to_run=[
-                        {"name": "greedy"}
-                    ],
-                    compare_within_kraken=False
+                    strategies_to_run=[{"name": "greedy"}],
+                    compare_within_kraken=False,
                 )
             print(f"--- KRAKEN COMPUTATION COMPLETE ---")
 
@@ -1455,16 +1507,27 @@ class Simulation:
                     return
                 row[f"{prefix}_status"] = result.get("status", "unknown")
                 row[f"{prefix}_cost"] = safe_float(result.get("cost"))
-                row[f"{prefix}_transmission_latency"] = safe_float(result.get("transmission_latency"))
-                row[f"{prefix}_processing_latency"] = safe_float(result.get("processing_latency"))
-                row[f"{prefix}_computing_time"] = safe_float(result.get("computing_time"))
+                row[f"{prefix}_transmission_latency"] = safe_float(
+                    result.get("transmission_latency")
+                )
+                row[f"{prefix}_processing_latency"] = safe_float(
+                    result.get("processing_latency")
+                )
+                row[f"{prefix}_computing_time"] = safe_float(
+                    result.get("computing_time")
+                )
 
             # Check if this is a latency trade-off study
-            if self.kraken_results and self.kraken_results.get("is_tradeoff_study") is True:
+            if (
+                self.kraken_results
+                and self.kraken_results.get("is_tradeoff_study") is True
+            ):
                 print("--- Writing latency trade-off study results ---")
 
                 # Extract results from dual-run
-                cost_focused_results = self.kraken_results.get("cost_focused_results", {})
+                cost_focused_results = self.kraken_results.get(
+                    "cost_focused_results", {}
+                )
                 tradeoff_results = self.kraken_results.get("tradeoff_results", {})
                 run_params = self.kraken_results.get("run_parameters", {})
 
@@ -1474,17 +1537,29 @@ class Simulation:
                     "status": cost_focused_results.get("status", "unknown"),
                     "cost": cost_focused_metrics.get("total_cost"),
                     "transmission_latency": cost_focused_metrics.get("max_latency"),
-                    "processing_latency": cost_focused_metrics.get("cumulative_processing_latency"),
-                    "computing_time": cost_focused_results.get("execution_time_seconds"),
+                    "processing_latency": cost_focused_metrics.get(
+                        "cumulative_processing_latency"
+                    ),
+                    "computing_time": cost_focused_results.get(
+                        "execution_time_seconds"
+                    ),
                 }
                 populate_basic("cost_focused_greedy", cost_focused_flat)
 
                 # Add extended cost-focused metrics
                 if cost_focused_results.get("status") == "success":
-                    row["cost_focused_greedy_workload_cost"] = safe_float(cost_focused_metrics.get("workload_cost"))
-                    row["cost_focused_greedy_num_placements"] = safe_float(cost_focused_metrics.get("num_placements"))
-                    row["cost_focused_greedy_placements_at_cloud"] = safe_float(cost_focused_metrics.get("placements_at_cloud"))
-                    row["cost_focused_greedy_average_cost_per_placement"] = safe_float(cost_focused_metrics.get("average_cost_per_placement"))
+                    row["cost_focused_greedy_workload_cost"] = safe_float(
+                        cost_focused_metrics.get("workload_cost")
+                    )
+                    row["cost_focused_greedy_num_placements"] = safe_float(
+                        cost_focused_metrics.get("num_placements")
+                    )
+                    row["cost_focused_greedy_placements_at_cloud"] = safe_float(
+                        cost_focused_metrics.get("placements_at_cloud")
+                    )
+                    row["cost_focused_greedy_average_cost_per_placement"] = safe_float(
+                        cost_focused_metrics.get("average_cost_per_placement")
+                    )
 
                 # Populate trade-off results - flatten structure for populate_basic
                 tradeoff_metrics = tradeoff_results.get("metrics", {})
@@ -1492,26 +1567,46 @@ class Simulation:
                     "status": tradeoff_results.get("status", "unknown"),
                     "cost": tradeoff_metrics.get("total_cost"),
                     "transmission_latency": tradeoff_metrics.get("max_latency"),
-                    "processing_latency": tradeoff_metrics.get("cumulative_processing_latency"),
+                    "processing_latency": tradeoff_metrics.get(
+                        "cumulative_processing_latency"
+                    ),
                     "computing_time": tradeoff_results.get("execution_time_seconds"),
                 }
                 populate_basic("tradeoff_greedy", tradeoff_flat)
 
                 # Add extended trade-off metrics
                 if tradeoff_results.get("status") == "success":
-                    row["tradeoff_greedy_workload_cost"] = safe_float(tradeoff_metrics.get("workload_cost"))
-                    row["tradeoff_greedy_num_placements"] = safe_float(tradeoff_metrics.get("num_placements"))
-                    row["tradeoff_greedy_placements_at_cloud"] = safe_float(tradeoff_metrics.get("placements_at_cloud"))
-                    row["tradeoff_greedy_average_cost_per_placement"] = safe_float(tradeoff_metrics.get("average_cost_per_placement"))
+                    row["tradeoff_greedy_workload_cost"] = safe_float(
+                        tradeoff_metrics.get("workload_cost")
+                    )
+                    row["tradeoff_greedy_num_placements"] = safe_float(
+                        tradeoff_metrics.get("num_placements")
+                    )
+                    row["tradeoff_greedy_placements_at_cloud"] = safe_float(
+                        tradeoff_metrics.get("placements_at_cloud")
+                    )
+                    row["tradeoff_greedy_average_cost_per_placement"] = safe_float(
+                        tradeoff_metrics.get("average_cost_per_placement")
+                    )
 
                 # Add run parameters
-                row["all_push_latency_reference"] = safe_float(run_params.get("all_push_latency"))
+                row["all_push_latency_reference"] = safe_float(
+                    run_params.get("all_push_latency")
+                )
                 cost_focused_weights = run_params.get("cost_focused_weights", {})
-                row["cost_focused_cost_weight"] = safe_float(cost_focused_weights.get("cost_weight"))
-                row["cost_focused_latency_weight"] = safe_float(cost_focused_weights.get("latency_weight"))
+                row["cost_focused_cost_weight"] = safe_float(
+                    cost_focused_weights.get("cost_weight")
+                )
+                row["cost_focused_latency_weight"] = safe_float(
+                    cost_focused_weights.get("latency_weight")
+                )
                 tradeoff_weights = run_params.get("tradeoff_weights", {})
-                row["tradeoff_cost_weight"] = safe_float(tradeoff_weights.get("cost_weight"))
-                row["tradeoff_latency_weight"] = safe_float(tradeoff_weights.get("latency_weight"))
+                row["tradeoff_cost_weight"] = safe_float(
+                    tradeoff_weights.get("cost_weight")
+                )
+                row["tradeoff_latency_weight"] = safe_float(
+                    tradeoff_weights.get("latency_weight")
+                )
 
                 # Add configuration parameters
                 row["network_size"] = safe_float(self.config.network_size)
@@ -1523,8 +1618,16 @@ class Simulation:
                 row["query_size"] = safe_float(self.config.query_size)
                 row["query_length"] = safe_float(self.config.query_length)
                 row["xi"] = safe_float(self.config.xi)
-                row["mode"] = self.config.mode.value if hasattr(self.config.mode, 'value') else str(self.config.mode)
-                row["algorithm"] = self.config.algorithm.value if hasattr(self.config.algorithm, 'value') else str(self.config.algorithm)
+                row["mode"] = (
+                    self.config.mode.value
+                    if hasattr(self.config.mode, "value")
+                    else str(self.config.mode)
+                )
+                row["algorithm"] = (
+                    self.config.algorithm.value
+                    if hasattr(self.config.algorithm, "value")
+                    else str(self.config.algorithm)
+                )
 
                 # Create DataFrame
                 df = pd.DataFrame([row])
@@ -1540,7 +1643,9 @@ class Simulation:
                     pa.field("cost_focused_greedy_workload_cost", pa.float64()),
                     pa.field("cost_focused_greedy_num_placements", pa.float64()),
                     pa.field("cost_focused_greedy_placements_at_cloud", pa.float64()),
-                    pa.field("cost_focused_greedy_average_cost_per_placement", pa.float64()),
+                    pa.field(
+                        "cost_focused_greedy_average_cost_per_placement", pa.float64()
+                    ),
                     # Trade-off greedy metrics
                     pa.field("tradeoff_greedy_status", pa.string()),
                     pa.field("tradeoff_greedy_cost", pa.float64()),
@@ -1550,7 +1655,9 @@ class Simulation:
                     pa.field("tradeoff_greedy_workload_cost", pa.float64()),
                     pa.field("tradeoff_greedy_num_placements", pa.float64()),
                     pa.field("tradeoff_greedy_placements_at_cloud", pa.float64()),
-                    pa.field("tradeoff_greedy_average_cost_per_placement", pa.float64()),
+                    pa.field(
+                        "tradeoff_greedy_average_cost_per_placement", pa.float64()
+                    ),
                     # Run parameters
                     pa.field("all_push_latency_reference", pa.float64()),
                     pa.field("cost_focused_cost_weight", pa.float64()),
@@ -1572,14 +1679,20 @@ class Simulation:
                 ]
 
                 # Only include fields that exist in the DataFrame
-                schema_fields = [field for field in schema_fields if field.name in df.columns]
+                schema_fields = [
+                    field for field in schema_fields if field.name in df.columns
+                ]
                 explicit_schema = pa.schema(schema_fields)
 
                 # Convert to PyArrow table
-                table = pa.Table.from_pandas(df, schema=explicit_schema, preserve_index=False)
+                table = pa.Table.from_pandas(
+                    df, schema=explicit_schema, preserve_index=False
+                )
 
                 # Write to parquet
-                output_dir = Path(f"result/{output_dataset_name or 'latency_tradeoff_study'}.parquet")
+                output_dir = Path(
+                    f"result/{output_dataset_name or 'latency_tradeoff_study'}.parquet"
+                )
                 output_dir.mkdir(parents=True, exist_ok=True)
                 pq.write_to_dataset(table, root_path=str(output_dir))
 
@@ -1593,24 +1706,48 @@ class Simulation:
             populate_basic("prepp", self.prepp_from_cloud_result)
 
             if self.kraken_results and "strategies" in self.kraken_results:
-                for strategy_name, strategy_result in self.kraken_results["strategies"].items():
+                for strategy_name, strategy_result in self.kraken_results[
+                    "strategies"
+                ].items():
                     prefix = f"kraken_{strategy_name}"
                     status = strategy_result.get("status", "unknown")
-                    metrics = strategy_result.get("metrics", {}) if status == "success" else {}
+                    metrics = (
+                        strategy_result.get("metrics", {})
+                        if status == "success"
+                        else {}
+                    )
 
-                    print(f"DEBUG _write_results: Adding columns for strategy '{strategy_name}' with prefix '{prefix}'")
+                    print(
+                        f"DEBUG _write_results: Adding columns for strategy '{strategy_name}' with prefix '{prefix}'"
+                    )
 
                     row[f"{prefix}_status"] = status
                     row[f"{prefix}_cost"] = safe_float(metrics.get("total_cost"))
-                    row[f"{prefix}_transmission_latency"] = safe_float(metrics.get("max_latency"))
-                    row[f"{prefix}_processing_latency"] = safe_float(metrics.get("cumulative_processing_latency"))
-                    row[f"{prefix}_computing_time"] = safe_float(strategy_result.get("execution_time_seconds"))
-                    row[f"{prefix}_workload_cost"] = safe_float(metrics.get("workload_cost"))
-                    row[f"{prefix}_num_placements"] = safe_float(metrics.get("num_placements"))
-                    row[f"{prefix}_placements_at_cloud"] = safe_float(metrics.get("placements_at_cloud"))
-                    row[f"{prefix}_average_cost_per_placement"] = safe_float(metrics.get("average_cost_per_placement"))
+                    row[f"{prefix}_transmission_latency"] = safe_float(
+                        metrics.get("max_latency")
+                    )
+                    row[f"{prefix}_processing_latency"] = safe_float(
+                        metrics.get("cumulative_processing_latency")
+                    )
+                    row[f"{prefix}_computing_time"] = safe_float(
+                        strategy_result.get("execution_time_seconds")
+                    )
+                    row[f"{prefix}_workload_cost"] = safe_float(
+                        metrics.get("workload_cost")
+                    )
+                    row[f"{prefix}_num_placements"] = safe_float(
+                        metrics.get("num_placements")
+                    )
+                    row[f"{prefix}_placements_at_cloud"] = safe_float(
+                        metrics.get("placements_at_cloud")
+                    )
+                    row[f"{prefix}_average_cost_per_placement"] = safe_float(
+                        metrics.get("average_cost_per_placement")
+                    )
 
-            print(f"DEBUG _write_results: Row contains these kraken columns: {[k for k in row.keys() if 'kraken' in k]}")
+            print(
+                f"DEBUG _write_results: Row contains these kraken columns: {[k for k in row.keys() if 'kraken' in k]}"
+            )
 
             # Add configuration information to results (cast all to float for consistency)
             row["network_size"] = safe_float(self.config.network_size)
@@ -1623,14 +1760,28 @@ class Simulation:
             row["query_length"] = safe_float(self.config.query_length)
             row["xi"] = safe_float(self.config.xi)
             row["latency_threshold"] = safe_float(self.config.latency_threshold)
-            row["mode"] = self.config.mode.value if hasattr(self.config.mode, 'value') else str(self.config.mode)
-            row["algorithm"] = self.config.algorithm.value if hasattr(self.config.algorithm, 'value') else str(self.config.algorithm)
-            row["graph_density"] = safe_float(getattr(self, 'graph_density', None))
+            row["mode"] = (
+                self.config.mode.value
+                if hasattr(self.config.mode, "value")
+                else str(self.config.mode)
+            )
+            row["algorithm"] = (
+                self.config.algorithm.value
+                if hasattr(self.config.algorithm, "value")
+                else str(self.config.algorithm)
+            )
+            row["graph_density"] = safe_float(getattr(self, "graph_density", None))
 
-            row["entire_simulation_time"] = safe_float(getattr(self, "entire_simulation_time", None))
+            row["entire_simulation_time"] = safe_float(
+                getattr(self, "entire_simulation_time", None)
+            )
             row["setup_time"] = safe_float(getattr(self, "setup_time", None))
-            row["combigen_computation_time"] = safe_float(getattr(self, "combigen_computation_time", None))
-            row["average_selectivity"] = safe_float(getattr(self, "average_selectivity", None))
+            row["combigen_computation_time"] = safe_float(
+                getattr(self, "combigen_computation_time", None)
+            )
+            row["average_selectivity"] = safe_float(
+                getattr(self, "average_selectivity", None)
+            )
 
             if not row:
                 print("--- No results to write ---")
@@ -1638,7 +1789,9 @@ class Simulation:
 
             # Create DataFrame from row
             df = pd.DataFrame([row])
-            print(f"DEBUG: DataFrame columns (total {len(df.columns)}): {[c for c in df.columns if 'kraken' in c]}")
+            print(
+                f"DEBUG: DataFrame columns (total {len(df.columns)}): {[c for c in df.columns if 'kraken' in c]}"
+            )
 
             # Define explicit PyArrow schema to prevent type inference issues
             # All numeric columns are explicitly set to float64 (double in PyArrow)
@@ -1711,23 +1864,35 @@ class Simulation:
 
             # Only include fields that exist in the DataFrame
             original_field_count = len(schema_fields)
-            schema_fields = [field for field in schema_fields if field.name in df.columns]
-            print(f"DEBUG: Schema filtering: {original_field_count} -> {len(schema_fields)} fields")
-            kraken_schema_fields = [f.name for f in schema_fields if 'kraken' in f.name]
+            schema_fields = [
+                field for field in schema_fields if field.name in df.columns
+            ]
+            print(
+                f"DEBUG: Schema filtering: {original_field_count} -> {len(schema_fields)} fields"
+            )
+            kraken_schema_fields = [f.name for f in schema_fields if "kraken" in f.name]
             print(f"DEBUG: Kraken columns in final schema: {kraken_schema_fields}")
             explicit_schema = pa.schema(schema_fields)
 
             # Convert DataFrame to PyArrow table with explicit schema
-            table = pa.Table.from_pandas(df, schema=explicit_schema, preserve_index=False)
+            table = pa.Table.from_pandas(
+                df, schema=explicit_schema, preserve_index=False
+            )
 
-            output_dir = Path(f"result/{output_dataset_name or 'unified_results'}.parquet")
+            output_dir = Path(
+                f"result/{output_dataset_name or 'unified_results'}.parquet"
+            )
             output_dir.mkdir(parents=True, exist_ok=True)
 
             existing_files = {file.name for file in output_dir.glob("*.parquet")}
 
             pq.write_to_dataset(table, root_path=str(output_dir))
 
-            new_files = [file for file in output_dir.glob("*.parquet") if file.name not in existing_files]
+            new_files = [
+                file
+                for file in output_dir.glob("*.parquet")
+                if file.name not in existing_files
+            ]
             if not new_files and existing_files:
                 new_files = sorted(
                     output_dir.glob("*.parquet"),
@@ -1740,7 +1905,9 @@ class Simulation:
                     pq.read_table(file_path)
                 except Exception as validation_error:  # noqa: BLE001
                     logger.error(
-                        "Parquet validation failed for %s", file_path, exc_info=validation_error
+                        "Parquet validation failed for %s",
+                        file_path,
+                        exc_info=validation_error,
                     )
                     raise RuntimeError(
                         f"Parquet validation failed for {file_path}"
@@ -1837,11 +2004,15 @@ class Simulation:
         This prevents 'np.int64(...)' representations from appearing in stringified buffers.
         """
         for node in self.network:
-            if hasattr(node, 'eventrates') and node.eventrates:
+            if hasattr(node, "eventrates") and node.eventrates:
                 # Convert each element to Python native type
                 node.eventrates = [
-                    int(x) if isinstance(x, (np.integer, np.int64, np.int32, np.int16, np.int8))
-                    else float(x) if isinstance(x, (np.floating, np.float64, np.float32))
+                    int(x)
+                    if isinstance(
+                        x, (np.integer, np.int64, np.int32, np.int16, np.int8)
+                    )
+                    else float(x)
+                    if isinstance(x, (np.floating, np.float64, np.float32))
                     else x
                     for x in node.eventrates
                 ]

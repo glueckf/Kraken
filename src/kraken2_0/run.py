@@ -57,12 +57,21 @@ def run_kraken_solver(
     # Handle latency trade-off study mode
     if run_latency_tradeoff_study:
         # Validate preconditions
-        if not hasattr(ines_context, 'all_push_results') or not ines_context.all_push_results:
-            raise ValueError("All Push results are missing. Cannot run latency trade-off study.")
+        if (
+            not hasattr(ines_context, "all_push_results")
+            or not ines_context.all_push_results
+        ):
+            raise ValueError(
+                "All Push results are missing. Cannot run latency trade-off study."
+            )
 
-        all_push_latency = ines_context.all_push_results.get("transmission_latency", 0.0)
+        all_push_latency = ines_context.all_push_results.get(
+            "transmission_latency", 0.0
+        )
         if all_push_latency == 0.0:
-            raise ValueError("All Push latency is 0. Cannot calculate relative threshold.")
+            raise ValueError(
+                "All Push latency is 0. Cannot calculate relative threshold."
+            )
 
         # Get parameters
         latency_threshold_factor = ines_context.config.latency_threshold
@@ -90,12 +99,15 @@ def run_kraken_solver(
         baseline_results = {}
         try:
             from kraken2_0.search.greedy import GreedySearch
+
             strategy = GreedySearch()
             baseline_start = time.time()
             solution = strategy.solve(problem_baseline)
             baseline_end = time.time()
 
-            metrics = _calculate_solution_metrics(solution, problem_baseline, ines_context)
+            metrics = _calculate_solution_metrics(
+                solution, problem_baseline, ines_context
+            )
             baseline_results = {
                 "status": "success",
                 "solution": solution,
@@ -110,20 +122,27 @@ def run_kraken_solver(
             }
 
         # Run 2: Constrained (with latency constraint)
-        print(f"--- Running Constrained Greedy (threshold={absolute_threshold:.2f}) ---")
+        print(
+            f"--- Running Constrained Greedy (threshold={absolute_threshold:.2f}) ---"
+        )
         ines_context.latency_threshold = absolute_threshold
         context_constrained = _gather_problem_parameters(ines_context)
-        problem_constrained = PlacementProblem(processing_order, context_constrained, False)
+        problem_constrained = PlacementProblem(
+            processing_order, context_constrained, False
+        )
 
         constrained_results = {}
         try:
             from kraken2_0.search.greedy import GreedySearch
+
             strategy = GreedySearch()
             constrained_start = time.time()
             solution = strategy.solve(problem_constrained)
             constrained_end = time.time()
 
-            metrics = _calculate_solution_metrics(solution, problem_constrained, ines_context)
+            metrics = _calculate_solution_metrics(
+                solution, problem_constrained, ines_context
+            )
             constrained_results = {
                 "status": "success",
                 "solution": solution,
@@ -150,7 +169,7 @@ def run_kraken_solver(
                 "latency_threshold_absolute": absolute_threshold,
                 "cost_weight": original_cost_weight,
                 "latency_weight": 1.0 - original_cost_weight,
-            }
+            },
         }
 
     # Normal multi-strategy run
