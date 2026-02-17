@@ -84,7 +84,9 @@ def generate_balanced_workload(size, maxlength):  # count, lenthh
             query = AND()
         # query.children = generate_q(query, int(nesting_depth), mylength)
 
-        query.children = generate_q_kl(query, int(nesting_depth), mylength, False, False)
+        query.children = generate_q_kl(
+            query, int(nesting_depth), mylength, False, False
+        )
         query = number_children(query)
         if not hasdoubles(query):  # changed
             qwl.append(query)
@@ -107,7 +109,9 @@ def generate_balanced_workload(size, maxlength):  # count, lenthh
                 query = SEQ()
             else:
                 query = AND()
-            query.children = get_kleene_query(query, int(nesting_depth), maxlength, False)
+            query.children = get_kleene_query(
+                query, int(nesting_depth), maxlength, False
+            )
             if not hasdoubles(query):
                 kleene.append(query)
                 if none:

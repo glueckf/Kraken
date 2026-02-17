@@ -103,7 +103,9 @@ def get_shared_ms_input(self, combiDict, myProjFilters):
         )
         if part:  # only MS projections
             # for event in combiDict[proj]:
-            for event in combiDict[proj] + list(get_maximal_filter(myProjFilters, proj)):
+            for event in combiDict[proj] + list(
+                get_maximal_filter(myProjFilters, proj)
+            ):
                 if event not in sharedInput and not part[0] == event:
                     sharedInput[event] = [part[0]]
                 elif not part[0] == event:

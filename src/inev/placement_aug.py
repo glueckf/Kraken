@@ -175,7 +175,8 @@ def compute_ms_placement_costs(
 
         intercombi.append(proj)
         if (
-            len(proj) > 1 and len(get_maximal_filter(projFilterDict, proj, noFilter)) > 0
+            len(proj) > 1
+            and len(get_maximal_filter(projFilterDict, proj, noFilter)) > 0
         ):  # those are the extra events that need to be sent around due to filters
             Filters.append((proj, get_maximal_filter(projFilterDict, proj, noFilter)))
             # print("Using Filter: " + str(get_maximal_filter(projFilterDict, proj)) + ": " + str(projFilterDict[proj][get_maximal_filter(projFilterDict, proj)][0]) + " instead of " + str(projrates[proj])  )
@@ -346,7 +347,8 @@ def new_compute_ms_placement_costs_internal(
                             projFilterDict, etype, noFilter
                         ):  # case input projection has filter
                             mycosts = allPairs[dest][mySource] * get_decomposed_total(
-                                get_maximal_filter(projFilterDict, etype, noFilter), type
+                                get_maximal_filter(projFilterDict, etype, noFilter),
+                                type,
                             )
                             if (
                                 len(IndexEventNodes[etype]) > 1
@@ -900,7 +902,9 @@ def compute_single_sink_placement(
     )
 
 
-def new_compute_central_costs(workload, IndexEventNodes, allPairs, rates, EventNodes, G):
+def new_compute_central_costs(
+    workload, IndexEventNodes, allPairs, rates, EventNodes, G
+):
     # Adding all Eventtypes (simple events) to the list
     import networkx as nx
 

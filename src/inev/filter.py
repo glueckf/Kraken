@@ -31,12 +31,16 @@ def compute_promising_type(self, projection):
     if promisingEvent != "X":
         return (
             promisingEvent,
-            get_decomposed([promisingEvent], projection, self.single_selectivity, rates),
+            get_decomposed(
+                [promisingEvent], projection, self.single_selectivity, rates
+            ),
         )
     else:
         return (
             promisingEvent,
-            get_decomposed([promisingEvent], projection, self.single_selectivity, rates),
+            get_decomposed(
+                [promisingEvent], projection, self.single_selectivity, rates
+            ),
         )
 
 

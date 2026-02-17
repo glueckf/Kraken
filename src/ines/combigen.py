@@ -1,5 +1,9 @@
 import time
-from inev.filter import get_maximal_filter, get_decomposed_total, return_proj_filter_dict
+from inev.filter import (
+    get_maximal_filter,
+    get_decomposed_total,
+    return_proj_filter_dict,
+)
 from core.structures import get_num_etbs
 from core.tree import PrimEvent
 from ines.projections import total_rate, return_partitioning
@@ -891,7 +895,9 @@ def generate_combigen(self):
 
     globalMSTypes = set(sum([all_ms_types(self, x.strip_kl_simple()) for x in wl], []))
     # print("potentialMSTypes:  "  + str(globalMSTypes))
-    globalSiSTypes = set(sum([all_sis_events(self, x.strip_kl_simple()) for x in wl], []))
+    globalSiSTypes = set(
+        sum([all_sis_events(self, x.strip_kl_simple()) for x in wl], [])
+    )
     # print("globalSiSTypes:  "  + str(globalSiSTypes))
     criticalMSTypes = list(set(globalMSTypes).intersection(set(globalSiSTypes)))
 

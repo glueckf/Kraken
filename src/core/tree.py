@@ -140,7 +140,9 @@ class Tree:
                 li.remove(i)
                 parent.children = li
 
-        for i in sorted(subop.get_tree_nodes(), key=lambda x: subop.level(x), reverse=True):
+        for i in sorted(
+            subop.get_tree_nodes(), key=lambda x: subop.level(x), reverse=True
+        ):
             if not list(i.children):
                 parent = subop.get_parent(i)
                 lp = list(parent.children)
@@ -185,7 +187,9 @@ class Tree:
 
     def getsequences(self):
         mysequence = {}
-        for i in sorted(self.get_tree_nodes(), key=lambda x: self.level(x), reverse=True):
+        for i in sorted(
+            self.get_tree_nodes(), key=lambda x: self.level(x), reverse=True
+        ):
             if isinstance(i, SEQ):
                 for childindex in range(len(i.children)):
                     mysequence[str(i.children[childindex])] = []
