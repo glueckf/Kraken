@@ -9,7 +9,6 @@ strategies are run sequentially.
 import io
 import logging
 import string
-import math
 import time
 from enum import Enum
 from dataclasses import dataclass
@@ -19,20 +18,20 @@ from typing import Any, Dict, List, Optional
 import networkx as nx
 import numpy as np
 
-from Node import Node
-from network import generate_eventrates, create_random_tree
-from graph import create_fog_graph
-from allPairs import populate_allPairs
-from queryworkload import generate_workload
-from selectivity import initialize_selectivities
-from write_config_single import generate_config_buffer
-from singleSelectivities import initializeSingleSelectivity
-from helper.parse_network import initialize_globals
-from helper.structures import initEventNodes, getLongest
-from combigen import populate_projFilterDict, removeFilters, generate_combigen
-from operatorplacement import calculate_operatorPlacement
-from prepp import generate_prePP
-from generateEvalPlan import generate_eval_plan
+from core.node import Node
+from core.network import generate_eventrates, create_random_tree
+from core.graph import create_fog_graph
+from core.all_pairs import populate_all_pairs
+from core.query_workload import generate_workload
+from ines.selectivity import initialize_selectivities
+from core.write_config import generate_config_buffer
+from ines.single_selectivities import initialize_single_selectivity
+from core.parse_network import initialize_globals
+from core.structures import init_event_nodes, get_longest
+from ines.combigen import populate_proj_filter_dict, remove_filters, generate_combigen
+from ines.operator_placement import calculate_operator_placement
+from prepp.prepp import generate_prePP
+from prepp.generate_eval_plan import generate_eval_plan
 
 # ==================== SIMULATION CONFIGURATION ====================
 
@@ -143,7 +142,7 @@ def resolve_projection_rate_tuple(context: Any, query: Any) -> Any:
 
     if hasattr(query, "stripKL_simple"):
         try:
-            stripped = query.stripKL_simple()
+            stripped = query.strip_kl_simple()
             candidates.append(stripped)
         except Exception:
             pass
@@ -481,7 +480,6 @@ def calculate_prepp_from_cloud(context, reused_buffer_section):
 
         # Extract results (prepp_results format: [cost, time, latency, ratio, push_costs, central_latency, steps])
         exact_cost = prepp_results[0]
-        computing_time = prepp_results[1]
         max_latency_tuple = prepp_results[2]
         acquisition_steps = prepp_results[6]  # Dictionary: {query_str: AcquisitionSet}
 
@@ -620,17 +618,12 @@ def update_results_for_topology(context, ines_results, inev_results):
         ines_total_costs += additional_costs
 
         # Calculate additional latency for sending to cloud (INES only)
-        additional_latency = 0
         if (
             isinstance(ines_max_latency_tuple, tuple)
             and len(ines_max_latency_tuple) > 0
         ):
             node_with_max_latency = ines_max_latency_tuple[0]
-            if isinstance(node_with_max_latency, int):
-                additional_latency = context.allPairs[node_with_max_latency][
-                    CLOUD_NODE_ID
-                ]
-            else:
+            if not isinstance(node_with_max_latency, int):
                 logger.debug(
                     "INES max latency node is not an integer (value=%s); skipping cloud latency adjustment",
                     node_with_max_latency,
@@ -715,8 +708,8 @@ def create_hardcoded_tree():
 
     Based on expected output structure where all intermediate nodes connect to all leaf nodes.
     """
-    from Node import Node
     import math
+    from core.node import Node
 
     # Initialize network and event tracking
     nw = []
@@ -836,9 +829,6 @@ def generate_hardcoded_workload():
 
     Queries share common subexpressions for optimization potential.
     """
-    from helper.Tree import PrimEvent, SEQ, AND
-    from queryworkload import number_children
-
     queries = []
 
     # # Query 1: Simple SEQ - SEQ(A, B, C)
@@ -1252,7 +1242,7 @@ class Simulation:
             ]
 
             # Initialize core simulation parameters
-            from projections import generate_all_projections
+            from ines.projections import generate_all_projections
 
             eventrates_per_source = generate_eventrates(
                 config.event_skew, config.num_event_types
@@ -1304,7 +1294,7 @@ class Simulation:
                 string.ascii_uppercase[: config.num_event_types]
             )
 
-            self.single_selectivity = initializeSingleSelectivity(
+            self.single_selectivity = initialize_single_selectivity(
                 CURRENT_SECTION=self.CURRENT_SECTION,
                 config_single=self.config_single,
                 workload=self.query_workload,
@@ -1321,7 +1311,7 @@ class Simulation:
                 self.h_nodes,
                 self.h_etb_rates,
             ) = initialize_globals(self.network)
-            self.h_eventNodes, self.h_IndexEventNodes = initEventNodes(
+            self.h_eventNodes, self.h_IndexEventNodes = init_event_nodes(
                 self.h_nodes, self.h_network_data
             )
             (
@@ -1331,8 +1321,8 @@ class Simulation:
                 self.h_sharedProjectionsDict,
                 self.h_sharedProjectionsList,
             ) = generate_all_projections(self)
-            self.h_projFilterDict = populate_projFilterDict(self)
-            self.h_projFilterDict = removeFilters(self)
+            self.h_projFilterDict = populate_proj_filter_dict(self)
+            self.h_projFilterDict = remove_filters(self)
 
             start_time_generate_combigen = time.time()
             (
@@ -1411,7 +1401,7 @@ class Simulation:
                 self.experiment_result,
                 self.results,
                 self.inev_results,
-            ) = calculate_operatorPlacement(self, "test", 0)
+            ) = calculate_operator_placement(self, "test", 0)
             inev_end_time = time.time()
             print("--- INEV COMPUTATION COMPLETE ---")
 
@@ -1450,7 +1440,7 @@ class Simulation:
 
             # ----- KRAKEN COMPUTATION -----#
             print("--- Running Kraken Computation ---")
-            from src.kraken2_0.run import run_kraken_solver
+            from src.kraken.run import run_kraken_solver
 
             # Check if running latency trade-off study
             if self.config.run_latency_tradeoff_study:
@@ -1465,7 +1455,7 @@ class Simulation:
                     strategies_to_run=[{"name": "greedy"}],
                     compare_within_kraken=False,
                 )
-            print(f"--- KRAKEN COMPUTATION COMPLETE ---")
+            print("--- KRAKEN COMPUTATION COMPLETE ---")
 
             self.entire_simulation_time = self.start_time_setup - time.time()
 
@@ -1933,7 +1923,7 @@ class Simulation:
             Dictionary mapping each query object to the sum of its primitive event rates.
             Example: {query1: 1845.0, query2: 1002.0, ...}
         """
-        from helper.projString import filter_numbers
+        from core.proj_string import filter_numbers
 
         sum_of_input_rates = {}
 
@@ -2020,8 +2010,8 @@ class Simulation:
     def _initialize_network_graph(self):
         """Initialize network graph and distance calculations."""
         self.graph = create_fog_graph(self.network)
-        self.allPairs = populate_allPairs(self.graph)
-        self.h_longestPath = getLongest(self.allPairs)
+        self.allPairs = populate_all_pairs(self.graph)
+        self.h_longestPath = get_longest(self.allPairs)
 
     def _initialize_query_workload(self):
         """Generate query workload based on configuration mode."""

@@ -1,10 +1,14 @@
 """
-Placement Engine Package - Modernized operator placement computation
+Kraken 2.0 - Placement Engine for Complex Event Processing
 
-This package provides a clean, modular implementation of the placement engine
-that extracts and modernizes the compute_operator_placement_with_prepp functionality.
+A modular search framework for optimal placement of query operators
+across distributed network nodes.
 """
 
-from .greedy_kraken_core import run_greedy_kraken
+from .problem import PlacementProblem
+from .run import run_kraken_solver
 
-__all__ = ["run_greedy_kraken"]
+__all__ = [
+    "PlacementProblem",
+    "run_kraken_solver",
+]
