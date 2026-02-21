@@ -7,6 +7,7 @@ a clean, modern interface.
 """
 
 from typing import Any, Dict, List
+import math
 import time
 import uuid
 
@@ -90,10 +91,16 @@ def run_kraken_solver(
         )
         processing_order = sorted(dependencies.keys(), key=lambda x: dependencies[x])
 
+        # Compute resource demands per projection
+        resource_demands = _compute_resource_demands(
+            processing_order, ines_context.h_rates_data
+        )
+
         # Run 1: Baseline (no latency constraint)
         print("--- Running Baseline Greedy (no latency constraint) ---")
         ines_context.latency_threshold = None
         context_baseline = _gather_problem_parameters(ines_context)
+        context_baseline["resource_demands"] = resource_demands
         problem_baseline = PlacementProblem(processing_order, context_baseline, False)
 
         baseline_results = {}
@@ -127,6 +134,7 @@ def run_kraken_solver(
         )
         ines_context.latency_threshold = absolute_threshold
         context_constrained = _gather_problem_parameters(ines_context)
+        context_constrained["resource_demands"] = resource_demands
         problem_constrained = PlacementProblem(
             processing_order, context_constrained, False
         )
@@ -189,6 +197,12 @@ def run_kraken_solver(
     )
 
     processing_order = sorted(dependencies.keys(), key=lambda x: dependencies[x])
+
+    # Compute resource demands per projection
+    resource_demands = _compute_resource_demands(
+        processing_order, ines_context.h_rates_data
+    )
+    context["resource_demands"] = resource_demands
 
     # Phase 2: Problem Instantiation
     problem = PlacementProblem(processing_order, context, enable_detailed_logging)
@@ -348,6 +362,15 @@ def _gather_problem_parameters(ines_context: Any) -> Dict[str, Any]:
         "latency_weighting_factor": ines_context.config.xi,
         "cost_weight": getattr(ines_context.config, "cost_weight", 0.5),
         "latency_weight": 1 - getattr(ines_context.config, "cost_weight", 0.5),
+        # Resource constraints (enforce inf for cloud nodes)
+        "node_resource_capacities": {
+            node.id: (
+                math.inf
+                if math.isinf(node.computational_power)
+                else node.resource_capacity
+            )
+            for node in ines_context.network
+        },
     }
 
     return context
@@ -763,3 +786,27 @@ def _prepare_run_results_summary(
         results_data.append(result_entry)
 
     return results_data
+
+
+def _compute_resource_demands(
+    processing_order: List[Any], rates_data: Dict[str, float]
+) -> Dict[Any, float]:
+    """Compute resource demand for each projection using tree evaluation.
+
+    The demand is the rate product of the projection's operator tree,
+    e.g. SEQ(A,B,C) = Rate_A * Rate_B * Rate_C.
+
+    Args:
+        processing_order: List of projections in topological order.
+        rates_data: Global event rates dictionary (e.g., {"A": 1000.0, "B": 2.0}).
+
+    Returns:
+        Dictionary mapping each projection to its resource demand.
+    """
+    demands = {}
+    for p in processing_order:
+        if hasattr(p, "evaluate"):
+            demands[p] = p.evaluate(rates_data)
+        else:
+            demands[p] = 0.0
+    return demands

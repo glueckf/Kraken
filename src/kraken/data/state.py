@@ -53,6 +53,9 @@ class SolutionCandidate:
     # The state of events on the physical network T for this solution state s.
     event_stack: Dict[int, Dict[str, Any]] = field(default_factory=dict)
 
+    # Remaining resource capacity per node (node_id -> remaining capacity).
+    remaining_capacity: Dict[int, float] = field(default_factory=dict)
+
     def get_critical_path_latency(self, problem: "PlacementProblem") -> float:
         """
         Calculates the true end-to-end latency for all currently placed projections by finding the critical path.

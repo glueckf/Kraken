@@ -71,10 +71,10 @@ def create_random_tree(nwsize, eventrates, node_event_ratio, max_parents: int = 
 
     levels = math.ceil(math.log2(nwsize))
     print(f"[NETWORK] Network levels: {levels}")
-    # Create the root node
+    # Create the root node (cloud)
     root = Node(
-        id=0, compute_power=math.inf, memory=math.inf
-    )  # , eventrate=generate_events(eventrates, node_event_ratio))
+        id=0, compute_power=math.inf, memory=math.inf, resource_capacity=math.inf
+    )
     nw.append(root)
 
     # Track nodes by level to manage the structure and prevent imbalance
@@ -89,8 +89,16 @@ def create_random_tree(nwsize, eventrates, node_event_ratio, max_parents: int = 
         compute_power = levels - level
         memore = levels - level
 
+        # Resource capacity scales with layer (deeper = less capacity)
+        resource_cap = float(compute_power) * 100_000
+
         # Create the new node
-        new_node = Node(id=node_id, compute_power=compute_power, memory=memore)
+        new_node = Node(
+            id=node_id,
+            compute_power=compute_power,
+            memory=memore,
+            resource_capacity=resource_cap,
+        )
 
         # Ensure level-specific nodes exist in the dictionary
         if level not in level_nodes:

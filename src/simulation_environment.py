@@ -29,9 +29,7 @@ from ines.single_selectivities import initialize_single_selectivity
 from core.parse_network import initialize_globals
 from core.structures import init_event_nodes, get_longest
 from ines.combigen import populate_proj_filter_dict, remove_filters, generate_combigen
-from ines.operator_placement import calculate_operator_placement
 from prepp.prepp import generate_prePP
-from prepp.generate_eval_plan import generate_eval_plan
 
 # ==================== SIMULATION CONFIGURATION ====================
 
@@ -722,25 +720,33 @@ def create_hardcoded_tree():
     nodes = {}
 
     # Layer 0: Cloud (Node 0)
-    nodes[0] = Node(id=0, compute_power=math.inf, memory=math.inf)
+    nodes[0] = Node(
+        id=0, compute_power=math.inf, memory=math.inf, resource_capacity=math.inf
+    )
     nodes[0].eventrates = [0] * len(base_eventrates)
     nw.append(nodes[0])
 
     # Layer 1: Nodes 1, 2
     for node_id in [1, 2]:
-        nodes[node_id] = Node(id=node_id, compute_power=30, memory=30)
+        nodes[node_id] = Node(
+            id=node_id, compute_power=math.inf, memory=math.inf, resource_capacity=math.inf
+        )
         nodes[node_id].eventrates = [0] * len(base_eventrates)
         nw.append(nodes[node_id])
 
     # Layer 2: Nodes 3, 4, 5
     for node_id in [3, 4, 5]:
-        nodes[node_id] = Node(id=node_id, compute_power=20, memory=20)
+        nodes[node_id] = Node(
+            id=node_id, compute_power=math.inf, memory=math.inf, resource_capacity=math.inf
+        )
         nodes[node_id].eventrates = [0] * len(base_eventrates)
         nw.append(nodes[node_id])
 
     # Layer 3: Leaf nodes 6, 7, 8, 9, 10, 11
     for node_id in [6, 7, 8, 9, 10, 11]:
-        nodes[node_id] = Node(id=node_id, compute_power=10, memory=10)
+        nodes[node_id] = Node(
+            id=node_id, compute_power=math.inf, memory=math.inf, resource_capacity=math.inf
+        )
         nodes[node_id].eventrates = [0] * len(base_eventrates)
         nw.append(nodes[node_id])
 
@@ -1391,45 +1397,35 @@ class Simulation:
                 self.latency_threshold *= all_push_latency
             print("--- ALL PUSH COMPUTATION COMPLETE ---")
 
-            # ----- INEV COMPUTATION -----#
-            print("--- Running INEv Computation ---")
-            inev_start_time = time.time()
-            ines_start_time = inev_start_time  # For consistency in logging
-            (
-                self.eval_plan,
-                self.central_eval_plan,
-                self.experiment_result,
-                self.results,
-                self.inev_results,
-            ) = calculate_operator_placement(self, "test", 0)
-            inev_end_time = time.time()
-            print("--- INEV COMPUTATION COMPLETE ---")
+            # ----- INEV AND INES DISABLED -----#
+            # Resource constraint experiment: only comparing All Push, PrePP from Cloud, and Kraken
+            self.inev_results = None
+            self.ines_results = None
+            self.eval_plan = None
+            self.central_eval_plan = None
+            self.experiment_result = None
+            self.results = None
+            self.raw_ines_prepp_result = None
 
-            # ----- INES COMPUTATION (using INEv results) -----#
-            print("--- Running INES Computation ---")
-            plan, reused_section = generate_eval_plan(
-                self.network,
-                self.selectivities,
-                self.eval_plan,
-                self.central_eval_plan,
-                self.query_workload,
+            # Compute processing order (needed by PrePP from Cloud and Kraken)
+            from inev.process_combination import compute_dependencies
+
+            dependencies = compute_dependencies(
+                self, self.h_mycombi, self.h_criticalMSTypes
             )
-            deterministic_flag = self.config.is_selectivities_fixed()
-            ines_results = generate_prePP(
-                plan, "ppmuse", "e", 1, 0, 1, True, self.allPairs, deterministic_flag
+            self.processing_order = sorted(
+                dependencies.keys(), key=lambda x: dependencies[x]
             )
 
-            # Update both INES and INEv results with topology adjustments
-            self.raw_ines_prepp_result = ines_results
-            ines_dict, inev_dict = update_results_for_topology(
-                self, ines_results, self.inev_results
+            # Generate reused_section for PrePP from Cloud
+            from prepp.generate_eval_plan import network_text, selectivities_text
+
+            reused_section = (
+                network_text(self.network)
+                + "\n"
+                + selectivities_text(self.selectivities)
+                + "\n"
             )
-            ines_end_time = time.time()
-            inev_dict["computing_time"] = inev_end_time - inev_start_time
-            ines_dict["computing_time"] = ines_end_time - ines_start_time
-            self.ines_results = ines_dict
-            self.inev_results = inev_dict
-            print("--- INES COMPUTATION COMPLETE ---")
 
             # ----- SOLELY PREPP COMPUTATION (from cloud) -----#
             print("--- Running PrePP from Cloud Computation ---")
@@ -1691,8 +1687,10 @@ class Simulation:
 
             # Normal simulation result writing
             populate_basic("all_push", self.all_push_results)
-            populate_basic("inev", self.inev_results)
-            populate_basic("ines", self.ines_results)
+            if self.inev_results is not None:
+                populate_basic("inev", self.inev_results)
+            if self.ines_results is not None:
+                populate_basic("ines", self.ines_results)
             populate_basic("prepp", self.prepp_from_cloud_result)
 
             if self.kraken_results and "strategies" in self.kraken_results:

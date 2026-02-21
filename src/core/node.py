@@ -1,13 +1,25 @@
+from typing import Optional
+
+
 class Node:
     id = 0
     computational_power = 0
     memory = 0
     eventrates = []
 
-    def __init__(self, id: int, compute_power: int, memory: int):
+    def __init__(
+        self,
+        id: int,
+        compute_power: int,
+        memory: int,
+        resource_capacity: Optional[float] = None,
+    ):
         self.id = id
         self.computational_power = compute_power
         self.memory = memory
+        self.resource_capacity = (
+            resource_capacity if resource_capacity is not None else float(compute_power)
+        )
         self.eventrates = []
         self.Parent = []
         self.Child = []
@@ -25,6 +37,7 @@ class Node:
             f"Node {self.id}\n"
             f"Computational Power: {self.computational_power}\n"
             f"Memory: {self.memory}\n"
+            f"Resource Capacity: {self.resource_capacity}\n"
             f"Eventrates: {eventrates_clean}\n"
             f"Parents: {parent_ids}\n"
             f"Child: {child_ids}\n"

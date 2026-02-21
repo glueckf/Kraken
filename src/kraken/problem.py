@@ -65,9 +65,15 @@ class PlacementProblem:
         # Add problem reference to cost calculator for accessing placed subqueries
         self.cost_calculator.params["problem_ref"] = self
 
+        # --- Resource Constraint Data ---
+        self.resource_demands = context.get("resource_demands", {})
+        self.node_resource_capacities = context.get("node_resource_capacities", {})
+
     def get_initial_candidate(self) -> SolutionCandidate:
         """Return the root node of the Solution Space S"""
-        return SolutionCandidate()
+        return SolutionCandidate(
+            remaining_capacity=self.node_resource_capacities.copy()
+        )
 
     def is_goal(self, candidate: SolutionCandidate) -> bool:
         """Checks if a candidate represent a complete and valid solution e.g. a complete INEv graph."""
@@ -120,8 +126,16 @@ class PlacementProblem:
             possible_nodes, p, s_current.event_stack
         )
 
+        # Get the resource demand for the current projection
+        projection_demand = self.resource_demands.get(p, 0.0)
+
         # Now we can loop through each node n
         for n in candidate_nodes:
+            # Resource constraint check: skip nodes with insufficient capacity
+            node_remaining = s_current.remaining_capacity.get(n, float("inf"))
+            if node_remaining < projection_demand:
+                continue
+
             # We calculate the costs for getting all the inputs to this node.
             # This returns a list of dicts, one for each valid comm strategy (e.g. push, predicate based push-pull)
             strategy_results = self.cost_calculator.calculate(p, n, s_current)
@@ -245,6 +259,12 @@ class PlacementProblem:
         new_placements = s_current.placements.copy()
         new_event_stack = {k: v.copy() for k, v in s_current.event_stack.items()}
 
+        # Copy and update remaining resource capacity
+        new_remaining_capacity = s_current.remaining_capacity.copy()
+        projection_demand = self.resource_demands.get(p, 0.0)
+        if n in new_remaining_capacity:
+            new_remaining_capacity[n] -= projection_demand
+
         placement_info = PlacementInfo(
             projection=p,
             node=n,
@@ -268,6 +288,7 @@ class PlacementProblem:
             cumulative_processing_latency=s_current.cumulative_processing_latency
             + placement_info.individual_processing_latency,
             event_stack=new_event_stack,
+            remaining_capacity=new_remaining_capacity,
         )
 
     def _get_min_distance_to_sink(self, node: int) -> float:
