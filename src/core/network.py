@@ -57,6 +57,40 @@ def generate_events(eventrates, n_e_r):
             myevents.append(0)
     return myevents
 
+def cap(level, levels, edge_cap=50_000, ratio=3.0, sigma=0.35):
+    """
+        Compute per-node resource capacity for a hierarchical (multi-level) topology.
+
+        The capacity grows geometrically towards the root/cloud: starting from a base
+        edge capacity (`edge_cap`) at the deepest level, each level closer to the root
+        is scaled by `ratio`. The root level (level == 0) is treated as unbounded
+        (infinite capacity).
+
+        To model heterogeneity among nodes within the same level, we apply a
+        lognormal multiplicative noise term (`jitter`). This jitter is sampled as
+        exp(N(0, sigma)) and then clamped to [0.5, 1.5] to avoid extreme outliers.
+
+        Args:
+            level: Integer level index (0 = root/cloud, levels-1 = deepest/edge).
+            levels: Total number of levels in the topology.
+            edge_cap: Baseline capacity at the deepest level (edge).
+            ratio: Geometric scaling factor between adjacent levels (>1 means higher
+                   levels have more capacity).
+            sigma: Standard deviation of the underlying normal distribution used for
+                   lognormal jitter (controls heterogeneity).
+
+        Returns:
+            Resource capacity for the given level (float), or math.inf for level 0.
+        """
+    import math
+    if level == 0:
+        return math.inf
+    steps_up = (levels - 1) - level
+    mean = edge_cap * (ratio ** steps_up)
+    jitter = math.exp(random.gauss(0.0, sigma))  # lognormal
+    jitter = max(0.5, min(1.5, jitter))
+    return mean * jitter
+
 
 def create_random_tree(nwsize, eventrates, node_event_ratio, max_parents: int = 1):
     if nwsize <= 0:
@@ -90,8 +124,7 @@ def create_random_tree(nwsize, eventrates, node_event_ratio, max_parents: int = 
         memore = levels - level
 
         # Resource capacity scales with layer (deeper = less capacity)
-        resource_cap = math.inf
-        # float(compute_power) * 100_000
+        resource_cap = cap(level,levels)
 
         # Create the new node
         new_node = Node(

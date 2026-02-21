@@ -328,6 +328,103 @@ class Tree:
     def kleene_components(self):
         return [x.children[0] for x in self.get_tree_nodes() if isinstance(x, KL)]
 
+    KAPPA_BY_TYPE = {
+        "AND": 10.0,  # cartesian-like / heavy multi-input operator
+        "SEQ": 3.0,  # join-like
+        "NSEQ": 4.0,  #
+        "KL": 6.0,  # # Kleene-style repetition / expanded sequencing (higher state/complexity)
+    }
+
+    def evaluate_rate(self, rates, _cache=None):
+        """
+            Compute the *input rate* of this projection.
+
+            This method intentionally implements a *rate-only* semantics:
+              - Leaves (PrimEvent) return their observed/source rate from `rates`.
+              - Internal operators return the *sum* of their children's rates.
+
+            Why this exists:
+              The project also defines operator-specific `evaluate()` methods (e.g., AND/SEQ)
+              that may multiply/combine rates for other purposes. For resource placement we
+              need a stable, non-exploding estimate of how many events arrive at an operator.
+              Therefore, `evaluate_rate()` ignores those operator-specific `evaluate()`
+              implementations and always aggregates as a sum.
+
+            Caching:
+              Results are memoized in `_cache` (keyed by ("rate", id(self))) to avoid
+              recomputing shared subtrees during demand estimation.
+
+            Args:
+                rates: Mapping from primitive events (or leaf keys) to their source rates.
+                _cache: Optional dict used for memoization across recursive calls.
+
+            Returns:
+                Estimated input rate (float) for this subtree in events/second.
+            """
+        if _cache is None:
+            _cache = {}
+
+        key = ("rate", id(self))
+        if key in _cache:
+            return _cache[key]
+
+        # Leaf?
+        if not hasattr(self, "children"):
+            # PrimEvent hat evaluate(rates) already korrekt
+            r = float(self.evaluate(rates))
+            _cache[key] = r
+            return r
+
+        r = sum(ch.evaluate_rate(rates, _cache=_cache) for ch in self.children)
+        _cache[key] = float(r)
+        return _cache[key]
+
+    def evaluate_cap(self, rates, kappa=None, _cache=None):
+        """
+           Compute the *resource demand* of this projection
+
+           The demand model is:
+               demand = sum_child_rates * (1 + kappa * (fan_in - 1))
+
+           where:
+             - sum_child_rates is obtained via `evaluate_rate()` (rate-only semantics).
+             - fan_in is the number of direct children of the operator.
+             - kappa models additional per-input overhead for multi-input operators
+               (e.g., join/cartesian-like behavior). If `kappa` is not provided, a
+               type-specific value is taken from `KAPPA_BY_TYPE` using `self.mytype`.
+
+           Notes:
+             - Leaves return their rate directly (treated as demand == rate).
+             - This method does *not* recursively apply kappa to children (it uses
+               `evaluate_rate()`), preventing "double counting" of overhead in deep trees.
+             - `_cache` can be shared with `evaluate_rate()` to amortize repeated traversal.
+
+           Args:
+               rates: Mapping from primitive events (or leaf keys) to their source rates.
+               kappa: Optional override for the kappa factor (float). If None, uses
+                      `KAPPA_BY_TYPE.get(self.mytype, 0.0)`.
+               _cache: Optional dict used for memoization across recursive calls.
+
+           Returns:
+               Estimated resource demand (float) for this projection
+           """
+        if _cache is None:
+            _cache = {}
+
+        # Leaf -> demand == rate
+        if not hasattr(self, "children"):
+            return float(self.evaluate(rates))
+
+        r_in = sum(ch.evaluate_rate(rates, _cache=_cache) for ch in self.children)
+        fan_in = len(self.children)
+
+        mytype = getattr(self, "mytype", None)
+        if kappa is None:
+            kappa = float(self.KAPPA_BY_TYPE.get(mytype, 3.0))
+
+        overhead = 1.0 + float(kappa) * max(0, fan_in - 1)
+        return float(r_in) * overhead
+
 
 class AND(Tree):
     def __init__(self, *children):

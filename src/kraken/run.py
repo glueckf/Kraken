@@ -804,9 +804,11 @@ def _compute_resource_demands(
         Dictionary mapping each projection to its resource demand.
     """
     demands = {}
+    cache = {}
     for p in processing_order:
-        if hasattr(p, "evaluate"):
-            demands[p] = p.evaluate(rates_data)
+        if hasattr(p, "evaluate_cap"):
+            demands[p] = p.evaluate_cap(rates_data, _cache=cache)  # kappa via KAPPA_BY_TYPE
+
         else:
             demands[p] = 0.0
     return demands
