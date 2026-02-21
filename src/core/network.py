@@ -90,7 +90,8 @@ def create_random_tree(nwsize, eventrates, node_event_ratio, max_parents: int = 
         memore = levels - level
 
         # Resource capacity scales with layer (deeper = less capacity)
-        resource_cap = float(compute_power) * 100_000
+        resource_cap = math.inf
+        # float(compute_power) * 100_000
 
         # Create the new node
         new_node = Node(

@@ -133,6 +133,16 @@ class PlacementProblem:
         for n in candidate_nodes:
             # Resource constraint check: skip nodes with insufficient capacity
             node_remaining = s_current.remaining_capacity.get(n, float("inf"))
+            if self.logging_enabled:
+                self.detailed_log.append({
+                    "projection": p,
+                    "candidate_node": n,
+                    "node_remaining": node_remaining,
+                    "projection_demand": projection_demand,
+                    "skipped_by_resource": node_remaining < projection_demand,
+                    "node_remaining_type": str(type(node_remaining)),
+                })
+
             if node_remaining < projection_demand:
                 continue
 
