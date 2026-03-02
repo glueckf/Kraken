@@ -230,6 +230,9 @@ class SimulationConfig:
     latency_threshold: float = None  # If None, latency is not considered
     cost_weight: float = 0.5
 
+    # Resource constraints
+    resource_constraint_level: int = 0
+
     # Latency Trade-off Study
     run_latency_tradeoff_study: bool = False
     output_dataset_name: Optional[str] = None
@@ -721,7 +724,8 @@ def create_hardcoded_tree():
 
     # Layer 0: Cloud (Node 0)
     nodes[0] = Node(
-        id=0, compute_power=math.inf, memory=math.inf, resource_capacity=math.inf
+        id=0, compute_power=math.inf, memory=math.inf, resource_capacity=math.inf,
+        level=0,
     )
     nodes[0].eventrates = [0] * len(base_eventrates)
     nw.append(nodes[0])
@@ -729,7 +733,8 @@ def create_hardcoded_tree():
     # Layer 1: Nodes 1, 2
     for node_id in [1, 2]:
         nodes[node_id] = Node(
-            id=node_id, compute_power=math.inf, memory=math.inf, resource_capacity=math.inf
+            id=node_id, compute_power=math.inf, memory=math.inf,
+            resource_capacity=math.inf, level=1,
         )
         nodes[node_id].eventrates = [0] * len(base_eventrates)
         nw.append(nodes[node_id])
@@ -737,7 +742,8 @@ def create_hardcoded_tree():
     # Layer 2: Nodes 3, 4, 5
     for node_id in [3, 4, 5]:
         nodes[node_id] = Node(
-            id=node_id, compute_power=math.inf, memory=math.inf, resource_capacity=math.inf
+            id=node_id, compute_power=math.inf, memory=math.inf,
+            resource_capacity=math.inf, level=2,
         )
         nodes[node_id].eventrates = [0] * len(base_eventrates)
         nw.append(nodes[node_id])
@@ -745,7 +751,8 @@ def create_hardcoded_tree():
     # Layer 3: Leaf nodes 6, 7, 8, 9, 10, 11
     for node_id in [6, 7, 8, 9, 10, 11]:
         nodes[node_id] = Node(
-            id=node_id, compute_power=math.inf, memory=math.inf, resource_capacity=math.inf
+            id=node_id, compute_power=math.inf, memory=math.inf,
+            resource_capacity=math.inf, level=3,
         )
         nodes[node_id].eventrates = [0] * len(base_eventrates)
         nw.append(nodes[node_id])
@@ -1732,6 +1739,16 @@ class Simulation:
                     row[f"{prefix}_average_cost_per_placement"] = safe_float(
                         metrics.get("average_cost_per_placement")
                     )
+                    row[f"{prefix}_placements_in_network"] = safe_float(
+                        metrics.get("placements_in_network")
+                    )
+
+                    # Add per-layer placement counts
+                    placements_per_layer = metrics.get("placements_per_layer", {})
+                    for layer_idx, count in placements_per_layer.items():
+                        row[f"{prefix}_placements_at_layer_{layer_idx}"] = safe_float(
+                            count
+                        )
 
             print(
                 f"DEBUG _write_results: Row contains these kraken columns: {[k for k in row.keys() if 'kraken' in k]}"
@@ -1757,6 +1774,9 @@ class Simulation:
                 self.config.algorithm.value
                 if hasattr(self.config.algorithm, "value")
                 else str(self.config.algorithm)
+            )
+            row["resource_constraint_level"] = safe_float(
+                self.config.resource_constraint_level
             )
             row["graph_density"] = safe_float(getattr(self, "graph_density", None))
 
@@ -1829,7 +1849,12 @@ class Simulation:
                 pa.field("kraken_k_beam_num_placements", pa.float64()),
                 pa.field("kraken_k_beam_placements_at_cloud", pa.float64()),
                 pa.field("kraken_k_beam_average_cost_per_placement", pa.float64()),
+                # Kraken greedy per-layer and in-network metrics
+                pa.field("kraken_greedy_placements_in_network", pa.float64()),
+                # K-Beam per-layer and in-network metrics
+                pa.field("kraken_k_beam_placements_in_network", pa.float64()),
                 # Configuration parameters
+                pa.field("resource_constraint_level", pa.float64()),
                 pa.field("network_size", pa.float64()),
                 pa.field("event_skew", pa.float64()),
                 pa.field("node_event_ratio", pa.float64()),
@@ -1849,6 +1874,11 @@ class Simulation:
                 pa.field("combigen_computation_time", pa.float64()),
                 pa.field("average_selectivity", pa.float64()),
             ]
+
+            # Add dynamic per-layer schema fields for any layer columns in the row
+            for col_name in sorted(row.keys()):
+                if "_placements_at_layer_" in col_name:
+                    schema_fields.append(pa.field(col_name, pa.float64()))
 
             # Only include fields that exist in the DataFrame
             original_field_count = len(schema_fields)
@@ -1983,7 +2013,11 @@ class Simulation:
             self.root, self.network, self.eList = create_hardcoded_tree()
         else:
             self.root, self.network, self.eList = create_random_tree(
-                self.nwSize, self.eventrates, self.node_event_ratio, self.max_parents
+                self.nwSize,
+                self.eventrates,
+                self.node_event_ratio,
+                self.max_parents,
+                resource_constraint_level=self.config.resource_constraint_level,
             )
 
     def _convert_node_eventrates_to_python(self):
