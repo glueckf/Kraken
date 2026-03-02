@@ -58,7 +58,13 @@ def generate_events(eventrates, n_e_r):
     return myevents
 
 
-def create_random_tree(nwsize, eventrates, node_event_ratio, max_parents: int = 1):
+def create_random_tree(
+    nwsize,
+    eventrates,
+    node_event_ratio,
+    max_parents: int = 1,
+    resource_constraint_level: int = 0,
+):
     if nwsize <= 0:
         return None
     import math
@@ -73,7 +79,8 @@ def create_random_tree(nwsize, eventrates, node_event_ratio, max_parents: int = 
     print(f"[NETWORK] Network levels: {levels}")
     # Create the root node (cloud)
     root = Node(
-        id=0, compute_power=math.inf, memory=math.inf, resource_capacity=math.inf
+        id=0, compute_power=math.inf, memory=math.inf, resource_capacity=math.inf,
+        level=0,
     )
     nw.append(root)
 
@@ -89,9 +96,17 @@ def create_random_tree(nwsize, eventrates, node_event_ratio, max_parents: int = 
         compute_power = levels - level
         memore = levels - level
 
-        # Resource capacity scales with layer (deeper = less capacity)
-        resource_cap = math.inf
-        # float(compute_power) * 100_000
+        # Two-dimensional resource capacity model:
+        # 1. constraint_level (0–10) sets base capacity for level-1 nodes
+        #    logarithmically: base_cap = 10^(14 - constraint_level)
+        # 2. Deeper nodes get proportionally less capacity based on
+        #    compute_power ratio: (levels - node_level) / (levels - 1)
+        if resource_constraint_level == 0:
+            resource_cap = math.inf
+        else:
+            base_cap = 10 ** (14 - 0.5 * resource_constraint_level)
+            max_compute = levels - 1
+            resource_cap = base_cap * (compute_power / max_compute) if max_compute > 0 else base_cap
 
         # Create the new node
         new_node = Node(
@@ -99,6 +114,7 @@ def create_random_tree(nwsize, eventrates, node_event_ratio, max_parents: int = 
             compute_power=compute_power,
             memory=memore,
             resource_capacity=resource_cap,
+            level=level,
         )
 
         # Ensure level-specific nodes exist in the dictionary
