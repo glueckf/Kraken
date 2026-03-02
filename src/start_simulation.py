@@ -451,6 +451,7 @@ def run_parameter_study(
     max_workers: int = 1,
     run_latency_tradeoff_study: bool = False,
     output_dataset_name: Optional[str] = None,
+    resource_constraint_level: int = 0,
 ) -> None:
     """
     Run a full parameter study, sorted by a complexity score.
@@ -525,6 +526,7 @@ def run_parameter_study(
                         cost_weight=cost_weight,
                         run_latency_tradeoff_study=run_latency_tradeoff_study,
                         output_dataset_name=output_dataset_name,
+                        resource_constraint_level=resource_constraint_level,
                     )
 
                     # Generate multiple runs for this combination
@@ -572,28 +574,37 @@ def run_parameter_study(
 
 def main() -> None:
     """
-    Main entry point for the Kraken Greedy vs. Constrained-Greedy
-    latency trade-off experiment.
-    """
-    # --- 1. Define Experiment Parameters ---
-    runs = 50
+    Main entry point for the resource constraint experiment.
 
-    run_parameter_study(
-        network_sizes=[200],
-        workload_sizes=[8],
-        parent_factors=[1.8],
-        query_lengths=[5],
-        runs_per_combination=runs,
-        node_event_ratios=[0.3],
-        num_event_types=[6],
-        event_skews=[2],
-        mode=SimulationMode.RANDOM,
-        enable_parallel=True,
-        max_workers=14,
-        xi=0,
-        cost_weight=1,
-        output_dataset_name="resource_constraint_experiments",
-    )
+    Loops over constraint_levels 0-10, running a parameter study for each.
+    Level 0 = unconstrained (current behavior), levels 1-10 = increasingly
+    constrained fog nodes (capacity decreases ~3.16x per step).
+    """
+    runs = 100
+    constraint_levels = list(range(0, 11))
+
+    for level in constraint_levels:
+        logger.info(
+            f"[EXPERIMENT] Starting resource_constraint_level={level} "
+            f"({level}/{len(constraint_levels) - 1})"
+        )
+        run_parameter_study(
+            network_sizes=[100],
+            workload_sizes=[5],
+            parent_factors=[1.8],
+            query_lengths=[3],
+            runs_per_combination=runs,
+            node_event_ratios=[0.5],
+            num_event_types=[6],
+            event_skews=[2],
+            mode=SimulationMode.RANDOM,
+            enable_parallel=True,
+            max_workers=14,
+            xi=0,
+            cost_weight=1,
+            output_dataset_name="second_resource_constraint_experiments",
+            resource_constraint_level=level,
+        )
 
 
 if __name__ == "__main__":
