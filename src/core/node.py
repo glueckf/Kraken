@@ -13,6 +13,7 @@ class Node:
         compute_power: int,
         memory: int,
         resource_capacity: Optional[float] = None,
+        level: Optional[int] = None,
     ):
         self.id = id
         self.computational_power = compute_power
@@ -20,6 +21,7 @@ class Node:
         self.resource_capacity = (
             resource_capacity if resource_capacity is not None else float(compute_power)
         )
+        self.level = level
         self.eventrates = []
         self.Parent = []
         self.Child = []
