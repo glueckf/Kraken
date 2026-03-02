@@ -466,6 +466,22 @@ def _calculate_solution_metrics(
         1 for info in solution.placements.values() if info.node == 0
     )
 
+    # Count placements in network (not at cloud)
+    placements_in_network = sum(
+        1 for info in solution.placements.values() if info.node != 0
+    )
+
+    # Count placements per layer using node.level
+    network_nodes = ines_context.network
+    num_levels = math.ceil(math.log2(len(network_nodes))) if len(network_nodes) > 1 else 1
+    placements_per_layer: Dict[int, int] = {i: 0 for i in range(num_levels)}
+    for info in solution.placements.values():
+        node_id = info.node
+        if node_id < len(network_nodes):
+            node_level = getattr(network_nodes[node_id], "level", None)
+            if node_level is not None and node_level in placements_per_layer:
+                placements_per_layer[node_level] += 1
+
     # Calculate average cost
     num_placements = len(solution.placements)
     avg_cost = total_cost / num_placements if num_placements > 0 else 0.0
@@ -477,6 +493,8 @@ def _calculate_solution_metrics(
         "cumulative_processing_latency": cumulative_processing_latency,
         "num_placements": num_placements,
         "placements_at_cloud": placements_at_cloud,
+        "placements_in_network": placements_in_network,
+        "placements_per_layer": placements_per_layer,
         "average_cost_per_placement": avg_cost,
     }
 
