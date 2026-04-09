@@ -7,8 +7,8 @@ from inev.placement_aug import (
 )
 from inev.process_combination import compute_dependencies, get_shared_ms_input
 import time
-from ines.evaluation_plan import EvaluationPlan
-from ines.projections import return_partitioning, total_rate
+from simulator.evaluation_plan import EvaluationPlan
+from simulator.projections import return_partitioning, total_rate
 
 
 # maxDist = max([max(x) for x in allPairs])

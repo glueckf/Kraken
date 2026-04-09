@@ -154,11 +154,11 @@ def run_simulation_worker(job_data: Dict[str, Any]) -> Dict[str, Any]:
         # Return complete result data
         return {
             "job_id": job_id,
-            "ines_results": simulation.results,
+            "sequential_results": simulation.results,
             "integrated_results": simulation.kraken_results,
             "config": config,
             "graph_density": graph_density,
-            "ines_object": simulation,
+            "sequential_object": simulation,
             "success": True,
             "error_msg": None,
             "parameter_set_id": parameter_set_id,
@@ -173,11 +173,11 @@ def run_simulation_worker(job_data: Dict[str, Any]) -> Dict[str, Any]:
 
         return {
             "job_id": job_data.get("job_id", -1),
-            "ines_results": None,
+            "sequential_results": None,
             "integrated_results": None,
             "config": job_data.get("config"),
             "graph_density": None,
-            "ines_object": None,
+            "sequential_object": None,
             "success": False,
             "error_msg": error_message,
             "parameter_set_id": job_data.get("parameter_set_id", "unknown"),

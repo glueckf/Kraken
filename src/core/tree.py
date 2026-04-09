@@ -426,5 +426,5 @@ class PrimEvent(Tree):
         return self
 
     def evaluate(self, rates):
-        "rates needs to be supplied by INES"
+        "rates needs to be supplied by the simulator"
         return rates[filter_numbers(self.evtype)]

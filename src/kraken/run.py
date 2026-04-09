@@ -24,7 +24,7 @@ from kraken.utils.results_logger import (
 
 
 def run_kraken_solver(
-    ines_context: Any,
+    simulation_context: Any,
     strategies_to_run: List[Any] = None,
     enable_detailed_logging: bool = False,
     compare_within_kraken: bool = False,
@@ -36,7 +36,7 @@ def run_kraken_solver(
     Orchestrates the entire solving process: setup, execution, and reporting.
 
     Args:
-        ines_context: The INES simulation context object containing all problem data.
+        simulation_context: The simulation context object containing all problem data.
         strategies_to_run: List of strategy configurations (dicts or enums) specifying which strategies to execute.
         enable_detailed_logging: If True, logs every placement decision to CSV for analysis.
         compare_within_kraken: If True, logs all strategy results in a single wide-format row for comparison.
@@ -58,14 +58,14 @@ def run_kraken_solver(
     if run_latency_tradeoff_study:
         # Validate preconditions
         if (
-            not hasattr(ines_context, "all_push_results")
-            or not ines_context.all_push_results
+            not hasattr(simulation_context, "all_push_results")
+            or not simulation_context.all_push_results
         ):
             raise ValueError(
                 "All Push results are missing. Cannot run latency trade-off study."
             )
 
-        all_push_latency = ines_context.all_push_results.get(
+        all_push_latency = simulation_context.all_push_results.get(
             "transmission_latency", 0.0
         )
         if all_push_latency == 0.0:
@@ -74,26 +74,26 @@ def run_kraken_solver(
             )
 
         # Get parameters
-        latency_threshold_factor = ines_context.config.latency_threshold
-        original_cost_weight = ines_context.config.cost_weight
+        latency_threshold_factor = simulation_context.config.latency_threshold
+        original_cost_weight = simulation_context.config.cost_weight
 
         # Store original state
-        original_config_threshold = ines_context.latency_threshold
+        original_config_threshold = simulation_context.latency_threshold
 
         # Calculate absolute threshold
         absolute_threshold = latency_threshold_factor * all_push_latency
 
         # Setup common problem context
-        context = _gather_problem_parameters(ines_context)
+        context = _gather_problem_parameters(simulation_context)
         dependencies = compute_dependencies(
-            ines_context, ines_context.h_mycombi, ines_context.h_criticalMSTypes
+            simulation_context, simulation_context.h_mycombi, simulation_context.h_criticalMSTypes
         )
         processing_order = sorted(dependencies.keys(), key=lambda x: dependencies[x])
 
         # Run 1: Baseline (no latency constraint)
         print("--- Running Baseline Greedy (no latency constraint) ---")
-        ines_context.latency_threshold = None
-        context_baseline = _gather_problem_parameters(ines_context)
+        simulation_context.latency_threshold = None
+        context_baseline = _gather_problem_parameters(simulation_context)
         problem_baseline = PlacementProblem(processing_order, context_baseline, False)
 
         baseline_results = {}
@@ -106,7 +106,7 @@ def run_kraken_solver(
             baseline_end = time.time()
 
             metrics = _calculate_solution_metrics(
-                solution, problem_baseline, ines_context
+                solution, problem_baseline, simulation_context
             )
             baseline_results = {
                 "status": "success",
@@ -125,8 +125,8 @@ def run_kraken_solver(
         print(
             f"--- Running Constrained Greedy (threshold={absolute_threshold:.2f}) ---"
         )
-        ines_context.latency_threshold = absolute_threshold
-        context_constrained = _gather_problem_parameters(ines_context)
+        simulation_context.latency_threshold = absolute_threshold
+        context_constrained = _gather_problem_parameters(simulation_context)
         problem_constrained = PlacementProblem(
             processing_order, context_constrained, False
         )
@@ -141,7 +141,7 @@ def run_kraken_solver(
             constrained_end = time.time()
 
             metrics = _calculate_solution_metrics(
-                solution, problem_constrained, ines_context
+                solution, problem_constrained, simulation_context
             )
             constrained_results = {
                 "status": "success",
@@ -157,7 +157,7 @@ def run_kraken_solver(
             }
 
         # Restore original state
-        ines_context.latency_threshold = original_config_threshold
+        simulation_context.latency_threshold = original_config_threshold
 
         # Return special dictionary
         return {
@@ -181,11 +181,11 @@ def run_kraken_solver(
         initialize_logging()
 
     # Phase 1: Setup & Data Gathering
-    context = _gather_problem_parameters(ines_context)
+    context = _gather_problem_parameters(simulation_context)
 
     # Calculate processing order using dependency computation
     dependencies = compute_dependencies(
-        ines_context, ines_context.h_mycombi, ines_context.h_criticalMSTypes
+        simulation_context, simulation_context.h_mycombi, simulation_context.h_criticalMSTypes
     )
 
     processing_order = sorted(dependencies.keys(), key=lambda x: dependencies[x])
@@ -234,7 +234,7 @@ def run_kraken_solver(
             strategy_end = time.time()
 
             # Calculate solution metrics
-            metrics = _calculate_solution_metrics(solution, problem, ines_context)
+            metrics = _calculate_solution_metrics(solution, problem, simulation_context)
 
             strategy_results[strategy_name] = {
                 "status": "success",
@@ -271,14 +271,14 @@ def run_kraken_solver(
     if compare_within_kraken:
         # Build the wide-format, single-row summary
         comparison_data = _prepare_kraken_comparison_summary(
-            str(run_id), strategy_results, problem, ines_context
+            str(run_id), strategy_results, problem, simulation_context
         )
         if comparison_data:
             write_kraken_comparison_log(comparison_data)
     else:
         # Use the standard, long-format summary
         run_results_data = _prepare_run_results_summary(
-            str(run_id), strategy_results, problem, ines_context
+            str(run_id), strategy_results, problem, simulation_context
         )
         if run_results_data:
             write_run_results(run_results_data)
@@ -292,9 +292,9 @@ def run_kraken_solver(
         "strategies": strategy_results,
         "problem_info": {
             "num_projections": len(processing_order),
-            "num_queries": len(ines_context.query_workload),
+            "num_queries": len(simulation_context.query_workload),
             "latency_threshold": context.get("latency_threshold", None),
-            "network_size": len(ines_context.network),
+            "network_size": len(simulation_context.network),
             "detailed_logging_enabled": enable_detailed_logging,
         },
         "best_solution": best_solution,
@@ -303,51 +303,51 @@ def run_kraken_solver(
     return final_report
 
 
-def _gather_problem_parameters(ines_context: Any) -> Dict[str, Any]:
+def _gather_problem_parameters(simulation_context: Any) -> Dict[str, Any]:
     """
-    Extract problem parameters from INES context into clean dictionary format.
+    Extract problem parameters from simulation context into clean dictionary format.
 
     Args:
-        ines_context: The INES simulation context object.
+        simulation_context: The simulation context object.
 
     Returns:
         Dictionary containing all necessary problem parameters.
     """
     context = {
         # Query and workload
-        "query_workload": ines_context.query_workload,
-        "dependencies_per_projection": ines_context.h_mycombi,
+        "query_workload": simulation_context.query_workload,
+        "dependencies_per_projection": simulation_context.h_mycombi,
         # Network topology and routing
-        "pairwise_distance_matrix": ines_context.allPairs,
-        "all_pairs": ines_context.allPairs,  # Alias for cost calculator
-        "graph": ines_context.graph,
-        "routing_dict": create_routing_dict(ines_context.graph),
+        "pairwise_distance_matrix": simulation_context.allPairs,
+        "all_pairs": simulation_context.allPairs,  # Alias for cost calculator
+        "graph": simulation_context.graph,
+        "routing_dict": create_routing_dict(simulation_context.graph),
         # Network and event data
-        "network_data": ines_context.h_network_data,
-        "event_nodes": ines_context.h_eventNodes,
-        "event_distribution_matrix": ines_context.h_eventNodes,
-        "index_event_nodes": ines_context.h_IndexEventNodes,
-        "global_event_rates": ines_context.h_rates_data,
+        "network_data": simulation_context.h_network_data,
+        "event_nodes": simulation_context.h_eventNodes,
+        "event_distribution_matrix": simulation_context.h_eventNodes,
+        "index_event_nodes": simulation_context.h_IndexEventNodes,
+        "global_event_rates": simulation_context.h_rates_data,
         # Projection and selectivity
-        "projection_rates_selectivity": ines_context.h_projrates,
-        "pairwise_selectivities": ines_context.selectivities,
-        "filter_by_projection": ines_context.h_projFilterDict,
+        "projection_rates_selectivity": simulation_context.h_projrates,
+        "pairwise_selectivities": simulation_context.selectivities,
+        "filter_by_projection": simulation_context.h_projFilterDict,
         # Node information
-        "network_data_nodes": ines_context.network,
-        "primitive_events_per_projection": ines_context.h_primitive_events,
-        "nodes_per_primitive_event": ines_context.h_nodes,
+        "network_data_nodes": simulation_context.network,
+        "primitive_events_per_projection": simulation_context.h_primitive_events,
+        "nodes_per_primitive_event": simulation_context.h_nodes,
         # Sink nodes (cloud is typically node 0)
         "sink_nodes": [0],
         # Optimization structures
-        "local_rate_lookup": ines_context.h_local_rate_lookup,
-        "sum_of_input_rates_per_query": ines_context.sum_of_input_rates_per_query,
+        "local_rate_lookup": simulation_context.h_local_rate_lookup,
+        "sum_of_input_rates_per_query": simulation_context.sum_of_input_rates_per_query,
         # Simulation mode
-        "simulation_mode": ines_context.config.mode,
+        "simulation_mode": simulation_context.config.mode,
         # Latency
-        "latency_threshold": ines_context.latency_threshold,
-        "latency_weighting_factor": ines_context.config.xi,
-        "cost_weight": getattr(ines_context.config, "cost_weight", 0.5),
-        "latency_weight": 1 - getattr(ines_context.config, "cost_weight", 0.5),
+        "latency_threshold": simulation_context.latency_threshold,
+        "latency_weighting_factor": simulation_context.config.xi,
+        "cost_weight": getattr(simulation_context.config, "cost_weight", 0.5),
+        "latency_weight": 1 - getattr(simulation_context.config, "cost_weight", 0.5),
     }
 
     return context
@@ -402,7 +402,7 @@ def _select_strategy(strategy_config: Any):
 def _calculate_solution_metrics(
     solution: SolutionCandidate,
     problem: PlacementProblem,
-    ines_context: Any,
+    simulation_context: Any,
 ) -> Dict[str, Any]:
     """
     Calculate comprehensive metrics for a solution.
@@ -410,7 +410,7 @@ def _calculate_solution_metrics(
     Args:
         solution: The solution candidate to analyze.
         problem: The placement problem for context.
-        ines_context: INES context for workload information.
+        simulation_context: Simulation context for workload information.
 
     Returns:
         Dictionary containing metrics:
@@ -425,7 +425,7 @@ def _calculate_solution_metrics(
     total_cost = solution.cumulative_cost
 
     # Calculate cost only for workload roots
-    workload_set = set(ines_context.query_workload)
+    workload_set = set(simulation_context.query_workload)
     workload_cost = sum(
         info.individual_cost
         for proj, info in solution.placements.items()
@@ -577,7 +577,7 @@ def _prepare_kraken_comparison_summary(
     run_id: str,
     strategy_results: Dict[str, Any],
     problem: PlacementProblem,
-    ines_context: Any,
+    simulation_context: Any,
 ) -> List[Dict[str, Any]]:
     """
     Prepare a single-row, wide-format summary for Kraken strategy comparison.
@@ -586,7 +586,7 @@ def _prepare_kraken_comparison_summary(
         run_id: Unique identifier for this run.
         strategy_results: Dictionary of results from each strategy execution.
         problem: PlacementProblem instance for workload information.
-        ines_context: INES context for configuration information.
+        simulation_context: Simulation context for configuration information.
 
     Returns:
         List containing a single dictionary with all comparison metrics.
@@ -601,7 +601,7 @@ def _prepare_kraken_comparison_summary(
     }
 
     # Add config data (same as in _prepare_run_results_summary)
-    config = ines_context.config
+    config = simulation_context.config
     cost_weight = getattr(config, "cost_weight", 0.5)
     cost_weight = max(0.0, min(cost_weight, 1.0))
     latency_weight = 1.0 - cost_weight
@@ -626,7 +626,7 @@ def _prepare_kraken_comparison_summary(
             "algorithm": config.algorithm.value
             if hasattr(config.algorithm, "value")
             else str(config.algorithm),
-            "graph_density": getattr(ines_context, "graph_density", None),
+            "graph_density": getattr(simulation_context, "graph_density", None),
         }
     )
 
@@ -670,7 +670,7 @@ def _prepare_run_results_summary(
     run_id: str,
     strategy_results: Dict[str, Any],
     problem: PlacementProblem,
-    ines_context: Any,
+    simulation_context: Any,
 ) -> List[Dict[str, Any]]:
     """
     Prepare summary data for run results from strategy executions.
@@ -682,7 +682,7 @@ def _prepare_run_results_summary(
         run_id: Unique identifier for this run.
         strategy_results: Dictionary of results from each strategy execution.
         problem: PlacementProblem instance for workload information.
-        ines_context: INES context for configuration information.
+        simulation_context: Simulation context for configuration information.
 
     Returns:
         List of dictionaries containing run result summaries.
@@ -691,7 +691,7 @@ def _prepare_run_results_summary(
     results_data = []
 
     # Extract config information once for all results
-    config = ines_context.config
+    config = simulation_context.config
     cost_weight = getattr(config, "cost_weight", 0.5)
     cost_weight = max(0.0, min(cost_weight, 1.0))
     latency_weight = 1.0 - cost_weight
@@ -715,7 +715,7 @@ def _prepare_run_results_summary(
         "algorithm": config.algorithm.value
         if hasattr(config.algorithm, "value")
         else str(config.algorithm),
-        "graph_density": getattr(ines_context, "graph_density", None),
+        "graph_density": getattr(simulation_context, "graph_density", None),
     }
 
     for strategy_name, result in strategy_results.items():

@@ -6,7 +6,7 @@ from inev.filter import (
 )
 from core.structures import get_num_etbs
 from core.tree import PrimEvent
-from ines.projections import total_rate, return_partitioning
+from simulator.projections import total_rate, return_partitioning
 import numpy as np
 
 

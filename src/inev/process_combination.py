@@ -6,7 +6,7 @@ Created on Mon Aug 16 11:47:10 2021
 @author: samira
 """
 
-from ines.projections import return_partitioning
+from simulator.projections import return_partitioning
 from inev.filter import get_maximal_filter
 
 

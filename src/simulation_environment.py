@@ -1,5 +1,5 @@
 """
-Simulation Environment - Central Orchestrator for INES Placement Strategies
+Simulation Environment - Central Orchestrator for Placement Strategies
 
 This module provides a clean, well-structured orchestrator for the entire simulation pipeline.
 It separates the simulation setup phase from the execution phase, where different placement
@@ -23,13 +23,13 @@ from core.network import generate_eventrates, create_random_tree
 from core.graph import create_fog_graph
 from core.all_pairs import populate_all_pairs
 from core.query_workload import generate_workload
-from ines.selectivity import initialize_selectivities
+from simulator.selectivity import initialize_selectivities
 from core.write_config import generate_config_buffer
-from ines.single_selectivities import initialize_single_selectivity
+from simulator.single_selectivities import initialize_single_selectivity
 from core.parse_network import initialize_globals
 from core.structures import init_event_nodes, get_longest
-from ines.combigen import populate_proj_filter_dict, remove_filters, generate_combigen
-from ines.operator_placement import calculate_operator_placement
+from simulator.combigen import populate_proj_filter_dict, remove_filters, generate_combigen
+from simulator.operator_placement import calculate_operator_placement
 from prepp.prepp import generate_prePP
 from prepp.generate_eval_plan import generate_eval_plan
 
@@ -213,7 +213,7 @@ def get_projection_rate_value(context: Any, query: Any, index: int) -> float:
 
 @dataclass
 class SimulationConfig:
-    """Configuration class for INES simulation parameters."""
+    """Configuration class for simulation parameters."""
 
     # Network parameters
     network_size: int = 12
@@ -554,14 +554,14 @@ def calculate_prepp_from_cloud(context, reused_buffer_section):
         raise
 
 
-def update_results_for_topology(context, ines_results, inev_results):
+def update_results_for_topology(context, sequential_results, inev_results):
     """
-    Update INES results to include cloud transmission costs and latency.
+    Update Sequential results to include cloud transmission costs and latency.
     Format INEv results into the expected dictionary structure (already adjusted in placement).
 
     Args:
         context: Simulation context with network topology and query workload
-        ines_results: Results from INES (PrePP) containing:
+        sequential_results: Results from Sequential Approach (PrePP) containing:
             [0] exact_cost (total costs)
             [1] pushPullTime (calculation time)
             [2] maxPushPullLatency (latency value or tuple)
@@ -572,7 +572,7 @@ def update_results_for_topology(context, ines_results, inev_results):
         inev_results: Results from INEv (already adjusted, just needs formatting)
 
     Returns:
-        Tuple of (ines_dict, inev_dict) where each dict contains:
+        Tuple of (sequential_dict, inev_dict) where each dict contains:
         {
             "cost": costs,
             "transmission_latency": transmission_latency,
@@ -585,23 +585,23 @@ def update_results_for_topology(context, ines_results, inev_results):
         CLOUD_NODE_ID = 0
 
         query_workload = context.query_workload
-        ines_eval_plan = context.eval_plan[0].projections
+        sequential_eval_plan = context.eval_plan[0].projections
 
-        # Extract INES data
-        ines_total_costs = ines_results[0]
-        ines_calculation_time = ines_results[1]
-        ines_max_latency_tuple = ines_results[2]
+        # Extract Sequential data
+        sequential_total_costs = sequential_results[0]
+        sequential_calculation_time = sequential_results[1]
+        sequential_max_latency_tuple = sequential_results[2]
 
-        # Calculate INES latencies (returns tuple of transmission and processing latencies)
-        ines_transmission_latency_per_query, ines_processing_latency = (
-            calculate_ines_max_latency(context, ines_results)
+        # Calculate Sequential latencies (returns tuple of transmission and processing latencies)
+        sequential_transmission_latency_per_query, sequential_processing_latency = (
+            calculate_sequential_max_latency(context, sequential_results)
         )
 
-        # ===== ADJUST INES RESULTS ONLY =====
+        # ===== ADJUST SEQUENTIAL RESULTS ONLY =====
         # Calculate additional costs for sending query results to cloud
         additional_costs = 0
 
-        for projection in ines_eval_plan:
+        for projection in sequential_eval_plan:
             projection_name = projection.name.name
             if projection_name in query_workload:
                 placement_nodes = projection.name.sinks
@@ -614,18 +614,18 @@ def update_results_for_topology(context, ines_results, inev_results):
                     )[1]
                     additional_costs += hops_from_node_to_cloud * query_output_rate
 
-        # Update costs for INES only
-        ines_total_costs += additional_costs
+        # Update costs for Sequential only
+        sequential_total_costs += additional_costs
 
-        # Calculate additional latency for sending to cloud (INES only)
+        # Calculate additional latency for sending to cloud (Sequential only)
         if (
-            isinstance(ines_max_latency_tuple, tuple)
-            and len(ines_max_latency_tuple) > 0
+            isinstance(sequential_max_latency_tuple, tuple)
+            and len(sequential_max_latency_tuple) > 0
         ):
-            node_with_max_latency = ines_max_latency_tuple[0]
+            node_with_max_latency = sequential_max_latency_tuple[0]
             if not isinstance(node_with_max_latency, int):
                 logger.debug(
-                    "INES max latency node is not an integer (value=%s); skipping cloud latency adjustment",
+                    "Sequential max latency node is not an integer (value=%s); skipping cloud latency adjustment",
                     node_with_max_latency,
                 )
 
@@ -634,10 +634,10 @@ def update_results_for_topology(context, ines_results, inev_results):
         def _lookup_base_latency(query_obj: Any) -> float:
             """Fetch the pre-cloud critical latency for a query using multiple key styles."""
             query_key = str(query_obj)
-            if query_key in ines_transmission_latency_per_query:
-                return float(ines_transmission_latency_per_query[query_key])
-            if query_obj in ines_transmission_latency_per_query:
-                return float(ines_transmission_latency_per_query[query_obj])
+            if query_key in sequential_transmission_latency_per_query:
+                return float(sequential_transmission_latency_per_query[query_key])
+            if query_obj in sequential_transmission_latency_per_query:
+                return float(sequential_transmission_latency_per_query[query_obj])
             return 0.0
 
         def _cloud_hop_latency(query_name: Any) -> float:
@@ -654,14 +654,14 @@ def update_results_for_topology(context, ines_results, inev_results):
                         )
             return max_distance
 
-        # Update transmission latency for INES (add cloud transmission)
-        ines_transmission_latency = 0.0
+        # Update transmission latency for Sequential (add cloud transmission)
+        sequential_transmission_latency = 0.0
         for query in query_workload:
             base_latency = _lookup_base_latency(query)
             cloud_latency = _cloud_hop_latency(query)
             candidate_latency = base_latency + cloud_latency
-            ines_transmission_latency = max(
-                ines_transmission_latency, candidate_latency
+            sequential_transmission_latency = max(
+                sequential_transmission_latency, candidate_latency
             )
 
         # ===== FORMAT INEV RESULTS (NO ADJUSTMENTS) =====
@@ -673,11 +673,11 @@ def update_results_for_topology(context, ines_results, inev_results):
         inev_processing_latency = inev_results["processing_latency"]
 
         # Create return dictionaries
-        ines_dict = {
-            "cost": ines_total_costs,
-            "transmission_latency": ines_transmission_latency,
-            "processing_latency": ines_processing_latency,
-            "computing_time": ines_calculation_time,
+        sequential_dict = {
+            "cost": sequential_total_costs,
+            "transmission_latency": sequential_transmission_latency,
+            "processing_latency": sequential_processing_latency,
+            "computing_time": sequential_calculation_time,
             "status": "success",
         }
 
@@ -689,7 +689,7 @@ def update_results_for_topology(context, ines_results, inev_results):
             "status": "success",
         }
 
-        return ines_dict, inev_dict
+        return sequential_dict, inev_dict
     except Exception as e:
         logger.error(msg=e, exc_info=True)
         raise
@@ -928,16 +928,16 @@ def generate_hardcoded_selectivities():
     return selectivities, selectivitiesExperimentData
 
 
-def calculate_ines_max_latency(context, ines_results):
+def calculate_sequential_max_latency(context, sequential_results):
     """
-    Reconstruct critical-path latency for INES using Kraken's latency model.
+    Reconstruct critical-path latency for Sequential Approach using Kraken's latency model.
 
     Returns
         Tuple:
             dict(query -> critical path latency without cloud hop)
             float total processing latency across queries (for reporting)
     """
-    acquisition_steps = ines_results[6]
+    acquisition_steps = sequential_results[6]
     config = getattr(context, "config", None)
     xi = getattr(config, "xi", 1.0)
     if xi is None:
@@ -1118,7 +1118,7 @@ def calculate_graph_density(graph):
 
 class Simulation:
     """
-    Central orchestrator for the entire INES simulation pipeline.
+    Central orchestrator for the entire simulation pipeline.
 
     This class cleanly separates the simulation setup phase (in __init__)
     from the execution phase (in run method), where different placement
@@ -1180,7 +1180,7 @@ class Simulation:
     # Results from different strategies
     all_push_results = None
     inev_results = None
-    ines_results = None
+    sequential_results = None
     prepp_from_cloud_result = None
     kraken_results = None
     results = None
@@ -1242,7 +1242,7 @@ class Simulation:
             ]
 
             # Initialize core simulation parameters
-            from ines.projections import generate_all_projections
+            from simulator.projections import generate_all_projections
 
             eventrates_per_source = generate_eventrates(
                 config.event_skew, config.num_event_types
@@ -1370,7 +1370,7 @@ class Simulation:
         This method runs the following strategies in order:
         1. All Push (placeholder)
         2. INEv
-        3. INES (using INEv results)
+        3. Sequential Approach (using INEv results)
         4. PrePP from Cloud (placeholder)
         5. Kraken
         6. Write Results
@@ -1394,7 +1394,7 @@ class Simulation:
             # ----- INEV COMPUTATION -----#
             print("--- Running INEv Computation ---")
             inev_start_time = time.time()
-            ines_start_time = inev_start_time  # For consistency in logging
+            sequential_start_time = inev_start_time  # For consistency in logging
             (
                 self.eval_plan,
                 self.central_eval_plan,
@@ -1405,8 +1405,8 @@ class Simulation:
             inev_end_time = time.time()
             print("--- INEV COMPUTATION COMPLETE ---")
 
-            # ----- INES COMPUTATION (using INEv results) -----#
-            print("--- Running INES Computation ---")
+            # ----- SEQUENTIAL COMPUTATION (using INEv results) -----#
+            print("--- Running Sequential Computation ---")
             plan, reused_section = generate_eval_plan(
                 self.network,
                 self.selectivities,
@@ -1415,21 +1415,21 @@ class Simulation:
                 self.query_workload,
             )
             deterministic_flag = self.config.is_selectivities_fixed()
-            ines_results = generate_prePP(
+            sequential_results = generate_prePP(
                 plan, "ppmuse", "e", 1, 0, 1, True, self.allPairs, deterministic_flag
             )
 
-            # Update both INES and INEv results with topology adjustments
-            self.raw_ines_prepp_result = ines_results
-            ines_dict, inev_dict = update_results_for_topology(
-                self, ines_results, self.inev_results
+            # Update both Sequential and INEv results with topology adjustments
+            self.raw_sequential_prepp_result = sequential_results
+            sequential_dict, inev_dict = update_results_for_topology(
+                self, sequential_results, self.inev_results
             )
-            ines_end_time = time.time()
+            sequential_end_time = time.time()
             inev_dict["computing_time"] = inev_end_time - inev_start_time
-            ines_dict["computing_time"] = ines_end_time - ines_start_time
-            self.ines_results = ines_dict
+            sequential_dict["computing_time"] = sequential_end_time - sequential_start_time
+            self.sequential_results = sequential_dict
             self.inev_results = inev_dict
-            print("--- INES COMPUTATION COMPLETE ---")
+            print("--- SEQUENTIAL COMPUTATION COMPLETE ---")
 
             # ----- SOLELY PREPP COMPUTATION (from cloud) -----#
             print("--- Running PrePP from Cloud Computation ---")
@@ -1446,12 +1446,12 @@ class Simulation:
             if self.config.run_latency_tradeoff_study:
                 # Run dual-run experiment: baseline + constrained
                 self.kraken_results = run_kraken_solver(
-                    ines_context=self, run_latency_tradeoff_study=True
+                    simulation_context=self, run_latency_tradeoff_study=True
                 )
             else:
                 # Normal multi-strategy run
                 self.kraken_results = run_kraken_solver(
-                    ines_context=self,
+                    simulation_context=self,
                     strategies_to_run=[{"name": "greedy"}],
                     compare_within_kraken=False,
                 )
@@ -1692,7 +1692,7 @@ class Simulation:
             # Normal simulation result writing
             populate_basic("all_push", self.all_push_results)
             populate_basic("inev", self.inev_results)
-            populate_basic("ines", self.ines_results)
+            populate_basic("sequential", self.sequential_results)
             populate_basic("prepp", self.prepp_from_cloud_result)
 
             if self.kraken_results and "strategies" in self.kraken_results:
@@ -1798,12 +1798,12 @@ class Simulation:
                 pa.field("inev_transmission_latency", pa.float64()),
                 pa.field("inev_processing_latency", pa.float64()),
                 pa.field("inev_computing_time", pa.float64()),
-                # INES metrics
-                pa.field("ines_status", pa.string()),
-                pa.field("ines_cost", pa.float64()),
-                pa.field("ines_transmission_latency", pa.float64()),
-                pa.field("ines_processing_latency", pa.float64()),
-                pa.field("ines_computing_time", pa.float64()),
+                # Sequential metrics
+                pa.field("sequential_status", pa.string()),
+                pa.field("sequential_cost", pa.float64()),
+                pa.field("sequential_transmission_latency", pa.float64()),
+                pa.field("sequential_processing_latency", pa.float64()),
+                pa.field("sequential_computing_time", pa.float64()),
                 # PrePP metrics
                 pa.field("prepp_status", pa.string()),
                 pa.field("prepp_cost", pa.float64()),
