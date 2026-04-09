@@ -159,19 +159,19 @@ This executes the experiment defined in the `main()` function of `start_simulati
 
 ### Simulation Parameters
 
-| Parameter              | Type           | Default  | Description |
-|------------------------|----------------|----------|-------------|
-| `network_sizes`        | `List[int]`    | `[12]`   | Number of nodes in the network topology. |
-| `workload_sizes`       | `List[int]`    | `[5]`    | Number of queries in each workload. |
-| `query_lengths`        | `List[int]`    | `[5]`    | Average number of primitive events per query. |
-| `parent_factors`       | `List[float]`  | `[1.8]`  | Controls maximum parents per node: `max_parents = parent_factor * ceil(log2(network_size))`. |
-| `node_event_ratios`    | `List[float]`  | `[0.5]`  | Probability that a leaf node generates a given event type. |
-| `num_event_types`      | `List[int]`    | `[6]`    | Number of distinct primitive event types (A, B, C, ...). |
-| `event_skews`          | `List[float]`  | `[2.0]`  | Zipf exponent controlling event rate distribution skewness. |
-| `runs_per_combination` | `int`          | `5`      | Number of independent simulation runs per parameter combination. |
-| `xi`                   | `float`        | `0.0`    | Weighting factor for processing latency in the objective function. |
-| `latency_threshold`    | `float`        | `None`   | If set, multiplied by All-Push latency to constrain placement latency. |
-| `cost_weight`          | `float`        | `0.5`    | Weight for cost in the cost-latency trade-off (latency weight = 1 - cost_weight). |
+| Parameter              | Type           | Default | Description |
+|------------------------|----------------|---------|-------------|
+| `network_sizes`        | `List[int]`    | `[100]` | Number of nodes in the network topology. |
+| `workload_sizes`       | `List[int]`    | `[5]`   | Number of queries in each workload. |
+| `query_lengths`        | `List[int]`    | `[5]`   | Average number of primitive events per query. |
+| `parent_factors`       | `List[float]`  | `[1.8]` | Controls maximum parents per node: `max_parents = parent_factor * ceil(log2(network_size))`. |
+| `node_event_ratios`    | `List[float]`  | `[0.7]` | Probability that a leaf node generates a given event type. |
+| `num_event_types`      | `List[int]`    | `[6]`   | Number of distinct primitive event types (A, B, C, ...). |
+| `event_skews`          | `List[float]`  | `[2.0]` | Zipf exponent controlling event rate distribution skewness. |
+| `runs_per_combination` | `int`          | `50`    | Number of independent simulation runs per parameter combination. |
+| `xi`                   | `float`        | `0.0`   | Weighting factor for processing latency in the objective function. |
+| `latency_threshold`    | `float`        | `None`  | If set, multiplied by All-Push latency to constrain placement latency. |
+| `cost_weight`          | `float`        | `1`     | Weight for cost in the cost-latency trade-off (latency weight = 1 - cost_weight). |
 
 ### Simulation Modes
 
