@@ -1449,11 +1449,17 @@ class Simulation:
                     simulation_context=self, run_latency_tradeoff_study=True
                 )
             else:
-                # Normal multi-strategy run
+                # Normal multi-strategy run — comparing greedy / k-beam / DAG*
                 self.kraken_results = run_kraken_solver(
                     simulation_context=self,
-                    strategies_to_run=[{"name": "greedy"}],
-                    compare_within_kraken=False,
+                    strategies_to_run=[
+                        {"name": "greedy"},
+                        {"name": "k_beam", "k": 3},
+                        {"name": "k_beam", "k": 5},
+                        {"name": "dag_star", "use_upper_bound": True},
+                        {"name": "dag_star", "use_upper_bound": False},
+                    ],
+                    compare_within_kraken=True,
                 )
             print("--- KRAKEN COMPUTATION COMPLETE ---")
 

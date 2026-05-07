@@ -202,6 +202,7 @@ def run_kraken_solver(
         if isinstance(strategy_config, dict):
             algorithm_name = strategy_config.get("name")
             k_value = strategy_config.get("k", None)
+            use_upper_bound = strategy_config.get("use_upper_bound", True)
         else:
             algorithm_name = (
                 str(strategy_config.value)
@@ -209,10 +210,13 @@ def run_kraken_solver(
                 else str(strategy_config)
             )
             k_value = None
+            use_upper_bound = True
 
         # Generate a unique strategy name for logging
         if algorithm_name == "k_beam" and k_value is not None:
             strategy_name = f"k_beam_k={k_value}"
+        elif algorithm_name == "dag_star":
+            strategy_name = "dag_star_b" if use_upper_bound else "dag_star"
         elif algorithm_name:
             strategy_name = algorithm_name
         else:
@@ -393,7 +397,10 @@ def _select_strategy(strategy_config: Any):
         k_to_use = k_value if k_value is not None else 3
         return BeamSearch(k=int(k_to_use))
     elif algorithm_name == "dag_star":
-        return DagStarSearch()
+        use_upper_bound = True
+        if isinstance(strategy_config, dict):
+            use_upper_bound = strategy_config.get("use_upper_bound", True)
+        return DagStarSearch(use_upper_bound=use_upper_bound)
     elif algorithm_name == "backtracking":
         raise NotImplementedError("Backtracking search not yet implemented")
     elif algorithm_name == "branch_and_cut":
@@ -575,6 +582,10 @@ def _get_strategy_prefix(strategy_name: str, result: Dict[str, Any]) -> str:
             return f"kraken_k_{k_value}_beam"
         else:
             return "kraken_k_beam_unknown"
+    elif name == "dag_star_b":
+        return "kraken_dag_star_b"
+    elif name == "dag_star":
+        return "kraken_dag_star"
     # Fallback for other strategies
     return f"kraken_{name.replace('=', '_').replace('-', '_')}"
 

@@ -572,14 +572,22 @@ def run_parameter_study(
 
 def main() -> None:
     """
-    Main entry point for the Kraken Greedy vs. Constrained-Greedy
-    latency trade-off experiment.
+    Main entry point for the DAG* validation experiment.
+
+    Compares five Kraken strategies head-to-head on identical inputs:
+      - greedy
+      - k-beam (k=3, k=5)
+      - DAG**b  (DAG* with PrePP-from-cloud upper-bound pruning)
+      - DAG**   (DAG* with no upper-bound pruning)
+
+    Starts at network size 50 (one level below the production 100) to keep
+    iteration time manageable while we validate correctness.
     """
     # --- 1. Define Experiment Parameters ---
     runs = 50
 
     run_parameter_study(
-        network_sizes=[100],
+        network_sizes=[50],
         workload_sizes=[5],
         parent_factors=[1.8],
         query_lengths=[3],
@@ -592,7 +600,7 @@ def main() -> None:
         max_workers=14,
         xi=0,
         cost_weight=1,
-        output_dataset_name="non_parallel_computation",
+        output_dataset_name="dag_star_validation_n50",
     )
 
 if __name__ == "__main__":
