@@ -600,7 +600,7 @@ def main() -> None:
         max_workers=14,
         xi=0,
         cost_weight=1,
-        output_dataset_name="dag_star_validation_n50_h0",
+        output_dataset_name="dag_star_validation_n50_cached",
     )
 
 if __name__ == "__main__":
