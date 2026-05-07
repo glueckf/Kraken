@@ -656,8 +656,40 @@ def _prepare_kraken_comparison_summary(
             if hasattr(config.algorithm, "value")
             else str(config.algorithm),
             "graph_density": getattr(simulation_context, "graph_density", None),
+            "average_selectivity": getattr(
+                simulation_context, "average_selectivity", None
+            ),
         }
     )
+
+    # Fold in non-Kraken baselines so this dataset is fully self-contained
+    # (cost-ratio analysis vs. all-push, comparison against PrePP-from-cloud,
+    # etc. without needing a second join against the unified results dataset).
+    for prefix, attr in [
+        ("all_push", "all_push_results"),
+        ("prepp", "prepp_from_cloud_result"),
+        ("inev", "inev_results"),
+        ("sequential", "sequential_results"),
+    ]:
+        baseline = getattr(simulation_context, attr, None)
+        if isinstance(baseline, dict):
+            for src, dst in [
+                ("status", "status"),
+                ("cost", "cost"),
+                ("transmission_latency", "transmission_latency"),
+                ("processing_latency", "processing_latency"),
+                ("computing_time", "computing_time"),
+            ]:
+                comparison_row[f"{prefix}_{dst}"] = baseline.get(src)
+        else:
+            for dst in [
+                "status",
+                "cost",
+                "transmission_latency",
+                "processing_latency",
+                "computing_time",
+            ]:
+                comparison_row[f"{prefix}_{dst}"] = None
 
     # Iterate over each strategy and add its metrics with a unique prefix
     for strategy_name, result in strategy_results.items():
