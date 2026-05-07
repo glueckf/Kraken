@@ -348,6 +348,10 @@ def _gather_problem_parameters(simulation_context: Any) -> Dict[str, Any]:
         "latency_weighting_factor": simulation_context.config.xi,
         "cost_weight": getattr(simulation_context.config, "cost_weight", 0.5),
         "latency_weight": 1 - getattr(simulation_context.config, "cost_weight", 0.5),
+        # Pre-computed baselines (populated by simulation_environment before kraken runs)
+        "prepp_from_cloud_result": getattr(
+            simulation_context, "prepp_from_cloud_result", None
+        ),
     }
 
     return context
