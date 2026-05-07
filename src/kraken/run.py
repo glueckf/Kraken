@@ -203,6 +203,7 @@ def run_kraken_solver(
             algorithm_name = strategy_config.get("name")
             k_value = strategy_config.get("k", None)
             use_upper_bound = strategy_config.get("use_upper_bound", True)
+            disable_heuristic = strategy_config.get("disable_heuristic", False)
         else:
             algorithm_name = (
                 str(strategy_config.value)
@@ -211,12 +212,14 @@ def run_kraken_solver(
             )
             k_value = None
             use_upper_bound = True
+            disable_heuristic = False
 
         # Generate a unique strategy name for logging
         if algorithm_name == "k_beam" and k_value is not None:
             strategy_name = f"k_beam_k={k_value}"
         elif algorithm_name == "dag_star":
-            strategy_name = "dag_star_b" if use_upper_bound else "dag_star"
+            base = "dag_star_h0" if disable_heuristic else "dag_star"
+            strategy_name = f"{base}_b" if use_upper_bound else base
         elif algorithm_name:
             strategy_name = algorithm_name
         else:
@@ -398,9 +401,14 @@ def _select_strategy(strategy_config: Any):
         return BeamSearch(k=int(k_to_use))
     elif algorithm_name == "dag_star":
         use_upper_bound = True
+        disable_heuristic = False
         if isinstance(strategy_config, dict):
             use_upper_bound = strategy_config.get("use_upper_bound", True)
-        return DagStarSearch(use_upper_bound=use_upper_bound)
+            disable_heuristic = strategy_config.get("disable_heuristic", False)
+        return DagStarSearch(
+            use_upper_bound=use_upper_bound,
+            disable_heuristic=disable_heuristic,
+        )
     elif algorithm_name == "backtracking":
         raise NotImplementedError("Backtracking search not yet implemented")
     elif algorithm_name == "branch_and_cut":
@@ -586,6 +594,10 @@ def _get_strategy_prefix(strategy_name: str, result: Dict[str, Any]) -> str:
         return "kraken_dag_star_b"
     elif name == "dag_star":
         return "kraken_dag_star"
+    elif name == "dag_star_h0_b":
+        return "kraken_dag_star_h0_b"
+    elif name == "dag_star_h0":
+        return "kraken_dag_star_h0"
     # Fallback for other strategies
     return f"kraken_{name.replace('=', '_').replace('-', '_')}"
 
