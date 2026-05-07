@@ -368,7 +368,7 @@ def _select_strategy(strategy_config: Any):
         NotImplementedError: If the strategy is not yet implemented.
         ValueError: If the algorithm enum is not recognized.
     """
-    from kraken.search import GreedySearch, BeamSearch
+    from kraken.search import GreedySearch, BeamSearch, DagStarSearch
 
     k_value = None
     if isinstance(strategy_config, dict):
@@ -388,6 +388,8 @@ def _select_strategy(strategy_config: Any):
         # Use k_value from config, or default (from BeamSearch class)
         k_to_use = k_value if k_value is not None else 3
         return BeamSearch(k=int(k_to_use))
+    elif algorithm_name == "dag_star":
+        return DagStarSearch()
     elif algorithm_name == "backtracking":
         raise NotImplementedError("Backtracking search not yet implemented")
     elif algorithm_name == "branch_and_cut":
