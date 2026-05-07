@@ -587,7 +587,7 @@ def main() -> None:
     runs = 50
 
     run_parameter_study(
-        network_sizes=[50],
+        network_sizes=[100],
         workload_sizes=[5],
         parent_factors=[1.8],
         query_lengths=[3],
@@ -600,7 +600,7 @@ def main() -> None:
         max_workers=14,
         xi=0,
         cost_weight=1,
-        output_dataset_name="dag_star_validation_n50_cached",
+        output_dataset_name="dag_star_validation_n100_cached",
     )
 
 if __name__ == "__main__":
