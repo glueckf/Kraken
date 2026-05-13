@@ -710,14 +710,18 @@ def determine_randomized_single_selectivities_within_all_projections(
     eventtype_to_sources_map,
     single_selectivity_of_eventtype_within_projection,
     is_deterministic=False,
+    rng=None,
 ):
-    # print(f"[PREPP_DEBUG] determine_randomized_single_selectivities (prepp.py) called for query={''.join(query)}, is_deterministic={is_deterministic}")
+    # Use a caller-supplied local RNG when provided, otherwise fall back to the
+    # global `random` module so legacy callers keep working unchanged. A local
+    # RNG lets the caller (e.g. CostCalculator) produce reproducible PrePP
+    # output per (query, network-state) without touching the global RNG state.
+    rng = rng if rng is not None else random
 
-    # Ensure deterministic behavior with consistent seed for each query
+    # Legacy `is_deterministic` debug path: hardcoded midpoints + globally
+    # seeded RNG keyed by the query. Untouched for backward compat.
     if is_deterministic:
-        # Use a hash of the query to get consistent but query-specific deterministic values
         query_hash = hash("".join(sorted(query)))
-        # print(f"[PREPP_DEBUG] Setting deterministic seed: 42 + {query_hash} = {42 + query_hash}")
         random.seed(42 + query_hash)
 
     projection_selectivity = determine_total_query_selectivity(
@@ -750,7 +754,7 @@ def determine_randomized_single_selectivities_within_all_projections(
 
         chosen_indices = [ele for ele in range(0, limit)]
         if not is_deterministic:
-            random.shuffle(chosen_indices)
+            rng.shuffle(chosen_indices)
 
         # print(f"[PREPP_DEBUG] Delta {delta}: chosen_indices={chosen_indices}")
 
@@ -776,8 +780,7 @@ def determine_randomized_single_selectivities_within_all_projections(
                 # print(f"[PREPP_DEBUG] Deterministic value for index {chosen_indices[n]} (eventtype {query[chosen_indices[n]]}): bounds=[{lower_bound}, {upper_bound}] -> {deterministic_value}")
                 first_n_random_values.append(deterministic_value)
             else:
-                random_value = random.uniform(lower_bound, upper_bound)
-                # print(f"[PREPP_DEBUG] Random value for index {chosen_indices[n]} (eventtype {query[chosen_indices[n]]}): bounds=[{lower_bound}, {upper_bound}] -> {random_value}")
+                random_value = rng.uniform(lower_bound, upper_bound)
                 first_n_random_values.append(random_value)
             product *= first_n_random_values[n]
 
@@ -862,6 +865,7 @@ def determine_all_single_selectivities_for_every_possible_projection(
     single_selectivity_of_eventtype_within_projection,
     queries_to_process,
     is_deterministic=False,
+    rng=None,
 ):
     # If using deterministic mode, preserve hardcoded values and skip dynamic calculation
     if is_deterministic:
@@ -922,6 +926,7 @@ def determine_all_single_selectivities_for_every_possible_projection(
                 eventtype_to_sources_map,
                 single_selectivity_of_eventtype_within_projection,
                 is_deterministic,
+                rng=rng,
             )
 
 
@@ -935,6 +940,7 @@ def generate_prePP(
     plan_print,
     allPairs,
     is_deterministic=False,
+    rng=None,
 ):
     # print(f"[PREPP_DEBUG] generate_prePP called with is_deterministic={is_deterministic}")
     # Accessing the arguments
@@ -1254,6 +1260,7 @@ def generate_prePP(
                 single_selectivity_of_eventtype_within_projection,
                 queries_to_process,
                 is_deterministic,
+                rng=rng,
             )
 
             if is_deterministic:

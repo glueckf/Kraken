@@ -644,7 +644,42 @@ def main() -> None:
     max_workers = (
         int(max_workers_env) if max_workers_env else profile["default_max_workers"]
     )
-    dataset_name = os.environ.get("KRAKEN_DATASET_NAME", "dag_star_sweep")
+    dataset_name = os.environ.get(
+        "KRAKEN_DATASET_NAME", "dag_star_extension_sweep"
+    )
+    # Mirror the unified-dataset name onto the wide-format comparison
+    # dataset by default, so a single env var keeps both outputs aligned.
+    os.environ.setdefault(
+        "KRAKEN_COMPARISON_DIR",
+        f"{dataset_name}_comparison.parquet",
+    )
+
+    # Workload parameters mirror the prior "search strategy comparison" sweep
+    # (analysis_of_multiple_strats.ipynb baseline) so DAG* can be analysed as
+    # a valid extension of that experiment, not a different workload regime.
+    #     query_length      5   (was 3 in the previous DAG* sweep)
+    #     node_event_ratio  0.7 (was 0.4)
+    #     event_skew        2.0 (was 1.5)
+    # The remaining knobs (workload_size, parent_factor, num_event_types)
+    # were already at the prior-sweep baseline.
+    workload_sizes_env  = os.environ.get("KRAKEN_WORKLOAD_SIZES")
+    query_lengths_env   = os.environ.get("KRAKEN_QUERY_LENGTHS")
+    num_event_types_env = os.environ.get("KRAKEN_NUM_EVENT_TYPES")
+    event_skews_env     = os.environ.get("KRAKEN_EVENT_SKEWS")
+    parent_factors_env  = os.environ.get("KRAKEN_PARENT_FACTORS")
+    node_event_ratios_env = os.environ.get("KRAKEN_NODE_EVENT_RATIOS")
+
+    def _parse_list(value: Optional[str], default, cast):
+        if value is None:
+            return default
+        return [cast(part.strip()) for part in value.split(",") if part.strip()]
+
+    workload_sizes    = _parse_list(workload_sizes_env,  [5],   int)
+    query_lengths     = _parse_list(query_lengths_env,   [5],   int)
+    num_event_types   = _parse_list(num_event_types_env, [6],   int)
+    event_skews       = _parse_list(event_skews_env,     [2.0], float)
+    parent_factors    = _parse_list(parent_factors_env,  [1.8], float)
+    node_event_ratios = _parse_list(node_event_ratios_env, [0.7], float)
 
     logger.info(
         "[SWEEP] profile=%s network_sizes=%s runs=%d max_workers=%s dataset=%s",
@@ -654,16 +689,26 @@ def main() -> None:
         max_workers,
         dataset_name,
     )
+    logger.info(
+        "[SWEEP] workload_sizes=%s query_lengths=%s num_event_types=%s "
+        "event_skews=%s parent_factors=%s node_event_ratios=%s",
+        workload_sizes,
+        query_lengths,
+        num_event_types,
+        event_skews,
+        parent_factors,
+        node_event_ratios,
+    )
 
     run_parameter_study(
         network_sizes=network_sizes,
-        workload_sizes=[5],
-        parent_factors=[1.8],
-        query_lengths=[3],
+        workload_sizes=workload_sizes,
+        parent_factors=parent_factors,
+        query_lengths=query_lengths,
         runs_per_combination=runs,
-        node_event_ratios=[0.4],
-        num_event_types=[6],
-        event_skews=[1.5],
+        node_event_ratios=node_event_ratios,
+        num_event_types=num_event_types,
+        event_skews=event_skews,
         mode=SimulationMode.RANDOM,
         enable_parallel=True,
         max_workers=max_workers,

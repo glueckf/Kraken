@@ -78,10 +78,19 @@ RUN_RESULTS_HEADER = [
     "graph_density",
 ]
 
+import os
+
 OUTPUT_DIRECTORY = "result"
 RUN_RESULTS_DIR = "run_results.parquet"
 DETAILED_LOG_DIR = "detailed_run_log.parquet"
-KRAKEN_COMPARISON_DIR = "kraken_comparison.parquet"
+
+# Wide-format comparison dataset. Default name preserved for backward
+# compatibility; an environment variable override lets a sweep keep its
+# comparison rows in a separate parquet dataset (e.g. when running an
+# experiment whose schema or semantics differ from prior sweeps).
+KRAKEN_COMPARISON_DIR = os.environ.get(
+    "KRAKEN_COMPARISON_DIR", "kraken_comparison.parquet"
+)
 
 logger = logging.getLogger(__name__)
 
@@ -219,7 +228,13 @@ def write_kraken_comparison_log(results_data: List[Dict[str, Any]]) -> None:
 
     table = pa.Table.from_pandas(df, preserve_index=False)
 
-    output_dir = Path(OUTPUT_DIRECTORY) / KRAKEN_COMPARISON_DIR
+    # Resolve dataset directory at write time so an env-var override set
+    # after this module is imported (e.g. by start_simulation.main()) is
+    # honoured.
+    comparison_dir = os.environ.get(
+        "KRAKEN_COMPARISON_DIR", KRAKEN_COMPARISON_DIR
+    )
+    output_dir = Path(OUTPUT_DIRECTORY) / comparison_dir
 
     _write_dataset_with_validation(table, output_dir)
 

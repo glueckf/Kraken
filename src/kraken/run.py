@@ -232,6 +232,14 @@ def run_kraken_solver(
             }
             continue
 
+        # Per-strategy PrePP cache isolation: each strategy starts with a
+        # fresh cache so it pays its own PrePP cost and timing is fair to
+        # compare across strategies. With seeded PrePP (see CostCalculator),
+        # the cache is now only a performance optimisation — clearing it
+        # does not affect correctness, only per-strategy compute time.
+        if hasattr(problem, "cost_calculator"):
+            problem.cost_calculator.clear_cache()
+
         # Select and execute strategy
         strategy_start = time.time()
         try:

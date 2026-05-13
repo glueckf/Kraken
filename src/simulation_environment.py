@@ -1867,6 +1867,21 @@ class Simulation:
             schema_fields = [
                 field for field in schema_fields if field.name in df.columns
             ]
+
+            # Auto-include any kraken_* columns that weren't enumerated in
+            # the explicit schema above (e.g. dynamically-named strategies
+            # like kraken_k_3_beam_*, kraken_dag_star_b_*, kraken_dag_star_h0_b_*).
+            # Without this, those columns were silently dropped at write
+            # time and the unified parquet looked greedy-only.
+            schema_field_names = {field.name for field in schema_fields}
+            for col in df.columns:
+                if col in schema_field_names:
+                    continue
+                if not col.startswith("kraken_"):
+                    continue
+                dtype = pa.string() if col.endswith("_status") else pa.float64()
+                schema_fields.append(pa.field(col, dtype))
+                schema_field_names.add(col)
             print(
                 f"DEBUG: Schema filtering: {original_field_count} -> {len(schema_fields)} fields"
             )

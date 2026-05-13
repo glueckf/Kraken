@@ -3,6 +3,7 @@
 import copy
 import io
 import hashlib
+import random as _random
 import re
 from typing import Any, Dict, List, Optional, Set, Tuple
 
@@ -22,6 +23,14 @@ class CostCalculator:
     for local events, and adding final sink costs. This is a completely
     self-contained implementation that uses only the SolutionCandidate
     state and the external PrePP library.
+
+    PrePP determinism: PrePP draws random selectivities per call. To make
+    cross-strategy cost comparison fair, we seed PrePP with a per-call
+    `random.Random` derived from a stable hash of the input identity
+    (the same identity the cache key encodes). Two calls with identical
+    `(p, n, dependency_state)` therefore produce identical PrePP output
+    regardless of which strategy is asking — the cache is then a pure
+    performance optimization, not a correctness mechanism.
     """
 
     def __init__(self, context: Dict[str, Any]):
@@ -33,6 +42,21 @@ class CostCalculator:
         self.params = context
         self._prepp_cache: Dict[str, Any] = {}
         self._static_buffer_cache: Optional[str] = None
+
+    def clear_cache(self) -> None:
+        """Drop the PrePP cache.
+
+        Called between strategies in `run.py` so each strategy pays its
+        own PrePP cost and timing measurements are not skewed by the
+        first strategy priming the cache for everyone else.
+        """
+        self._prepp_cache.clear()
+
+    @staticmethod
+    def _seed_from_cache_key(cache_key: str) -> int:
+        """Derive a stable 64-bit RNG seed from the cache key."""
+        digest = hashlib.blake2b(cache_key.encode("utf-8"), digest_size=8).digest()
+        return int.from_bytes(digest, "big")
 
     def calculate(
         self, p: Any, n: int, s_current: SolutionCandidate
@@ -91,6 +115,11 @@ class CostCalculator:
         # Step 2: Compute push-pull strategy using PrePP
         is_deterministic = self.params["simulation_mode"].value == "deterministic"
 
+        # Per-call seeded RNG: stable hash of the input identity → identical
+        # PrePP output for identical (p, n, dependency_state) inputs across
+        # any caller, without touching the global random.* state.
+        prepp_rng = _random.Random(self._seed_from_cache_key(cache_key))
+
         METHOD = "ppmuse"
         ALGORITHM = "e"
         SAMPLES = 0
@@ -118,6 +147,7 @@ class CostCalculator:
             plan_print=PLAN_PRINT,
             allPairs=all_pairs,
             is_deterministic=is_deterministic,
+            rng=prepp_rng,
         )
 
         # Process PrePP results to extract push-pull strategy
