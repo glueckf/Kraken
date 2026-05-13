@@ -577,10 +577,12 @@ _PROFILES = {
         "runs_per_combination": 50,
         "default_max_workers": 14,
     },
-    # Full sweep for the cluster. 200 runs at every size, ramping from a
-    # validation-friendly 50 nodes up to 1000 nodes for scaling characterization.
+    # Full sweep for the cluster. 200 runs at each size; the extension
+    # experiment caps at n=200 to match the prior search-strategy sweep's
+    # network-size regime (analysis_of_multiple_strats.ipynb covered up to
+    # n=200). Override via KRAKEN_NETWORK_SIZES if you need n=500 / n=1000.
     "prod": {
-        "network_sizes": [50, 100, 200, 500, 1000],
+        "network_sizes": [50, 100, 200],
         "runs_per_combination": 200,
         "default_max_workers": None,  # let the parallel executor auto-detect
     },
@@ -598,7 +600,7 @@ def main() -> None:
 
       KRAKEN_PROFILE       "dev" (default) or "prod"
                            dev  → 50 runs at n=50
-                           prod → 200 runs each at n=50, 100, 200, 500, 1000
+                           prod → 200 runs each at n=50, 100, 200
 
       KRAKEN_RUNS          override runs-per-combination for the active profile
                            (useful for trimming a prod run from 200 → 100)
