@@ -10,7 +10,20 @@
 #   MAX_WORKERS=64 ./scripts/run_dag_star_sweep.sh
 #   DATASET_NAME=my_sweep ./scripts/run_dag_star_sweep.sh
 #
-# Workload-shape overrides (each accepts a comma-separated list):
+# Sweep mode:
+#   SWEEP_MODE=param_study  per-axis parameter study around the
+#                           prior search-strategy sweep's baseline
+#                           (default for prod profile).
+#   SWEEP_MODE=single       single workload config, varied only over
+#                           network sizes (default for dev profile).
+#
+# Per-axis value overrides (param_study mode, each comma-separated):
+#   AXIS_NETWORK_SIZE=10,30,50,100,200
+#   AXIS_WORKLOAD_SIZE=3,5,7,10,20
+#   AXIS_QUERY_LENGTH=3,5,8,10
+#   AXIS_NUM_EVENT_TYPES=4,6,8,10
+#
+# Workload-shape overrides (single mode, each accepts a comma-separated list):
 #   WORKLOAD_SIZES=5
 #   QUERY_LENGTHS=3,5,7
 #   NUM_EVENT_TYPES=4,6,8,10
@@ -39,12 +52,17 @@ export KRAKEN_PROFILE="${PROFILE:-prod}"
 [[ -n "${NETWORK_SIZES:-}" ]]     && export KRAKEN_NETWORK_SIZES="${NETWORK_SIZES}"
 [[ -n "${MAX_WORKERS:-}" ]]       && export KRAKEN_MAX_WORKERS="${MAX_WORKERS}"
 [[ -n "${DATASET_NAME:-}" ]]      && export KRAKEN_DATASET_NAME="${DATASET_NAME}"
+[[ -n "${SWEEP_MODE:-}" ]]        && export KRAKEN_SWEEP_MODE="${SWEEP_MODE}"
 [[ -n "${WORKLOAD_SIZES:-}" ]]    && export KRAKEN_WORKLOAD_SIZES="${WORKLOAD_SIZES}"
 [[ -n "${QUERY_LENGTHS:-}" ]]     && export KRAKEN_QUERY_LENGTHS="${QUERY_LENGTHS}"
 [[ -n "${NUM_EVENT_TYPES:-}" ]]   && export KRAKEN_NUM_EVENT_TYPES="${NUM_EVENT_TYPES}"
 [[ -n "${EVENT_SKEWS:-}" ]]       && export KRAKEN_EVENT_SKEWS="${EVENT_SKEWS}"
 [[ -n "${PARENT_FACTORS:-}" ]]    && export KRAKEN_PARENT_FACTORS="${PARENT_FACTORS}"
 [[ -n "${NODE_EVENT_RATIOS:-}" ]] && export KRAKEN_NODE_EVENT_RATIOS="${NODE_EVENT_RATIOS}"
+[[ -n "${AXIS_NETWORK_SIZE:-}" ]]    && export KRAKEN_AXIS_NETWORK_SIZE="${AXIS_NETWORK_SIZE}"
+[[ -n "${AXIS_WORKLOAD_SIZE:-}" ]]   && export KRAKEN_AXIS_WORKLOAD_SIZE="${AXIS_WORKLOAD_SIZE}"
+[[ -n "${AXIS_QUERY_LENGTH:-}" ]]    && export KRAKEN_AXIS_QUERY_LENGTH="${AXIS_QUERY_LENGTH}"
+[[ -n "${AXIS_NUM_EVENT_TYPES:-}" ]] && export KRAKEN_AXIS_NUM_EVENT_TYPES="${AXIS_NUM_EVENT_TYPES}"
 
 echo "[sweep] starting at $(date)"
 echo "[sweep] profile=${KRAKEN_PROFILE}"

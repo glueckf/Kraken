@@ -576,16 +576,44 @@ _PROFILES = {
         "network_sizes": [50],
         "runs_per_combination": 50,
         "default_max_workers": 14,
+        "sweep_mode": "single",
     },
-    # Full sweep for the cluster. 200 runs at each size; the extension
-    # experiment caps at n=200 to match the prior search-strategy sweep's
-    # network-size regime (analysis_of_multiple_strats.ipynb covered up to
-    # n=200). Override via KRAKEN_NETWORK_SIZES if you need n=500 / n=1000.
+    # Full sweep for the cluster. Parameter study by default: vary one
+    # workload knob at a time around the prior search-strategy sweep's
+    # baseline (analysis_of_multiple_strats.ipynb), so DAG* results can
+    # be analysed as a direct extension. Override via KRAKEN_SWEEP_MODE
+    # ="single" to fall back to a single-config sweep over the network
+    # size axis only.
     "prod": {
         "network_sizes": [50, 100, 200],
         "runs_per_combination": 200,
-        "default_max_workers": None,  # let the parallel executor auto-detect
+        "default_max_workers": None,
+        "sweep_mode": "param_study",
     },
+}
+
+# Baseline workload configuration for the parameter study. Every axis
+# sub-sweep holds all other knobs at these values and varies only its
+# own axis. Mirrors analysis_of_multiple_strats.ipynb's BASELINE so the
+# DAG* extension produces drop-in-comparable data.
+_PARAMETER_STUDY_BASELINE: Dict[str, Any] = {
+    "network_size":     100,
+    "workload_size":    5,
+    "query_length":     5,
+    "node_event_ratio": 0.7,
+    "num_event_types":  6,
+    "event_skew":       2.0,
+    "parent_factor":    1.8,
+}
+
+# Per-axis sweep values. Only these four axes are varied to keep the
+# total run count bounded; the remaining knobs (parent_factor, etc.)
+# stay at the baseline for the entire study.
+_PARAMETER_STUDY_AXES: Dict[str, List[Any]] = {
+    "network_size":    [10, 30, 50, 100, 200],
+    "workload_size":   [3, 5, 7, 10, 20],
+    "query_length":    [3, 5, 8, 10],
+    "num_event_types": [4, 6, 8, 10],
 }
 
 
@@ -599,8 +627,21 @@ def main() -> None:
     Environment variables (all optional):
 
       KRAKEN_PROFILE       "dev" (default) or "prod"
-                           dev  → 50 runs at n=50
-                           prod → 200 runs each at n=50, 100, 200
+                           dev  → single config, 50 runs at n=50
+                           prod → per-axis parameter study around baseline,
+                                  200 runs per parameter value (~3000 runs
+                                  total)
+
+      KRAKEN_SWEEP_MODE    "single" or "param_study". Overrides profile
+                           default. Use "single" to run a single workload
+                           config (env-var-overridable axes) over multiple
+                           network sizes; use "param_study" to run the
+                           per-axis sweep around _PARAMETER_STUDY_BASELINE.
+
+      KRAKEN_AXIS_<NAME>   Per-axis value override (param_study mode).
+                           Examples:
+                             KRAKEN_AXIS_NETWORK_SIZE=10,30,50,100,200
+                             KRAKEN_AXIS_QUERY_LENGTH=3,5,8
 
       KRAKEN_RUNS          override runs-per-combination for the active profile
                            (useful for trimming a prod run from 200 → 100)
@@ -634,13 +675,6 @@ def main() -> None:
         )
     profile = _PROFILES[profile_name]
 
-    # Allow per-knob overrides via env vars
-    sizes_override = os.environ.get("KRAKEN_NETWORK_SIZES")
-    network_sizes = (
-        [int(s) for s in sizes_override.split(",")]
-        if sizes_override
-        else profile["network_sizes"]
-    )
     runs = int(os.environ.get("KRAKEN_RUNS", profile["runs_per_combination"]))
     max_workers_env = os.environ.get("KRAKEN_MAX_WORKERS")
     max_workers = (
@@ -656,50 +690,68 @@ def main() -> None:
         f"{dataset_name}_comparison.parquet",
     )
 
-    # Workload parameters mirror the prior "search strategy comparison" sweep
-    # (analysis_of_multiple_strats.ipynb baseline) so DAG* can be analysed as
-    # a valid extension of that experiment, not a different workload regime.
-    #     query_length      5   (was 3 in the previous DAG* sweep)
-    #     node_event_ratio  0.7 (was 0.4)
-    #     event_skew        2.0 (was 1.5)
-    # The remaining knobs (workload_size, parent_factor, num_event_types)
-    # were already at the prior-sweep baseline.
-    workload_sizes_env  = os.environ.get("KRAKEN_WORKLOAD_SIZES")
-    query_lengths_env   = os.environ.get("KRAKEN_QUERY_LENGTHS")
-    num_event_types_env = os.environ.get("KRAKEN_NUM_EVENT_TYPES")
-    event_skews_env     = os.environ.get("KRAKEN_EVENT_SKEWS")
-    parent_factors_env  = os.environ.get("KRAKEN_PARENT_FACTORS")
-    node_event_ratios_env = os.environ.get("KRAKEN_NODE_EVENT_RATIOS")
-
-    def _parse_list(value: Optional[str], default, cast):
-        if value is None:
-            return default
-        return [cast(part.strip()) for part in value.split(",") if part.strip()]
-
-    workload_sizes    = _parse_list(workload_sizes_env,  [5],   int)
-    query_lengths     = _parse_list(query_lengths_env,   [5],   int)
-    num_event_types   = _parse_list(num_event_types_env, [6],   int)
-    event_skews       = _parse_list(event_skews_env,     [2.0], float)
-    parent_factors    = _parse_list(parent_factors_env,  [1.8], float)
-    node_event_ratios = _parse_list(node_event_ratios_env, [0.7], float)
+    sweep_mode = os.environ.get(
+        "KRAKEN_SWEEP_MODE", profile.get("sweep_mode", "single")
+    ).lower()
+    if sweep_mode not in ("single", "param_study"):
+        raise ValueError(
+            f"unknown KRAKEN_SWEEP_MODE={sweep_mode!r}; expected 'single' or 'param_study'"
+        )
 
     logger.info(
-        "[SWEEP] profile=%s network_sizes=%s runs=%d max_workers=%s dataset=%s",
-        profile_name,
-        network_sizes,
-        runs,
-        max_workers,
-        dataset_name,
+        "[SWEEP] profile=%s mode=%s runs=%d max_workers=%s dataset=%s",
+        profile_name, sweep_mode, runs, max_workers, dataset_name,
     )
+
+    if sweep_mode == "param_study":
+        _run_parameter_study_sweep(
+            runs=runs,
+            max_workers=max_workers,
+            dataset_name=dataset_name,
+        )
+    else:
+        _run_single_config_sweep(
+            profile=profile,
+            runs=runs,
+            max_workers=max_workers,
+            dataset_name=dataset_name,
+        )
+
+
+def _parse_env_list(
+    var_name: str, default: List[Any], cast
+) -> List[Any]:
+    """Parse a comma-separated env var into a typed list."""
+    raw = os.environ.get(var_name)
+    if raw is None:
+        return default
+    return [cast(part.strip()) for part in raw.split(",") if part.strip()]
+
+
+def _run_single_config_sweep(
+    profile: Dict[str, Any],
+    runs: int,
+    max_workers: Optional[int],
+    dataset_name: str,
+) -> None:
+    """Sweep a single workload configuration over the network-size axis.
+
+    Workload knobs default to the prior search-strategy sweep's baseline
+    and may be overridden per-axis via the documented env vars.
+    """
+    network_sizes     = _parse_env_list("KRAKEN_NETWORK_SIZES",     profile["network_sizes"], int)
+    workload_sizes    = _parse_env_list("KRAKEN_WORKLOAD_SIZES",    [5],   int)
+    query_lengths     = _parse_env_list("KRAKEN_QUERY_LENGTHS",     [5],   int)
+    num_event_types   = _parse_env_list("KRAKEN_NUM_EVENT_TYPES",   [6],   int)
+    event_skews       = _parse_env_list("KRAKEN_EVENT_SKEWS",       [2.0], float)
+    parent_factors    = _parse_env_list("KRAKEN_PARENT_FACTORS",    [1.8], float)
+    node_event_ratios = _parse_env_list("KRAKEN_NODE_EVENT_RATIOS", [0.7], float)
+
     logger.info(
-        "[SWEEP] workload_sizes=%s query_lengths=%s num_event_types=%s "
-        "event_skews=%s parent_factors=%s node_event_ratios=%s",
-        workload_sizes,
-        query_lengths,
-        num_event_types,
-        event_skews,
-        parent_factors,
-        node_event_ratios,
+        "[SINGLE] network_sizes=%s workload_sizes=%s query_lengths=%s "
+        "num_event_types=%s event_skews=%s parent_factors=%s node_event_ratios=%s",
+        network_sizes, workload_sizes, query_lengths, num_event_types,
+        event_skews, parent_factors, node_event_ratios,
     )
 
     run_parameter_study(
@@ -711,6 +763,95 @@ def main() -> None:
         node_event_ratios=node_event_ratios,
         num_event_types=num_event_types,
         event_skews=event_skews,
+        mode=SimulationMode.RANDOM,
+        enable_parallel=True,
+        max_workers=max_workers,
+        xi=0,
+        cost_weight=1,
+        output_dataset_name=dataset_name,
+    )
+
+
+def _run_parameter_study_sweep(
+    runs: int,
+    max_workers: Optional[int],
+    dataset_name: str,
+) -> None:
+    """Per-axis parameter study around _PARAMETER_STUDY_BASELINE.
+
+    For each axis in _PARAMETER_STUDY_AXES, runs every value in that
+    axis with all other knobs pinned to the baseline. Results all flow
+    into the same parquet dataset; downstream analysis filters per axis
+    by matching every-other-knob == baseline.
+
+    The baseline configuration itself is run once at the start so it
+    isn't duplicated across the four sub-sweeps.
+    """
+    baseline = dict(_PARAMETER_STUDY_BASELINE)
+    axes = {
+        name: _parse_env_list(
+            f"KRAKEN_AXIS_{name.upper()}",
+            values,
+            type(values[0]),
+        )
+        for name, values in _PARAMETER_STUDY_AXES.items()
+    }
+
+    logger.info("[PARAM_STUDY] baseline=%s", baseline)
+    logger.info("[PARAM_STUDY] axes=%s", axes)
+    logger.info("[PARAM_STUDY] runs_per_value=%d", runs)
+
+    total_combos = 1 + sum(
+        max(0, len([v for v in vals if v != baseline[ax]]))
+        for ax, vals in axes.items()
+    )
+    logger.info(
+        "[PARAM_STUDY] unique configs=%d  total runs=%d",
+        total_combos, total_combos * runs,
+    )
+
+    # 1) Baseline once
+    logger.info("[PARAM_STUDY] === axis: baseline (single config) ===")
+    _launch_axis_slice(baseline, runs, max_workers, dataset_name)
+
+    # 2) Per-axis sub-sweeps (skip baseline value to avoid duplicate)
+    for axis_name, values in axes.items():
+        base_value = baseline[axis_name]
+        axis_values = [v for v in values if v != base_value]
+        if not axis_values:
+            continue
+        logger.info(
+            "[PARAM_STUDY] === axis: %s (%d non-baseline values: %s) ===",
+            axis_name, len(axis_values), axis_values,
+        )
+        for value in axis_values:
+            config = dict(baseline)
+            config[axis_name] = value
+            _launch_axis_slice(config, runs, max_workers, dataset_name)
+
+
+def _launch_axis_slice(
+    config: Dict[str, Any],
+    runs: int,
+    max_workers: Optional[int],
+    dataset_name: str,
+) -> None:
+    """Launch one (network_size, workload, query, num_events, ...) point.
+
+    Thin wrapper so the param-study sweep can dispatch one parameter
+    combination at a time while sharing the cost-weight, mode, and
+    output-dataset settings across every slice.
+    """
+    logger.info("[PARAM_STUDY] launching slice: %s", config)
+    run_parameter_study(
+        network_sizes     =[config["network_size"]],
+        workload_sizes    =[config["workload_size"]],
+        parent_factors    =[config["parent_factor"]],
+        query_lengths     =[config["query_length"]],
+        node_event_ratios =[config["node_event_ratio"]],
+        num_event_types   =[config["num_event_types"]],
+        event_skews       =[config["event_skew"]],
+        runs_per_combination=runs,
         mode=SimulationMode.RANDOM,
         enable_parallel=True,
         max_workers=max_workers,
