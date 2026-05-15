@@ -106,9 +106,15 @@ class CostCalculator:
             List of strategy dictionaries (all-push and optionally push-pull)
         """
         cache_key = self._create_cache_key(p, n, s_current)
-        cached = self._prepp_cache.get(cache_key)
-        if cached is not None:
-            return copy.deepcopy(cached)
+        # PREPP_DISABLE_CACHE=1 turns the cache into a no-op (skip read; the
+        # corresponding write is also skipped in _store_in_cache). Used to
+        # reproduce the pre-a9be140 codepath where the cache was declared
+        # but never read/written, so every PrePP call drew a fresh sample.
+        cache_disabled = os.environ.get("PREPP_DISABLE_CACHE", "0") == "1"
+        if not cache_disabled:
+            cached = self._prepp_cache.get(cache_key)
+            if cached is not None:
+                return copy.deepcopy(cached)
 
         # Step 1: Compute all-push strategy
         all_push_result = self._compute_all_push_costs(p, n, s_current)
@@ -190,8 +196,9 @@ class CostCalculator:
         original list for use by the caller. The deep copy is required because
         downstream `_adjust_for_local_events` and `_add_sink_costs` mutate the
         dicts in place — without copying, the cached value would be poisoned
-        on first use."""
-        self._prepp_cache[cache_key] = copy.deepcopy(result)
+        on first use. PREPP_DISABLE_CACHE=1 skips the write."""
+        if os.environ.get("PREPP_DISABLE_CACHE", "0") != "1":
+            self._prepp_cache[cache_key] = copy.deepcopy(result)
         return result
 
     def _adjust_for_local_events(

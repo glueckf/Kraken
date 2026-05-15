@@ -49,6 +49,12 @@
 #                                the same noisy cost surface — without it the
 #                                cross-strategy comparison is invalid (see
 #                                commit a9be140).
+#   PREPP_DISABLE_CACHE=1        turn the PrePP cache into a no-op (skip both
+#                                read and write). Reproduces the pre-a9be140
+#                                code path where every PrePP call drew a
+#                                fresh sample. Pair with PREPP_NONDETERMINISTIC=1
+#                                to reproduce the original 938-row noisy regime
+#                                (0% ties, beam wins by min-of-many bias).
 #
 # What this writes:
 #   src/result/<DATASET_NAME>.parquet/              per-run unified rows
@@ -81,6 +87,7 @@ export KRAKEN_PROFILE="${PROFILE:-prod}"
 [[ -n "${PREPP_NONDETERMINISTIC:-}" ]]    && export PREPP_NONDETERMINISTIC
 [[ -n "${KRAKEN_STRATEGY_SET:-}" ]]       && export KRAKEN_STRATEGY_SET
 [[ -n "${KRAKEN_SHARED_PREPP_CACHE:-}" ]] && export KRAKEN_SHARED_PREPP_CACHE
+[[ -n "${PREPP_DISABLE_CACHE:-}" ]]       && export PREPP_DISABLE_CACHE
 
 echo "[sweep] starting at $(date)"
 echo "[sweep] profile=${KRAKEN_PROFILE}"
@@ -90,7 +97,11 @@ echo "[sweep] max_workers=${KRAKEN_MAX_WORKERS:-<profile default>}"
 echo "[sweep] dataset_name=${KRAKEN_DATASET_NAME:-dag_star_sweep}"
 echo "[sweep] prepp_mode=$([[ "${PREPP_NONDETERMINISTIC:-0}" == "1" ]] && echo "noisy" || echo "deterministic")"
 echo "[sweep] strategy_set=${KRAKEN_STRATEGY_SET:-full}"
-echo "[sweep] prepp_cache=$([[ "${KRAKEN_SHARED_PREPP_CACHE:-0}" == "1" ]] && echo "shared (no per-strategy clear)" || echo "per-strategy clear")"
+if [[ "${PREPP_DISABLE_CACHE:-0}" == "1" ]]; then
+    echo "[sweep] prepp_cache=DISABLED (every call fresh)"
+else
+    echo "[sweep] prepp_cache=$([[ "${KRAKEN_SHARED_PREPP_CACHE:-0}" == "1" ]] && echo "shared (no per-strategy clear)" || echo "per-strategy clear")"
+fi
 echo
 
 python start_simulation.py 2>&1 | tee "../sweep_$(date +%Y%m%d_%H%M%S).log"
