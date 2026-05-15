@@ -42,6 +42,13 @@
 #                             per-strategy cache clearing stays in place.
 #   KRAKEN_STRATEGY_SET=noisy_compare  strip to {greedy, k=3, k=5, dag_star}.
 #                                      Default "full" keeps all 6 strategies.
+#   KRAKEN_SHARED_PREPP_CACHE=1  suppress the per-strategy cache clear so all
+#                                strategies share one PrePP cache (primed by
+#                                whichever ran first). Pair with
+#                                PREPP_NONDETERMINISTIC=1 to keep strategies on
+#                                the same noisy cost surface — without it the
+#                                cross-strategy comparison is invalid (see
+#                                commit a9be140).
 #
 # What this writes:
 #   src/result/<DATASET_NAME>.parquet/              per-run unified rows
@@ -71,8 +78,9 @@ export KRAKEN_PROFILE="${PROFILE:-prod}"
 [[ -n "${AXIS_WORKLOAD_SIZE:-}" ]]   && export KRAKEN_AXIS_WORKLOAD_SIZE="${AXIS_WORKLOAD_SIZE}"
 [[ -n "${AXIS_QUERY_LENGTH:-}" ]]    && export KRAKEN_AXIS_QUERY_LENGTH="${AXIS_QUERY_LENGTH}"
 [[ -n "${AXIS_NUM_EVENT_TYPES:-}" ]] && export KRAKEN_AXIS_NUM_EVENT_TYPES="${AXIS_NUM_EVENT_TYPES}"
-[[ -n "${PREPP_NONDETERMINISTIC:-}" ]] && export PREPP_NONDETERMINISTIC
-[[ -n "${KRAKEN_STRATEGY_SET:-}" ]]    && export KRAKEN_STRATEGY_SET
+[[ -n "${PREPP_NONDETERMINISTIC:-}" ]]    && export PREPP_NONDETERMINISTIC
+[[ -n "${KRAKEN_STRATEGY_SET:-}" ]]       && export KRAKEN_STRATEGY_SET
+[[ -n "${KRAKEN_SHARED_PREPP_CACHE:-}" ]] && export KRAKEN_SHARED_PREPP_CACHE
 
 echo "[sweep] starting at $(date)"
 echo "[sweep] profile=${KRAKEN_PROFILE}"
@@ -82,6 +90,7 @@ echo "[sweep] max_workers=${KRAKEN_MAX_WORKERS:-<profile default>}"
 echo "[sweep] dataset_name=${KRAKEN_DATASET_NAME:-dag_star_sweep}"
 echo "[sweep] prepp_mode=$([[ "${PREPP_NONDETERMINISTIC:-0}" == "1" ]] && echo "noisy" || echo "deterministic")"
 echo "[sweep] strategy_set=${KRAKEN_STRATEGY_SET:-full}"
+echo "[sweep] prepp_cache=$([[ "${KRAKEN_SHARED_PREPP_CACHE:-0}" == "1" ]] && echo "shared (no per-strategy clear)" || echo "per-strategy clear")"
 echo
 
 python start_simulation.py 2>&1 | tee "../sweep_$(date +%Y%m%d_%H%M%S).log"

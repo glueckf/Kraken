@@ -7,6 +7,7 @@ a clean, modern interface.
 """
 
 import logging
+import os
 from typing import Any, Dict, List
 import time
 import uuid
@@ -241,8 +242,15 @@ def run_kraken_solver(
         # compare across strategies. With seeded PrePP (see CostCalculator),
         # the cache is now only a performance optimisation — clearing it
         # does not affect correctness, only per-strategy compute time.
+        #
+        # KRAKEN_SHARED_PREPP_CACHE=1 suppresses the clear so all strategies
+        # share one cache, primed by whichever ran first. Required when
+        # running with PREPP_NONDETERMINISTIC=1 to keep all strategies on
+        # the same noisy cost surface — otherwise cross-strategy comparison
+        # is invalid (see commit a9be140).
         if hasattr(problem, "cost_calculator"):
-            problem.cost_calculator.clear_cache()
+            if os.environ.get("KRAKEN_SHARED_PREPP_CACHE", "0") != "1":
+                problem.cost_calculator.clear_cache()
 
         # Select and execute strategy
         strategy_start = time.time()
