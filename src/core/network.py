@@ -3,10 +3,14 @@ Generate network with given size (nwsize), node-event ratio (node_event_ratio),
 number of event types (num_eventtypes), event rate skew (eventskew)-
 """
 
+import logging
+
 import numpy as np
 import random
 from core.node import Node
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 
 def generate_eventrates(eventskew, numb_eventtypes, total_count=5000):
@@ -70,7 +74,7 @@ def create_random_tree(nwsize, eventrates, node_event_ratio, max_parents: int = 
     eList = {}
 
     levels = math.ceil(math.log2(nwsize))
-    print(f"[NETWORK] Network levels: {levels}")
+    logger.debug("network: levels=%d nwsize=%d", levels, nwsize)
     # Create the root node
     root = Node(
         id=0, compute_power=math.inf, memory=math.inf
@@ -148,10 +152,10 @@ def create_random_tree(nwsize, eventrates, node_event_ratio, max_parents: int = 
             )
             # print(random_leaf_node)
             random_leaf_node.eventrates[column] = eventrates[column]
-    print(f"[NETWORK] Event rates: {eventrates}")
+    logger.debug("network: event_rates=%s", eventrates)
     for column in eventrates_df.columns:
         if eventrates_df[column].sum() == 0:
-            print(f"[WARNING] Column {column} still has zero sum")
+            logger.warning("network: event column %s still has zero sum", column)
     # post_order_sum_events(root)
 
     # assign keys their parent nodes as values till cloud in the dictionary.
@@ -160,8 +164,7 @@ def create_random_tree(nwsize, eventrates, node_event_ratio, max_parents: int = 
         # call function get_parents to collect
         all_parents = get_parents(leaf_node)
         eList[leaf_id] = sorted(all_parents)
-    # print_network_structure(nw)
-    print(f"[NETWORK] Event list structure: {eList}")
+    logger.debug("network: event_list_structure=%s", eList)
     return root, nw, eList
 
 
@@ -210,22 +213,17 @@ def compressed_graph(G, eList):
         else:
             G.nodes[n]["relevant"] = False
 
-    # for n in compGraph.nodes:
-    #     if n in compressed_nodes:
-    #         compGraph.nodes[n]['relevant'] = n in compList
-    print(f"[COMPRESSION] Compressed graph list: {compList}")
-
-    print(f"[COMPRESSION] Total nodes in compressed graph: {len(G.nodes)}")
-    print(f"[COMPRESSION] Total nodes in original graph: {len(G.nodes)}")
-
     total_nodes = len(G.nodes)
     relevant_nodes = len(compList)
-    compression_ratio = 100 * (1 - relevant_nodes / total_nodes)
+    compression_ratio = 100 * (1 - relevant_nodes / total_nodes) if total_nodes else 0.0
 
-    print(
-        f"[COMPRESSION] Total: {total_nodes}, Relevant: {relevant_nodes} (including leaf nodes)"
+    logger.debug(
+        "compression: total=%d relevant=%d ratio=%.2f%% list=%s",
+        total_nodes,
+        relevant_nodes,
+        compression_ratio,
+        compList,
     )
-    print(f"[COMPRESSION] Compression ratio: {compression_ratio:.2f}% nodes removed")
 
     return G
 
@@ -253,7 +251,7 @@ def tree_dict(network_data, eList):
                 # add their events
                 treeAsDict[cNodes].add(etypes)
 
-    print(f"[NETWORK] Tree as dictionary: {treeAsDict}")
+    logger.debug("network: tree_as_dict=%s", treeAsDict)
 
     # sort keys & values in new dict
     final_treeDict = {}

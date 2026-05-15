@@ -35,6 +35,14 @@
 # comparison sweep (workload=5, query_length=5, num_event_types=6,
 # event_skew=2.0, parent_factor=1.8, node_event_ratio=0.7).
 #
+# PrePP-variance A/B flags:
+#   PREPP_NONDETERMINISTIC=1  disable per-call RNG seeding in PrePP so it
+#                             falls back to global `random.*`. Reintroduces
+#                             the pre-deterministic-fix noise; the
+#                             per-strategy cache clearing stays in place.
+#   KRAKEN_STRATEGY_SET=noisy_compare  strip to {greedy, k=3, k=5, dag_star}.
+#                                      Default "full" keeps all 6 strategies.
+#
 # What this writes:
 #   src/result/<DATASET_NAME>.parquet/              per-run unified rows
 #   src/result/<DATASET_NAME>_comparison.parquet/   wide-format rows w/ baselines
@@ -63,6 +71,8 @@ export KRAKEN_PROFILE="${PROFILE:-prod}"
 [[ -n "${AXIS_WORKLOAD_SIZE:-}" ]]   && export KRAKEN_AXIS_WORKLOAD_SIZE="${AXIS_WORKLOAD_SIZE}"
 [[ -n "${AXIS_QUERY_LENGTH:-}" ]]    && export KRAKEN_AXIS_QUERY_LENGTH="${AXIS_QUERY_LENGTH}"
 [[ -n "${AXIS_NUM_EVENT_TYPES:-}" ]] && export KRAKEN_AXIS_NUM_EVENT_TYPES="${AXIS_NUM_EVENT_TYPES}"
+[[ -n "${PREPP_NONDETERMINISTIC:-}" ]] && export PREPP_NONDETERMINISTIC
+[[ -n "${KRAKEN_STRATEGY_SET:-}" ]]    && export KRAKEN_STRATEGY_SET
 
 echo "[sweep] starting at $(date)"
 echo "[sweep] profile=${KRAKEN_PROFILE}"
@@ -70,6 +80,8 @@ echo "[sweep] runs=${KRAKEN_RUNS:-<profile default>}"
 echo "[sweep] network_sizes=${KRAKEN_NETWORK_SIZES:-<profile default>}"
 echo "[sweep] max_workers=${KRAKEN_MAX_WORKERS:-<profile default>}"
 echo "[sweep] dataset_name=${KRAKEN_DATASET_NAME:-dag_star_sweep}"
+echo "[sweep] prepp_mode=$([[ "${PREPP_NONDETERMINISTIC:-0}" == "1" ]] && echo "noisy" || echo "deterministic")"
+echo "[sweep] strategy_set=${KRAKEN_STRATEGY_SET:-full}"
 echo
 
 python start_simulation.py 2>&1 | tee "../sweep_$(date +%Y%m%d_%H%M%S).log"

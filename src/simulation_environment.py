@@ -8,6 +8,7 @@ strategies are run sequentially.
 
 import io
 import logging
+import os
 import string
 import time
 from enum import Enum
@@ -298,7 +299,7 @@ def compute_all_push(context):
         Dictionary containing cost, latency, node, routing_dict, and status
     """
     try:
-        print("--- Running All Push Scenario ---")
+        logger.debug("all_push: starting scenario")
 
         import networkx as nx
 
@@ -379,7 +380,9 @@ def compute_all_push(context):
 
         end_time = time.time()
 
-        print(f"--- All Push Complete: Cost={mycosts:.2f}, Latency={longest_path} ---")
+        logger.debug(
+            "all_push: cost=%.2f latency=%s", mycosts, longest_path
+        )
 
         return {
             "cost": mycosts,
@@ -408,7 +411,7 @@ def calculate_prepp_from_cloud(context, reused_buffer_section):
     """
 
     try:
-        print("--- Running Solely PrePP from Cloud Scenario ---")
+        logger.debug("prepp_from_cloud: starting scenario")
 
         prepp_start_time = time.time()
 
@@ -1194,7 +1197,6 @@ class Simulation:
         Args:
             config: SimulationConfig object containing all simulation parameters
         """
-        print("--- Initializing Simulation Environment ---")
         try:
             # ------ SETUP -------#
             start_time_setup = time.time()
@@ -1358,7 +1360,14 @@ class Simulation:
                 self.selectivities
             )
 
-            print("--- SETUP COMPLETE ---")
+            logger.info(
+                "setup complete: nodes=%d workload=%d projections=%d mode=%s setup_time=%.2fs",
+                self.nwSize,
+                len(self.query_workload),
+                len(self.h_projlist) if self.h_projlist else 0,
+                self.config.mode.value,
+                self.setup_time,
+            )
         except Exception as e:
             logger.error(msg=e, exc_info=True)
             raise
@@ -1378,9 +1387,13 @@ class Simulation:
 
         try:
             # ----- ALL PUSH CALCULATION -----#
-            print("--- Running All Push Computation ---")
             self.all_push_results = compute_all_push(self)
             all_push_latency = self.all_push_results.get("transmission_latency", 0.0)
+            logger.info(
+                "all_push: cost=%.2f latency=%.2f",
+                self.all_push_results.get("cost", 0.0),
+                all_push_latency,
+            )
 
             # Only multiply threshold here for normal simulations
             # For trade-off study, multiplication happens inside run_kraken_solver
@@ -1389,10 +1402,8 @@ class Simulation:
                 and not self.config.run_latency_tradeoff_study
             ):
                 self.latency_threshold *= all_push_latency
-            print("--- ALL PUSH COMPUTATION COMPLETE ---")
 
             # ----- INEV COMPUTATION -----#
-            print("--- Running INEv Computation ---")
             inev_start_time = time.time()
             sequential_start_time = inev_start_time  # For consistency in logging
             (
@@ -1403,10 +1414,13 @@ class Simulation:
                 self.inev_results,
             ) = calculate_operator_placement(self, "test", 0)
             inev_end_time = time.time()
-            print("--- INEV COMPUTATION COMPLETE ---")
+            logger.info(
+                "inev: cost=%.2f time=%.2fs",
+                self.inev_results.get("cost", 0.0),
+                inev_end_time - inev_start_time,
+            )
 
             # ----- SEQUENTIAL COMPUTATION (using INEv results) -----#
-            print("--- Running Sequential Computation ---")
             plan, reused_section = generate_eval_plan(
                 self.network,
                 self.selectivities,
@@ -1429,17 +1443,23 @@ class Simulation:
             sequential_dict["computing_time"] = sequential_end_time - sequential_start_time
             self.sequential_results = sequential_dict
             self.inev_results = inev_dict
-            print("--- SEQUENTIAL COMPUTATION COMPLETE ---")
+            logger.info(
+                "sequential: cost=%.2f time=%.2fs",
+                sequential_dict.get("cost", 0.0),
+                sequential_dict["computing_time"],
+            )
 
             # ----- SOLELY PREPP COMPUTATION (from cloud) -----#
-            print("--- Running PrePP from Cloud Computation ---")
             self.prepp_from_cloud_result = calculate_prepp_from_cloud(
                 self, reused_section
             )
-            print("--- PREPP FROM CLOUD COMPUTATION COMPLETE ---")
+            logger.info(
+                "prepp_from_cloud: cost=%.2f time=%.2fs",
+                self.prepp_from_cloud_result.get("cost", 0.0),
+                self.prepp_from_cloud_result.get("computing_time", 0.0),
+            )
 
             # ----- KRAKEN COMPUTATION -----#
-            print("--- Running Kraken Computation ---")
             from src.kraken.run import run_kraken_solver
 
             # Check if running latency trade-off study
@@ -1453,28 +1473,68 @@ class Simulation:
                 # dag_star_h0_b is the h=0 ablation: heuristic disabled, bound on.
                 # h ≡ 0 is trivially admissible, so this variant must return the
                 # cost-optimal plan if the search itself is correct.
-                self.kraken_results = run_kraken_solver(
-                    simulation_context=self,
-                    strategies_to_run=[
+                # KRAKEN_STRATEGY_SET=noisy_compare strips the variants and keeps
+                # only greedy / k=3 / k=5 / dag_star (h, no bound) — used for the
+                # PrePP-variance A/B run.
+                if os.environ.get("KRAKEN_STRATEGY_SET", "full") == "noisy_compare":
+                    strategies_to_run = [
+                        {"name": "greedy"},
+                        {"name": "k_beam", "k": 3},
+                        {"name": "k_beam", "k": 5},
+                        {"name": "dag_star", "use_upper_bound": False},
+                    ]
+                else:
+                    strategies_to_run = [
                         {"name": "greedy"},
                         {"name": "k_beam", "k": 3},
                         {"name": "k_beam", "k": 5},
                         {"name": "dag_star", "use_upper_bound": True},
                         {"name": "dag_star", "use_upper_bound": False},
                         {"name": "dag_star", "use_upper_bound": True, "disable_heuristic": True},
-                    ],
+                    ]
+                self.kraken_results = run_kraken_solver(
+                    simulation_context=self,
+                    strategies_to_run=strategies_to_run,
                     compare_within_kraken=True,
                 )
-            print("--- KRAKEN COMPUTATION COMPLETE ---")
 
-            self.entire_simulation_time = self.start_time_setup - time.time()
+            self._log_kraken_summary()
+            self.entire_simulation_time = time.time() - self.start_time_setup
 
             # ----- WRITE RESULTS -----#
             self._write_results()
-            print("--- All computations complete and results saved. ---")
+            logger.info(
+                "run complete: total=%.2fs (setup=%.2fs)",
+                self.entire_simulation_time,
+                self.setup_time,
+            )
         except Exception as e:
             logger.error(msg=e, exc_info=True)
             raise
+
+    def _log_kraken_summary(self) -> None:
+        """Emit one INFO line per Kraken strategy with cost/latency/time."""
+        if not self.kraken_results:
+            return
+        strategies = self.kraken_results.get("strategies") if isinstance(
+            self.kraken_results, dict
+        ) else None
+        if not strategies:
+            return
+        for strategy_name, strategy_result in strategies.items():
+            status = strategy_result.get("status", "unknown")
+            metrics = strategy_result.get("metrics", {}) or {}
+            cost = metrics.get("total_cost")
+            latency = metrics.get("max_latency")
+            exec_time = strategy_result.get("execution_time_seconds")
+            logger.info(
+                "kraken[%s]: status=%s cost=%s latency=%s time=%ss",
+                strategy_name,
+                status,
+                f"{cost:.2f}" if isinstance(cost, (int, float)) else cost,
+                f"{latency:.2f}" if isinstance(latency, (int, float)) else latency,
+                f"{exec_time:.2f}" if isinstance(exec_time, (int, float)) else exec_time,
+            )
 
     def _write_results(self, output_dataset_name: Optional[str] = None):
         """Write all strategy results to a unified parquet file."""
@@ -1488,7 +1548,7 @@ class Simulation:
             output_dataset_name = self.config.output_dataset_name
 
         try:
-            print("--- Writing unified results to parquet ---")
+            logger.debug("writing unified results to parquet")
 
             row: Dict[str, Any] = {}
 
@@ -1522,7 +1582,7 @@ class Simulation:
                 self.kraken_results
                 and self.kraken_results.get("is_tradeoff_study") is True
             ):
-                print("--- Writing latency trade-off study results ---")
+                logger.debug("writing latency trade-off study results")
 
                 # Extract results from dual-run
                 cost_focused_results = self.kraken_results.get(
@@ -1696,7 +1756,7 @@ class Simulation:
                 output_dir.mkdir(parents=True, exist_ok=True)
                 pq.write_to_dataset(table, root_path=str(output_dir))
 
-                print(f"--- Trade-off study results written to {output_dir} ---")
+                logger.info("trade-off study results written to %s", output_dir)
                 return
 
             # Normal simulation result writing
@@ -1717,8 +1777,10 @@ class Simulation:
                         else {}
                     )
 
-                    print(
-                        f"DEBUG _write_results: Adding columns for strategy '{strategy_name}' with prefix '{prefix}'"
+                    logger.debug(
+                        "_write_results: adding columns for strategy '%s' (prefix=%s)",
+                        strategy_name,
+                        prefix,
                     )
 
                     row[f"{prefix}_status"] = status
@@ -1745,9 +1807,11 @@ class Simulation:
                         metrics.get("average_cost_per_placement")
                     )
 
-            print(
-                f"DEBUG _write_results: Row contains these kraken columns: {[k for k in row.keys() if 'kraken' in k]}"
-            )
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug(
+                    "_write_results: kraken columns in row: %s",
+                    [k for k in row.keys() if "kraken" in k],
+                )
 
             # Add configuration information to results (cast all to float for consistency)
             row["network_size"] = safe_float(self.config.network_size)
@@ -1784,14 +1848,17 @@ class Simulation:
             )
 
             if not row:
-                print("--- No results to write ---")
+                logger.warning("no results to write")
                 return
 
             # Create DataFrame from row
             df = pd.DataFrame([row])
-            print(
-                f"DEBUG: DataFrame columns (total {len(df.columns)}): {[c for c in df.columns if 'kraken' in c]}"
-            )
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug(
+                    "_write_results: dataframe has %d columns (kraken: %s)",
+                    len(df.columns),
+                    [c for c in df.columns if "kraken" in c],
+                )
 
             # Define explicit PyArrow schema to prevent type inference issues
             # All numeric columns are explicitly set to float64 (double in PyArrow)
@@ -1882,11 +1949,16 @@ class Simulation:
                 dtype = pa.string() if col.endswith("_status") else pa.float64()
                 schema_fields.append(pa.field(col, dtype))
                 schema_field_names.add(col)
-            print(
-                f"DEBUG: Schema filtering: {original_field_count} -> {len(schema_fields)} fields"
-            )
-            kraken_schema_fields = [f.name for f in schema_fields if "kraken" in f.name]
-            print(f"DEBUG: Kraken columns in final schema: {kraken_schema_fields}")
+            if logger.isEnabledFor(logging.DEBUG):
+                kraken_schema_fields = [
+                    f.name for f in schema_fields if "kraken" in f.name
+                ]
+                logger.debug(
+                    "_write_results: schema filtered %d -> %d fields (kraken: %s)",
+                    original_field_count,
+                    len(schema_fields),
+                    kraken_schema_fields,
+                )
             explicit_schema = pa.schema(schema_fields)
 
             # Convert DataFrame to PyArrow table with explicit schema
@@ -1928,7 +2000,7 @@ class Simulation:
                         f"Parquet validation failed for {file_path}"
                     ) from validation_error
 
-            print(f"--- Results written to {output_dir} ---")
+            logger.info("results written to %s", output_dir)
         except Exception as e:
             logger.error("Failed to write unified results", exc_info=e)
             raise

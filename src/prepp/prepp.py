@@ -483,7 +483,7 @@ def determine_randomized_distribution_push_pull_costs(
             highest_primitive_eventtype_to_be_processed,
         )
     except Exception as e:
-        print(e)
+        logger.exception("push_pull setup failed: %s", e)
 
     greedy_exec_times = []
     exact_exec_times = []
@@ -504,7 +504,7 @@ def determine_randomized_distribution_push_pull_costs(
             key=lambda q: len(determine_all_primitive_events_of_projection(q.query)),
         )
     except Exception as e:
-        print(e)
+        logger.exception("push_pull: failed to sort queries: %s", e)
 
     try:
         for i, query in enumerate(queries):
@@ -546,11 +546,11 @@ def determine_randomized_distribution_push_pull_costs(
                     if latency > max_latency[1]:
                         max_latency = (current_node, latency)
 
-                    # ===========================================
-                    # FINAL PREPP RESULT LOGGING
-                    # ===========================================
-                    print(
-                        f"PLACEMENT: {query.query} -> Node {current_node} (Cost: {exact_costs:.2f})"
+                    logger.debug(
+                        "prepp placement: %s -> node %s cost=%.2f",
+                        query.query,
+                        current_node,
+                        exact_costs,
                     )
 
                     # already_aquired_eventtypes = already_received_eventtypes[current_node]
@@ -567,8 +567,8 @@ def determine_randomized_distribution_push_pull_costs(
                                     len(exact_push_pull_plan_for_a_projection)
                                 )
                             ]
-                            print(
-                                "[DEBUG] Adjusted used_eventtypes_to_pull to match exact_push_pull_plan_for_a_projection length"
+                            logger.debug(
+                                "adjusted used_eventtypes_to_pull to match exact_push_pull_plan_for_a_projection length"
                             )
                         acquisition_set = AcquisitionSet(steps=[])
                         received_eventtypes = []
@@ -651,7 +651,7 @@ def determine_randomized_distribution_push_pull_costs(
 
                     total_exact_costs += exact_costs
     except Exception as e:
-        print(e)
+        logger.exception("push_pull: per-query processing failed: %s", e)
     return (
         total_greedy_costs,
         total_sampling_costs,

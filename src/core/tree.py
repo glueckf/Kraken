@@ -5,7 +5,11 @@ Implementation of Query-Tree
 
 from core.proj_string import filter_numbers, get_doubles_k
 import copy
+import logging
+
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 class Tree:
@@ -390,7 +394,8 @@ class KL(Tree):
         # rate = 1
         # for i in self.children:
         #     rate *= 2^(i.evaluate())
-        print(self.strip_kl_simple())
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("KL.evaluate: %s", self.strip_kl_simple())
         return self.strip_kl_simple().evaluate(rates)
 
 

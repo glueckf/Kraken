@@ -1,4 +1,5 @@
 import itertools
+import logging
 import operator
 import copy
 
@@ -7,6 +8,8 @@ import random
 
 import re
 from itertools import combinations, chain
+
+logger = logging.getLogger(__name__)
 
 
 class CachedOptimalStep:
@@ -807,17 +810,16 @@ class Initiate:
                             tmp_list[i]
                         ]
                     except KeyError:
-                        print(
-                            f"[ERROR] KeyError in weak_ordered_plans_generator: key '{tmp_list[i]}' not found in single_eventtype_to_projection_map"
+                        logger.error(
+                            "weak_ordered_plans_generator KeyError: "
+                            "key='%s' not in single_eventtype_to_projection_map "
+                            "(available=%s eventtypes_to_match=%s tmp_list=%s plan=%s)",
+                            tmp_list[i],
+                            list(self.single_eventtype_to_projection_map.keys()),
+                            eventtypes_to_match_projection,
+                            tmp_list,
+                            plan,
                         )
-                        print(
-                            f"[ERROR] Available keys in single_eventtype_to_projection_map: {list(self.single_eventtype_to_projection_map.keys())}"
-                        )
-                        print(
-                            f"[ERROR] eventtypes_to_match_projection: {eventtypes_to_match_projection}"
-                        )
-                        print(f"[ERROR] tmp_list: {tmp_list}")
-                        print(f"[ERROR] Current plan: {plan}")
                         raise
                 tmp.append(tmp_list)
 
@@ -867,11 +869,11 @@ class Initiate:
 
             # print(f"[DEBUG] Final single_eventtype_to_projection_map: {self.single_eventtype_to_projection_map}")
         except Exception as e:
-            print(
-                f"[ERROR] Exception in initiate_mapping_from_projection_to_single_eventtype: {e}"
-            )
-            print(
-                f"[ERROR] eventtypes_to_match_projection: {eventtypes_to_match_projection}"
+            logger.exception(
+                "initiate_mapping_from_projection_to_single_eventtype failed "
+                "(eventtypes_to_match=%s): %s",
+                eventtypes_to_match_projection,
+                e,
             )
             raise e
 
@@ -1107,10 +1109,12 @@ class Initiate:
                 projection_to_process.primitive_operators
             )
         except Exception as e:
-            print(f"[ERROR] Exception in determine_exact_push_pull_plan setup: {e}")
-            print(f"[ERROR] Query: '{projection_to_process.query}'")
-            print(
-                f"[ERROR] primitive_operators: {projection_to_process.primitive_operators}"
+            logger.exception(
+                "determine_exact_push_pull_plan setup failed for query='%s' "
+                "primitive_operators=%s: %s",
+                projection_to_process.query,
+                projection_to_process.primitive_operators,
+                e,
             )
             raise
 

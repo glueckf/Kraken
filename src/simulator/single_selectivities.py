@@ -1,6 +1,9 @@
+import logging
 import re
 import random
 from itertools import permutations
+
+logger = logging.getLogger(__name__)
 
 NETWORK = "network"
 QUERIES = "queries"
@@ -234,13 +237,8 @@ def extract_muse_graph_selectivities(line):
     Args:
         line: String line containing event combinations and selectivities
     """
-    import logging
-
     # Declare global variables for debugger access
     global all_event_combinations, eventtype_pair_to_selectivity
-
-    # Setup logging
-    logger = logging.getLogger(__name__)
 
     logger.debug(f"Processing selectivities line: {line.strip()}")
 
@@ -633,10 +631,10 @@ def initialize_single_selectivity(
         # print(result)
 
         if CURRENT_SECTION == QUERIES:
-            print(extract_queries(line))
+            logger.debug("queries section: %s", extract_queries(line))
 
         if CURRENT_SECTION == MUSE_GRAPH:
-            print("-----")
+            logger.debug("muse_graph section: ---")
             query = Query_fragment("", [], [], "")
             if extract_muse_graph_queries(line) is not None:
                 query.query = extract_muse_graph_queries(line)

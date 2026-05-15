@@ -1,5 +1,9 @@
+import logging
 import string
+
 import core.subsets as sbs
+
+logger = logging.getLogger(__name__)
 
 
 def get_com(mylist):
@@ -225,7 +229,7 @@ def generate_eval_plan(nw, selectivities, myPlan, centralPlan, workload):
 
     myplan = myPlan[0]
 
-    print(f"Myplan is {myplan}")
+    logger.debug("generate_eval_plan: myplan=%s", myplan)
 
     evaluationDict = {}
     combinationDict = {}

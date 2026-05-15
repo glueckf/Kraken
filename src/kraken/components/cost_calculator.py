@@ -3,6 +3,7 @@
 import copy
 import io
 import hashlib
+import os
 import random as _random
 import re
 from typing import Any, Dict, List, Optional, Set, Tuple
@@ -118,7 +119,13 @@ class CostCalculator:
         # Per-call seeded RNG: stable hash of the input identity → identical
         # PrePP output for identical (p, n, dependency_state) inputs across
         # any caller, without touching the global random.* state.
-        prepp_rng = _random.Random(self._seed_from_cache_key(cache_key))
+        # PREPP_NONDETERMINISTIC=1 disables seeding so PrePP falls back to
+        # the global `random.*` module — used to A/B the variance artefact.
+        prepp_rng = (
+            None
+            if os.environ.get("PREPP_NONDETERMINISTIC", "0") == "1"
+            else _random.Random(self._seed_from_cache_key(cache_key))
+        )
 
         METHOD = "ppmuse"
         ALGORITHM = "e"

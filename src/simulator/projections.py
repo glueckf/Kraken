@@ -9,8 +9,12 @@ Generate beneficial projections for given query workload.
 
 """
 
+import logging
+
 import core.subsets as sbs
 import multiprocessing
+
+logger = logging.getLogger(__name__)
 
 from inev.filter import get_maximal_filter, get_decomposed_total
 from core.structures import get_num_etbs, get_nodes, get_longest
@@ -239,9 +243,8 @@ def minimum_subgraph(G, nodes_list):
                     )
 
                 except nx.NetworkXNoPath:
-                    # If there's no path to node 0, raise an exception or handle as needed
-                    print(
-                        f"[TOPOLOGY ERROR] Neither {source} nor {target} can reach node 0 - topology issue detected"
+                    logger.error(
+                        "topology: neither %s nor %s can reach node 0", source, target
                     )
 
     # Create the subgraph from the collected edges

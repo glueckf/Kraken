@@ -60,7 +60,7 @@ def _setup_worker_path(parent_dir: str = None) -> None:
         parent_dir = os.path.dirname(script_dir)
     if parent_dir not in sys.path:
         sys.path.insert(0, parent_dir)
-        print(f"[WORKER_PATH_SETUP] Added {parent_dir} to sys.path", flush=True)
+        logger.debug("worker_path_setup: added %s to sys.path", parent_dir)
 
 
 def _initialize_worker() -> None:
@@ -860,11 +860,28 @@ def _launch_axis_slice(
         output_dataset_name=dataset_name,
     )
 
-if __name__ == "__main__":
-    # Configure logging for server runs
+def _configure_logging() -> None:
+    """Configure root logging for simulation runs.
+
+    Level is taken from the ``INES_LOG_LEVEL`` env var (default ``INFO``).
+    Set ``INES_LOG_LEVEL=DEBUG`` to see per-projection / per-node detail;
+    leave it at ``INFO`` for a clean run-by-run summary.
+    """
+    level_name = os.environ.get("INES_LOG_LEVEL", "INFO").upper()
+    level = getattr(logging, level_name, logging.INFO)
+
     logging.basicConfig(
-        level=logging.INFO,
+        level=level,
         format="[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
+        datefmt="%H:%M:%S",
+        force=True,
     )
+
+    # Silence chatty third-party libraries unless we're explicitly debugging.
+    for noisy in ("matplotlib", "PIL", "fontTools", "urllib3"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
+
+
+if __name__ == "__main__":
+    _configure_logging()
     main()

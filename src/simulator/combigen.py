@@ -1,3 +1,4 @@
+import logging
 import time
 from inev.filter import (
     get_maximal_filter,
@@ -8,6 +9,8 @@ from core.structures import get_num_etbs
 from core.tree import PrimEvent
 from simulator.projections import total_rate, return_partitioning
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 numberCombis = 0
@@ -218,13 +221,16 @@ def get_savings(
     try:
         _ = total_rate(self, partType, self.h_projrates)
     except KeyError as e:
-        print(f"[ERROR] KeyError in total_rate: {e}")
-        print(f"[DEBUG] Available projrates keys: {list(self.h_projrates.keys())}")
+        logger.warning("savings: total_rate KeyError for partType=%s missing=%s", partType, e)
 
     try:
         _ = optimistic_total_rate(self, projection)
     except KeyError as e:
-        print(f"[ERROR] KeyError in optimisticTotalRate: {e}")
+        logger.warning(
+            "savings: optimistic_total_rate KeyError for projection=%s missing=%s",
+            projection,
+            e,
+        )
 
     # TODO: it is not total_rate but only local Rate that we save for PartType
     if projection.get_original(wl) not in wl:  # some intermediate projection
@@ -769,9 +775,14 @@ def get_expensive_projs(self, criticals):  # only on criticalTypes
         and combiDict[x][1]
     ]
     # the inputs are already part of other multi-sink placements (or if at least some of the inputs are already disseminated)
-    for proj in allMSProjs:
-        print(str(proj) + " : " + str(total_rate(self, proj, self.h_projrates)))
-    print(list(map(lambda x: str(x), myMSProjs)))
+    if logger.isEnabledFor(logging.DEBUG):
+        for proj in allMSProjs:
+            logger.debug(
+                "ms_proj rate: %s : %s",
+                proj,
+                total_rate(self, proj, self.h_projrates),
+            )
+        logger.debug("my_ms_projs: %s", [str(x) for x in myMSProjs])
 
     #
     # allExpensiveMSProjs = [out_rate_high(x) for x in allMSProjs]

@@ -1,3 +1,4 @@
+import logging
 import uuid
 
 from inev.placement_aug import (
@@ -9,6 +10,8 @@ from inev.process_combination import compute_dependencies, get_shared_ms_input
 import time
 from simulator.evaluation_plan import EvaluationPlan
 from simulator.projections import return_partitioning, total_rate
+
+logger = logging.getLogger(__name__)
 
 
 # maxDist = max([max(x) for x in allPairs])
@@ -114,26 +117,26 @@ def calculate_operator_placement(self, file_path: str, max_parents: int):
     filename = file_path
     number_parents = max_parents
 
-    print("\n" + "=" * 60)
-    print("SEQUENTIAL APPROACH - STARTING PLACEMENT")
-    print("=" * 60)
-    print(f"[SEQUENTIAL] Processing file: {filename}")
-    print(f"[SEQUENTIAL] Workload size: {len(wl)} queries")
-    print(f"[SEQUENTIAL] Query workload: {[str(q) for q in wl]}")
-    print(f"[SEQUENTIAL] Network nodes: {len(network)} nodes")
-    print(f"[SEQUENTIAL] Available event nodes: {list(IndexEventNodes.keys())}")
+    logger.info(
+        "inev: starting placement (workload=%d nodes=%d)",
+        len(wl),
+        len(network),
+    )
+    if logger.isEnabledFor(logging.DEBUG):
+        logger.debug("inev: workload=%s", [str(q) for q in wl])
+        logger.debug("inev: file=%s event_nodes=%s", filename, list(IndexEventNodes.keys()))
     ccosts = new_compute_central_costs(
         wl, IndexEventNodes, allPairs, rates, EventNodes, self.graph
     )
     centralHopLatency = max(allPairs[ccosts[1]])
     numberHops = sum(allPairs[ccosts[1]])
-    print("\n[SEQUENTIAL] Central Placement Baseline:")
-    print(f"  Central Cost: {ccosts[0]:.2f}")
-    print(f"  Central Node: {ccosts[1]}")
-    print(f"  Total Hops: {numberHops}")
-    print(f"  Hop Latency: {centralHopLatency:.2f}")
-    print(f"  Target: Beat central cost of {ccosts[0]:.2f}")
-    print("=" * 60 + "\n")
+    logger.info(
+        "inev: central baseline cost=%.2f node=%s hops=%s hop_latency=%.2f",
+        ccosts[0],
+        ccosts[1],
+        numberHops,
+        centralHopLatency,
+    )
     MSPlacements = {}
     start_time = time.time()
 
@@ -170,11 +173,11 @@ def calculate_operator_placement(self, file_path: str, max_parents: int):
 
     temp_results_dict = {}
 
-    print(
-        f"[SEQUENTIAL] Starting placement for {len(processingOrder)} projections in dependency order..."
-    )
-    print(
-        f"[SEQUENTIAL] Processing order: {[str(p) for p in processingOrder[:5]]}{'...' if len(processingOrder) > 5 else ''}"
+    logger.debug(
+        "inev: placing %d projections in dependency order (first 5: %s%s)",
+        len(processingOrder),
+        [str(p) for p in processingOrder[:5]],
+        "..." if len(processingOrder) > 5 else "",
     )
 
     for projection in (
@@ -269,78 +272,71 @@ def calculate_operator_placement(self, file_path: str, max_parents: int):
             myPlan.update_instances(result[4])  #! update instances
             Filters += result[5]
 
-    # SEQUENTIAL APPROACH - FINAL PLACEMENT DECISIONS
-    print("\n" + "=" * 60)
-    print("SEQUENTIAL APPROACH - PLACEMENT DECISIONS SUMMARY")
-    print("=" * 60)
-
-    if temp_results_dict:
-        total_projections = len(temp_results_dict)
-        total_placement_cost = sum(
-            result["placement_costs"] for result in temp_results_dict.values()
-        )
-
-        print(f"[SEQUENTIAL] Total Projections Placed: {total_projections}")
-        print(f"[SEQUENTIAL] Total Placement Cost: {total_placement_cost:.2f}")
-
-        # Group placements by node
+    # Summarise placement decisions
+    if not temp_results_dict:
+        logger.warning("inev: no projections were placed")
+    elif logger.isEnabledFor(logging.DEBUG):
         placements_by_node = {}
         for projection, result in temp_results_dict.items():
             node = result["placement_node"]
-            if node not in placements_by_node:
-                placements_by_node[node] = []
-            placements_by_node[node].append((projection, result["placement_costs"]))
-
-        print("\n[SEQUENTIAL] Placement Distribution Across Nodes:")
+            placements_by_node.setdefault(node, []).append(
+                (projection, result["placement_costs"])
+            )
+        logger.debug(
+            "inev: placement distribution across %d node(s):",
+            len(placements_by_node),
+        )
         for node in sorted(placements_by_node.keys()):
             projections = placements_by_node[node]
             node_total_cost = sum(cost for _, cost in projections)
-            print(
-                f"  Node {node}: {len(projections)} projection(s), Total Cost: {node_total_cost:.2f}"
+            logger.debug(
+                "  node %s: %d projection(s) cost=%.2f",
+                node,
+                len(projections),
+                node_total_cost,
             )
             for proj, cost in projections:
-                print(f"    - {proj}: {cost:.2f}")
-    else:
-        print("[SEQUENTIAL] No projections were placed")
+                logger.debug("    - %s: %.2f", proj, cost)
 
-    print("=" * 60 + "\n")
-    mycosts = costs / ccosts[0]
-    print("[SEQUENTIAL] Final Aggregate Results:")
-    print(f"[SEQUENTIAL] Total Transmission Cost: {costs:.2f}")
-    print(f"[SEQUENTIAL] Central Cost Baseline: {ccosts[0]:.2f}")
-    print(f"[SEQUENTIAL] Cost Reduction Ratio: {mycosts:.4f}")
+    mycosts = costs / ccosts[0] if ccosts[0] else 0.0
 
     if len(wl) > 1 or wl[0].has_kleene() or wl[0].has_negation():
         lowerBound = 0
     else:
         for query in wl:
             lowerBound = get_lower_bound(query, self)
-    print(f"[SEQUENTIAL] Lower Bound Efficiency: {lowerBound / ccosts[0]:.4f}")
 
-    # Calculate and display savings
     total_savings = ccosts[0] - costs
     savings_percentage = (total_savings / ccosts[0] * 100) if ccosts[0] > 0 else 0
-    print(
-        f"[SEQUENTIAL] Total Savings: {total_savings:.2f} ({savings_percentage:.1f}%)"
-    )
-
     totaltime = str(round(time.time() - start_time, 2))
+    placed = len(temp_results_dict)
+    ttime_f = float(totaltime) if totaltime else 0.0
 
-    print("\n[SEQUENTIAL] Execution Summary:")
-    print(f"  Execution Time: {totaltime} seconds")
-    print(
-        f"  Projections per Second: {len(temp_results_dict) / float(totaltime) if float(totaltime) > 0 else 0:.2f}"
+    logger.info(
+        "inev: placed=%d cost=%.2f ratio=%.4f savings=%.2f (%.1f%%) time=%ss",
+        placed,
+        costs,
+        mycosts,
+        total_savings,
+        savings_percentage,
+        totaltime,
     )
-    print(
-        f"  Average Cost per Projection: {(costs / len(temp_results_dict)) if temp_results_dict else 0:.2f}"
-    )
-    print("\n" + "=" * 60)
+    if ccosts[0]:
+        logger.debug(
+            "inev: lower_bound_efficiency=%.4f throughput=%.2f proj/s avg_cost/proj=%.2f",
+            lowerBound / ccosts[0],
+            placed / ttime_f if ttime_f > 0 else 0.0,
+            (costs / placed) if placed else 0.0,
+        )
 
     ID = uuid.uuid4()
 
-    print("\n[SEQUENTIAL] Processing Order & Dependencies:")
-    print(f"  Processing Order: {[str(p) for p in processingOrder]}")
-    print(f"  Dependency Levels: {len(set(dependencies.values()))} levels")
+    if logger.isEnabledFor(logging.DEBUG):
+        logger.debug(
+            "inev: processing_order=%s dependency_levels=%d",
+            [str(p) for p in processingOrder],
+            len(set(dependencies.values())),
+        )
     # print(f"  Max Dependency Depth: {max_dependency:.1f}")
     # hoplatency = max([hopLatency[x] for x in hopLatency.keys()])
     if dependencies:

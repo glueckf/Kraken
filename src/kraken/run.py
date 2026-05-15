@@ -6,12 +6,15 @@ It orchestrates the problem setup, strategy execution, and result reporting with
 a clean, modern interface.
 """
 
+import logging
 from typing import Any, Dict, List
 import time
 import uuid
 
 from inev.process_combination import compute_dependencies
 from core.all_pairs import create_routing_dict
+
+logger = logging.getLogger(__name__)
 
 from kraken.problem import PlacementProblem
 from kraken.data.state import SolutionCandidate
@@ -91,7 +94,7 @@ def run_kraken_solver(
         processing_order = sorted(dependencies.keys(), key=lambda x: dependencies[x])
 
         # Run 1: Baseline (no latency constraint)
-        print("--- Running Baseline Greedy (no latency constraint) ---")
+        logger.info("kraken tradeoff: running baseline greedy (no latency constraint)")
         simulation_context.latency_threshold = None
         context_baseline = _gather_problem_parameters(simulation_context)
         problem_baseline = PlacementProblem(processing_order, context_baseline, False)
@@ -122,8 +125,9 @@ def run_kraken_solver(
             }
 
         # Run 2: Constrained (with latency constraint)
-        print(
-            f"--- Running Constrained Greedy (threshold={absolute_threshold:.2f}) ---"
+        logger.info(
+            "kraken tradeoff: running constrained greedy (threshold=%.2f)",
+            absolute_threshold,
         )
         simulation_context.latency_threshold = absolute_threshold
         context_constrained = _gather_problem_parameters(simulation_context)

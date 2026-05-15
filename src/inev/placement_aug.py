@@ -6,6 +6,8 @@ Created on Tue Aug 10 13:16:11 2021
 @author: samira
 """
 
+import logging
+
 from inev.filter import get_maximal_filter, get_decomposed_total
 from core.structures import get_nodes, num_etbs_by_key, set_event_nodes, sis_manage_etbs
 from simulator.projections import return_partitioning
@@ -15,6 +17,8 @@ import numpy as np
 from inev.filter import get_key_single_select
 import networkx as nx
 from core.structures import ms_manage_etbs, get_etbs
+
+logger = logging.getLogger(__name__)
 
 
 class PlacementDecision:
@@ -831,9 +835,7 @@ def compute_single_sink_placement(
 
     myProjection.add_sinks(node)  #!
 
-    print("\n[COST_DEBUG] === FINAL PLACEMENT RESULTS ===")
-    print(f"[COST_DEBUG] Best destination node: {node}")
-    print(f"[COST_DEBUG] Best total cost: {costs}")
+    logger.debug("placement: best_node=%s best_cost=%s", node, costs)
 
     # Remove computational power of sink for next iteration
     # if network[node].computational_power >= projection.computing_requirements:
