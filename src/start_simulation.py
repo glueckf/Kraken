@@ -570,16 +570,93 @@ def run_parameter_study(
     )
 
 
+_PROFILES = {
+    # Quick sanity sweep on a laptop. Single small network size, fewer runs.
+    "dev": {
+        "network_sizes": [50],
+        "runs_per_combination": 50,
+        "default_max_workers": 14,
+    },
+    # Full sweep for the cluster. 200 runs at every size, ramping from a
+    # validation-friendly 50 nodes up to 1000 nodes for scaling characterization.
+    "prod": {
+        "network_sizes": [50, 100, 200, 500, 1000],
+        "runs_per_combination": 200,
+        "default_max_workers": None,  # let the parallel executor auto-detect
+    },
+}
+
+
 def main() -> None:
     """
-    Main entry point for the Kraken Greedy vs. Constrained-Greedy
-    latency trade-off experiment.
+    DAG* validation sweep for the Kraken placement engine.
+
+    The script is profile-driven so the exact same code can be deployed on a
+    laptop for quick iteration and on a cluster for the full sweep.
+
+    Environment variables (all optional):
+
+      KRAKEN_PROFILE       "dev" (default) or "prod"
+                           dev  → 50 runs at n=50
+                           prod → 200 runs each at n=50, 100, 200, 500, 1000
+
+      KRAKEN_RUNS          override runs-per-combination for the active profile
+                           (useful for trimming a prod run from 200 → 100)
+
+      KRAKEN_NETWORK_SIZES comma-separated list, override the active profile's
+                           network sizes — e.g. KRAKEN_NETWORK_SIZES=200,500
+
+      KRAKEN_MAX_WORKERS   parallel-worker count; defaults to 14 on dev and
+                           auto-detect on prod
+
+      KRAKEN_DATASET_NAME  output dataset name under src/result/ — defaults to
+                           dag_star_sweep so all sizes accumulate in one place
+
+    All five Kraken strategies (greedy, k-beam k=3, k-beam k=5, DAG* with bound,
+    DAG* without bound) plus the h=0 ablation run on identical inputs per run.
+    Results are written to:
+
+      src/result/<dataset_name>.parquet/   — unified per-run rows (baselines)
+      src/result/kraken_comparison.parquet/ — wide-format comparison rows
+                                              (this is the dataset to download)
+
+    The comparison dataset includes all-push, prepp-from-cloud, INEv, and
+    Sequential baselines alongside every Kraken strategy's metrics, so a single
+    parquet directory contains everything needed for downstream analysis.
     """
-    # --- 1. Define Experiment Parameters ---
-    runs = 50
+    profile_name = os.environ.get("KRAKEN_PROFILE", "dev").lower()
+    if profile_name not in _PROFILES:
+        raise ValueError(
+            f"unknown KRAKEN_PROFILE={profile_name!r}; expected one of "
+            f"{sorted(_PROFILES.keys())}"
+        )
+    profile = _PROFILES[profile_name]
+
+    # Allow per-knob overrides via env vars
+    sizes_override = os.environ.get("KRAKEN_NETWORK_SIZES")
+    network_sizes = (
+        [int(s) for s in sizes_override.split(",")]
+        if sizes_override
+        else profile["network_sizes"]
+    )
+    runs = int(os.environ.get("KRAKEN_RUNS", profile["runs_per_combination"]))
+    max_workers_env = os.environ.get("KRAKEN_MAX_WORKERS")
+    max_workers = (
+        int(max_workers_env) if max_workers_env else profile["default_max_workers"]
+    )
+    dataset_name = os.environ.get("KRAKEN_DATASET_NAME", "dag_star_sweep")
+
+    logger.info(
+        "[SWEEP] profile=%s network_sizes=%s runs=%d max_workers=%s dataset=%s",
+        profile_name,
+        network_sizes,
+        runs,
+        max_workers,
+        dataset_name,
+    )
 
     run_parameter_study(
-        network_sizes=[100],
+        network_sizes=network_sizes,
         workload_sizes=[5],
         parent_factors=[1.8],
         query_lengths=[3],
@@ -589,10 +666,10 @@ def main() -> None:
         event_skews=[1.5],
         mode=SimulationMode.RANDOM,
         enable_parallel=True,
-        max_workers=14,
+        max_workers=max_workers,
         xi=0,
         cost_weight=1,
-        output_dataset_name="non_parallel_computation",
+        output_dataset_name=dataset_name,
     )
 
 if __name__ == "__main__":

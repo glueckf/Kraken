@@ -1,5 +1,6 @@
 """Cost calculation pipeline for placement decisions."""
 
+import copy
 import io
 import hashlib
 import re
@@ -65,6 +66,12 @@ class CostCalculator:
     ) -> List[Dict[str, Any]]:
         """Get raw costs for all valid strategies.
 
+        Results are cached on (p, n, dependent-sub-query placements). The
+        cache makes PrePP-derived costs deterministic across multiple
+        strategies sharing the same CostCalculator instance — without it,
+        each strategy gets its own noisy PrePP sample for the same plan,
+        which invalidates cross-strategy cost comparison in RANDOM mode.
+
         Args:
             p: Projection being placed
             n: Node ID where placement is considered
@@ -73,6 +80,11 @@ class CostCalculator:
         Returns:
             List of strategy dictionaries (all-push and optionally push-pull)
         """
+        cache_key = self._create_cache_key(p, n, s_current)
+        cached = self._prepp_cache.get(cache_key)
+        if cached is not None:
+            return copy.deepcopy(cached)
+
         # Step 1: Compute all-push strategy
         all_push_result = self._compute_all_push_costs(p, n, s_current)
 
@@ -91,7 +103,7 @@ class CostCalculator:
         # Create input buffer for PrePP
         input_buffer = self._build_prepp_input_buffer(p, n, s_current)
         if input_buffer is None:
-            return [all_push_result]
+            return self._store_in_cache(cache_key, [all_push_result])
 
         # Run PrePP for push-pull optimization
         from prepp.prepp import generate_prePP
@@ -110,7 +122,7 @@ class CostCalculator:
 
         # Process PrePP results to extract push-pull strategy
         if not prepp_output or len(prepp_output) < 6:
-            return [all_push_result]
+            return self._store_in_cache(cache_key, [all_push_result])
 
         push_pull_result = self._process_prepp_output(
             prepp_output, p, n, all_push_result["individual_cost"]
@@ -118,7 +130,7 @@ class CostCalculator:
 
         # Step 3: Compare and return distinct strategies
         if push_pull_result is None:
-            return [all_push_result]
+            return self._store_in_cache(cache_key, [all_push_result])
 
         # Check if strategies are identical
         strategies_identical = (
@@ -130,9 +142,20 @@ class CostCalculator:
         )
 
         if strategies_identical:
-            return [all_push_result]
+            return self._store_in_cache(cache_key, [all_push_result])
 
-        return [all_push_result, push_pull_result]
+        return self._store_in_cache(cache_key, [all_push_result, push_pull_result])
+
+    def _store_in_cache(
+        self, cache_key: str, result: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """Store a deep copy of `result` in the PrePP cache and return the
+        original list for use by the caller. The deep copy is required because
+        downstream `_adjust_for_local_events` and `_add_sink_costs` mutate the
+        dicts in place — without copying, the cached value would be poisoned
+        on first use."""
+        self._prepp_cache[cache_key] = copy.deepcopy(result)
+        return result
 
     def _adjust_for_local_events(
         self, strategy_result: Dict, p: Any, n: int, s_current: SolutionCandidate
@@ -222,13 +245,31 @@ class CostCalculator:
 
         return strategy_result
 
-    def _create_cache_key(self, p: Any, n: int) -> str:
-        """Create deterministic cache key."""
-        proj_str = str(p)
-        sel_rate = self.params["projection_rates_selectivity"].get(p, (0.0, 0.0))[0]
-        sel_items = sorted(self.params["pairwise_selectivities"].items())
+    def _create_cache_key(
+        self, p: Any, n: int, s_current: SolutionCandidate
+    ) -> str:
+        """Create deterministic cache key for raw strategy costs.
 
-        key_data = f"{n}|{proj_str}|{sel_rate}|{sel_items}"
+        The key includes the placement nodes of all sub-query dependencies
+        because both `_compute_all_push_costs` and `_build_prepp_input_buffer`
+        consume them. (p, n) alone would conflate genuinely different cost
+        contexts that happen to share the same projection and node.
+        """
+        proj_str = str(p)
+        problem = self.params.get("problem_ref")
+        if problem is not None:
+            deps = problem.dependencies_per_projection.get(p, [])
+            dep_placements = tuple(
+                sorted(
+                    (str(d), s_current.placements[d].node)
+                    for d in deps
+                    if d in s_current.placements
+                )
+            )
+        else:
+            dep_placements = ()
+
+        key_data = f"{n}|{proj_str}|{dep_placements}"
         return hashlib.md5(key_data.encode()).hexdigest()
 
     def _get_placement_context(

@@ -202,6 +202,8 @@ def run_kraken_solver(
         if isinstance(strategy_config, dict):
             algorithm_name = strategy_config.get("name")
             k_value = strategy_config.get("k", None)
+            use_upper_bound = strategy_config.get("use_upper_bound", True)
+            disable_heuristic = strategy_config.get("disable_heuristic", False)
         else:
             algorithm_name = (
                 str(strategy_config.value)
@@ -209,10 +211,15 @@ def run_kraken_solver(
                 else str(strategy_config)
             )
             k_value = None
+            use_upper_bound = True
+            disable_heuristic = False
 
         # Generate a unique strategy name for logging
         if algorithm_name == "k_beam" and k_value is not None:
             strategy_name = f"k_beam_k={k_value}"
+        elif algorithm_name == "dag_star":
+            base = "dag_star_h0" if disable_heuristic else "dag_star"
+            strategy_name = f"{base}_b" if use_upper_bound else base
         elif algorithm_name:
             strategy_name = algorithm_name
         else:
@@ -348,6 +355,10 @@ def _gather_problem_parameters(simulation_context: Any) -> Dict[str, Any]:
         "latency_weighting_factor": simulation_context.config.xi,
         "cost_weight": getattr(simulation_context.config, "cost_weight", 0.5),
         "latency_weight": 1 - getattr(simulation_context.config, "cost_weight", 0.5),
+        # Pre-computed baselines (populated by simulation_environment before kraken runs)
+        "prepp_from_cloud_result": getattr(
+            simulation_context, "prepp_from_cloud_result", None
+        ),
     }
 
     return context
@@ -368,7 +379,7 @@ def _select_strategy(strategy_config: Any):
         NotImplementedError: If the strategy is not yet implemented.
         ValueError: If the algorithm enum is not recognized.
     """
-    from kraken.search import GreedySearch, BeamSearch
+    from kraken.search import GreedySearch, BeamSearch, DagStarSearch
 
     k_value = None
     if isinstance(strategy_config, dict):
@@ -388,6 +399,16 @@ def _select_strategy(strategy_config: Any):
         # Use k_value from config, or default (from BeamSearch class)
         k_to_use = k_value if k_value is not None else 3
         return BeamSearch(k=int(k_to_use))
+    elif algorithm_name == "dag_star":
+        use_upper_bound = True
+        disable_heuristic = False
+        if isinstance(strategy_config, dict):
+            use_upper_bound = strategy_config.get("use_upper_bound", True)
+            disable_heuristic = strategy_config.get("disable_heuristic", False)
+        return DagStarSearch(
+            use_upper_bound=use_upper_bound,
+            disable_heuristic=disable_heuristic,
+        )
     elif algorithm_name == "backtracking":
         raise NotImplementedError("Backtracking search not yet implemented")
     elif algorithm_name == "branch_and_cut":
@@ -569,6 +590,14 @@ def _get_strategy_prefix(strategy_name: str, result: Dict[str, Any]) -> str:
             return f"kraken_k_{k_value}_beam"
         else:
             return "kraken_k_beam_unknown"
+    elif name == "dag_star_b":
+        return "kraken_dag_star_b"
+    elif name == "dag_star":
+        return "kraken_dag_star"
+    elif name == "dag_star_h0_b":
+        return "kraken_dag_star_h0_b"
+    elif name == "dag_star_h0":
+        return "kraken_dag_star_h0"
     # Fallback for other strategies
     return f"kraken_{name.replace('=', '_').replace('-', '_')}"
 
@@ -627,8 +656,40 @@ def _prepare_kraken_comparison_summary(
             if hasattr(config.algorithm, "value")
             else str(config.algorithm),
             "graph_density": getattr(simulation_context, "graph_density", None),
+            "average_selectivity": getattr(
+                simulation_context, "average_selectivity", None
+            ),
         }
     )
+
+    # Fold in non-Kraken baselines so this dataset is fully self-contained
+    # (cost-ratio analysis vs. all-push, comparison against PrePP-from-cloud,
+    # etc. without needing a second join against the unified results dataset).
+    for prefix, attr in [
+        ("all_push", "all_push_results"),
+        ("prepp", "prepp_from_cloud_result"),
+        ("inev", "inev_results"),
+        ("sequential", "sequential_results"),
+    ]:
+        baseline = getattr(simulation_context, attr, None)
+        if isinstance(baseline, dict):
+            for src, dst in [
+                ("status", "status"),
+                ("cost", "cost"),
+                ("transmission_latency", "transmission_latency"),
+                ("processing_latency", "processing_latency"),
+                ("computing_time", "computing_time"),
+            ]:
+                comparison_row[f"{prefix}_{dst}"] = baseline.get(src)
+        else:
+            for dst in [
+                "status",
+                "cost",
+                "transmission_latency",
+                "processing_latency",
+                "computing_time",
+            ]:
+                comparison_row[f"{prefix}_{dst}"] = None
 
     # Iterate over each strategy and add its metrics with a unique prefix
     for strategy_name, result in strategy_results.items():
