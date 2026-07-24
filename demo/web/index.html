@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Kraken — operator placement demo</title>
+    <meta name="description" content="Interactive demo of the Kraken cloud-fog operator placement engine for distributed complex event processing." />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><g stroke='%232f6df0' stroke-width='2.4' fill='none'><line x1='16' y1='9' x2='8' y2='23'/><line x1='16' y1='9' x2='24' y2='23'/></g><g fill='%232f6df0'><circle cx='16' cy='8' r='3.6'/><circle cx='8' cy='24' r='3.6'/><circle cx='24' cy='24' r='3.6'/></g></svg>" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script>
+      // Optional push-pull scoring backend. Empty => client-only (all-push estimate).
+      // Set at deploy time, e.g. window.KRAKEN_BACKEND = "https://kraken-demo.example.org";
+      window.KRAKEN_BACKEND = "";
+    </script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="logo" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 32 32"><g stroke="currentColor" stroke-width="2.4" fill="none"><line x1="16" y1="9" x2="8" y2="23"/><line x1="16" y1="9" x2="24" y2="23"/></g><g fill="currentColor"><circle cx="16" cy="8" r="3.6"/><circle cx="8" cy="24" r="3.6"/><circle cx="24" cy="24" r="3.6"/></g></svg></span>
+        <div class="brand-txt">
+          <h1>Kraken</h1>
+          <span class="tag">place the operators · can you beat the engine?</span>
+        </div>
+      </div>
+      <div class="top-right">
+        <span id="status" class="status" aria-live="polite"></span>
+        <button id="infoBtn" class="icon-btn" aria-label="About this demo">ⓘ</button>
+      </div>
+    </header>
+
+    <main class="stage">
+      <section class="reef-wrap" aria-label="Fog-cloud network">
+        <div id="reef" class="reef"></div>
+      </section>
+      <aside class="panel">
+        <div id="queryBar" class="query-bar"></div>
+        <div id="tray" class="tray"></div>
+        <div id="scorecard" class="scorecard"></div>
+      </aside>
+    </main>
+
+    <div id="modal" class="modal" hidden></div>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

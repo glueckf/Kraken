@@ -1,0 +1,18 @@
+{
+  "name": "kraken-demo-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Single-page interactive demo for the Kraken cloud-fog operator placement engine.",
+  "scripts": {
+    "build:wasm": "wasm-pack build ../engine --target web --release --out-dir ../web/vendor/engine --out-name kraken_engine",
+    "typecheck": "tsc --noEmit",
+    "build": "node build.mjs",
+    "dev": "node build.mjs --watch",
+    "serve": "node serve.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0",
+    "typescript": "^5.6.0"
+  }
+}
