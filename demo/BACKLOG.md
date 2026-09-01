@@ -15,35 +15,43 @@ does.
 2. **Simplify the query representation** for a non-technical audience.
    Currently queries are shown as raw expressions (`SEQ(A, B, C)`), which
    reads as programming syntax rather than "spot the shark alarm."
-3. **Let the user choose the network size** — DONE (in progress): 3 topologies
-   now export (`small`=8, `medium`=12 — the original hand-built reef,
-   unchanged — `large`=24 nodes), same 4 story queries on each, via
-   `SimulationMode.SIZED_TOPOLOGY` in
-   [simulation_environment.py](../src/simulation_environment.py) +
+3. **Let the user choose the network size** — DONE: 2 topologies export
+   (`medium`=12 — the original hand-built reef, unchanged — `large`=24
+   nodes), same 4 story queries on each, via `SimulationMode.SIZED_TOPOLOGY`
+   in [simulation_environment.py](../src/simulation_environment.py) +
    subprocess-isolated export in
    [export_scenario.py](export/export_scenario.py) (isolation matters:
-   sharing one process leaked RNG state from the sized-random topologies into
-   the untouched hardcoded one and shifted its numbers). Frontend selector
-   still to build.
-4. **Test the visualization at different network sizes** — in progress via
-   the above; still need to check the reef layout at 24 nodes / 5 layers
-   (`ROW_Y` in [reef.ts](web/src/reef.ts) only defines rows 0–3).
-5. **Known limitation from #3: small/large collapse to 1 operator per
-   query.** The hand-built 12-node reef is a deliberately hand-tuned
-   multi-parent DAG with overlapping event placement (see
-   `create_hardcoded_tree` in
+   sharing one process leaked RNG state from the sized-random topology into
+   the untouched hardcoded one and shifted its numbers). Frontend has a
+   topology selector alongside the query picker (`renderTopologyBar` in
+   [panel.ts](web/src/panel.ts)); switching topology keeps the same query
+   selected when it exists there. (A third, 8-node "small" topology was
+   tried and dropped — not worth the extra scenario set for this pass.)
+4. **Test the visualization at different network sizes** — DONE for
+   12 vs. 24 nodes: the reef layout now spaces rows evenly across however
+   many layers a topology actually has (`computeLayout` in
+   [reef.ts](web/src/reef.ts)) instead of a fixed 4-row table, so large's
+   5 layers no longer overflow the canvas. Found and fixed a real bug along
+   the way: the layout cache was keyed by `scenario_id`, which isn't unique
+   across topologies (every size has its own "seq_abc"), and a race where
+   `loadScenario`'s loading-state emit fired with `topologyId` already
+   switched but `state.scenario` still the old data — now keyed by the
+   scenario object's identity instead of a derived string.
+5. **Known limitation from #3: large collapses to 1 operator per query.**
+   The hand-built 12-node reef is a deliberately hand-tuned multi-parent DAG
+   with overlapping event placement (see `create_hardcoded_tree` in
    [simulation_environment.py:715](../src/simulation_environment.py:715)) —
    that's *why* combigen finds shared sub-results worth materializing there.
-   Randomly generated topologies of other sizes almost never do (tried ~120
-   seed/parameter combinations — node_event_ratio, max_parents, event_skew —
-   virtually all collapse every query to a single placeable operator, since
+   Randomly generated topologies almost never do (tried ~120 seed/parameter
+   combinations — node_event_ratio, max_parents, event_skew — virtually all
+   collapse every query to a single placeable operator, since
    `get_best_chain_combis`/`return_partitioning` in
    [combigen.py:290](../src/simulator/combigen.py:290) make the
    split/materialize decision from real distances + rates, and random trees
    rarely produce the kind of overlapping-producer structure that makes it
-   worthwhile). Getting a good 2–5-operator ramp at other sizes needs the same
-   kind of hand-curated topology design that produced the 12-node reef, not a
-   quick parameter tweak — worth a dedicated pass, not a side task.
+   worthwhile). Getting a good 2–5-operator ramp at other sizes needs the
+   same kind of hand-curated topology design that produced the 12-node reef,
+   not a quick parameter tweak — worth a dedicated pass, not a side task.
 
 ## Gamification (later — once the above works)
 

@@ -43,11 +43,10 @@ XI = 0.0
 COST_WEIGHT = 0.5
 FLOAT_TOL = 1e-6
 
-# Three topology sizes sharing the same 4 story queries. "medium" is the
-# original hand-built 12-node reef (untouched); "small"/"large" are randomly
-# generated (see build_scenario) and only need a stable seed to reproduce.
+# Two topology sizes sharing the same 4 story queries. "medium" is the
+# original hand-built 12-node reef (untouched); "large" is randomly generated
+# (see build_scenario) and only needs a stable seed to reproduce.
 TOPOLOGIES = [
-    dict(id="small", label="Small Reef", network_size=8, seed=1008),
     dict(id="medium", label="Reef", network_size=12, seed=None),
     dict(id="large", label="Grand Reef", network_size=24, seed=1024),
 ]
