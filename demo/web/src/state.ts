@@ -5,7 +5,7 @@
 
 import { Engine } from "./engine";
 import { refinePushPull, backendConfigured, type PushPullResult } from "./backend";
-import type { Baselines, Manifest, Placement, Scenario, ScoreResult, NormPoint } from "./types";
+import type { Baselines, Manifest, Placement, Scenario, ScoreResult, NormPoint, TopologyEntry } from "./types";
 import type { SubMeta } from "./reef";
 
 const PALETTE = ["#e8613c", "#2f9e8f", "#6f5bd1", "#d99a1e", "#c0497e", "#3b7dd8"];
@@ -20,6 +20,7 @@ export interface OfficialScore {
 
 export class AppState {
   manifest: Manifest | null = null;
+  topologyId: string | null = null;
   scenario: Scenario | null = null;
   engine: Engine | null = null;
   baselines: Baselines | null = null;
@@ -49,7 +50,9 @@ export class AppState {
     this.emit();
     try {
       this.manifest = await fetchJson<Manifest>(`${base}manifest.json`);
-      await this.loadScenario(this.manifest.scenarios[0].id);
+      const defaultTopo = this.manifest.topologies.find((t) => t.id === "medium") ?? this.manifest.topologies[0];
+      this.topologyId = defaultTopo.id;
+      await this.loadScenario(defaultTopo.scenarios[0].id);
     } catch (e) {
       this.error = `Failed to load scenarios: ${String(e)}`;
       this.loading = false;
@@ -61,12 +64,27 @@ export class AppState {
     return "scenarios/";
   }
 
+  get topology(): TopologyEntry | null {
+    return this.manifest?.topologies.find((t) => t.id === this.topologyId) ?? null;
+  }
+
+  /** Switch topology, keeping the same query selected if it exists there. */
+  async selectTopology(topologyId: string): Promise<void> {
+    if (topologyId === this.topologyId) return;
+    const topo = this.manifest?.topologies.find((t) => t.id === topologyId);
+    if (!topo) return;
+    const keepId = this.scenario?.scenario_id;
+    this.topologyId = topologyId;
+    const next = topo.scenarios.find((s) => s.id === keepId) ?? topo.scenarios[0];
+    await this.loadScenario(next.id);
+  }
+
   async loadScenario(id: string): Promise<void> {
     this.loading = true;
     this.error = null;
     this.emit();
     try {
-      const entry = this.manifest!.scenarios.find((s) => s.id === id)!;
+      const entry = this.topology!.scenarios.find((s) => s.id === id)!;
       const scenario = await fetchJson<Scenario>(`${this.base}${entry.file}`);
       this.engine?.dispose();
       this.engine = await Engine.create(scenario);

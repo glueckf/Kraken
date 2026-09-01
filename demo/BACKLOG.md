@@ -15,11 +15,35 @@ does.
 2. **Simplify the query representation** for a non-technical audience.
    Currently queries are shown as raw expressions (`SEQ(A, B, C)`), which
    reads as programming syntax rather than "spot the shark alarm."
-3. **Let the user choose the network size** instead of picking from fixed
-   pre-generated scenarios.
-4. **Test the visualization at different network sizes** — confirm the
-   layout (island, watchtowers, coral pods) still reads cleanly as node count
-   and layer depth grow, not just at the current fixed topology.
+3. **Let the user choose the network size** — DONE (in progress): 3 topologies
+   now export (`small`=8, `medium`=12 — the original hand-built reef,
+   unchanged — `large`=24 nodes), same 4 story queries on each, via
+   `SimulationMode.SIZED_TOPOLOGY` in
+   [simulation_environment.py](../src/simulation_environment.py) +
+   subprocess-isolated export in
+   [export_scenario.py](export/export_scenario.py) (isolation matters:
+   sharing one process leaked RNG state from the sized-random topologies into
+   the untouched hardcoded one and shifted its numbers). Frontend selector
+   still to build.
+4. **Test the visualization at different network sizes** — in progress via
+   the above; still need to check the reef layout at 24 nodes / 5 layers
+   (`ROW_Y` in [reef.ts](web/src/reef.ts) only defines rows 0–3).
+5. **Known limitation from #3: small/large collapse to 1 operator per
+   query.** The hand-built 12-node reef is a deliberately hand-tuned
+   multi-parent DAG with overlapping event placement (see
+   `create_hardcoded_tree` in
+   [simulation_environment.py:715](../src/simulation_environment.py:715)) —
+   that's *why* combigen finds shared sub-results worth materializing there.
+   Randomly generated topologies of other sizes almost never do (tried ~120
+   seed/parameter combinations — node_event_ratio, max_parents, event_skew —
+   virtually all collapse every query to a single placeable operator, since
+   `get_best_chain_combis`/`return_partitioning` in
+   [combigen.py:290](../src/simulator/combigen.py:290) make the
+   split/materialize decision from real distances + rates, and random trees
+   rarely produce the kind of overlapping-producer structure that makes it
+   worthwhile). Getting a good 2–5-operator ramp at other sizes needs the same
+   kind of hand-curated topology design that produced the 12-node reef, not a
+   quick parameter tweak — worth a dedicated pass, not a side task.
 
 ## Gamification (later — once the above works)
 

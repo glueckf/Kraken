@@ -1,41 +1,133 @@
 {
- "topology_id": "reef12",
- "scenarios": [
+ "topologies": [
   {
-   "id": "seq_abc",
-   "title": "SEQ(A, B, C)",
-   "emblem": "crab",
-   "difficulty": 1,
-   "blurb": "A short sequence over three streams. Warm-up.",
-   "num_subqueries": 2,
-   "file": "seq_abc.json"
+   "id": "small",
+   "label": "Small Reef",
+   "network_size": 8,
+   "scenarios": [
+    {
+     "id": "seq_abc",
+     "title": "SEQ(A, B, C)",
+     "emblem": "crab",
+     "difficulty": 1,
+     "blurb": "A short sequence over three streams. Warm-up.",
+     "num_subqueries": 1,
+     "file": "small/seq_abc.json"
+    },
+    {
+     "id": "seq_abcd",
+     "title": "SEQ(A, B, C, D)",
+     "emblem": "turtle",
+     "difficulty": 2,
+     "blurb": "A longer chain — one more operator to place.",
+     "num_subqueries": 1,
+     "file": "small/seq_abcd.json"
+    },
+    {
+     "id": "seq_abcde",
+     "title": "SEQ(A, B, C, D, E)",
+     "emblem": "shark",
+     "difficulty": 3,
+     "blurb": "Branches that share a common sub-result.",
+     "num_subqueries": 1,
+     "file": "small/seq_abcde.json"
+    },
+    {
+     "id": "and_nested",
+     "title": "AND(SEQ(A,B,C), D, SEQ(E,F))",
+     "emblem": "seedling",
+     "difficulty": 4,
+     "blurb": "A rich nested query touching all six streams.",
+     "num_subqueries": 1,
+     "file": "small/and_nested.json"
+    }
+   ]
   },
   {
-   "id": "seq_abcd",
-   "title": "SEQ(A, B, C, D)",
-   "emblem": "turtle",
-   "difficulty": 2,
-   "blurb": "A longer chain — one more operator to place.",
-   "num_subqueries": 3,
-   "file": "seq_abcd.json"
+   "id": "medium",
+   "label": "Reef",
+   "network_size": 12,
+   "scenarios": [
+    {
+     "id": "seq_abc",
+     "title": "SEQ(A, B, C)",
+     "emblem": "crab",
+     "difficulty": 1,
+     "blurb": "A short sequence over three streams. Warm-up.",
+     "num_subqueries": 2,
+     "file": "medium/seq_abc.json"
+    },
+    {
+     "id": "seq_abcd",
+     "title": "SEQ(A, B, C, D)",
+     "emblem": "turtle",
+     "difficulty": 2,
+     "blurb": "A longer chain — one more operator to place.",
+     "num_subqueries": 3,
+     "file": "medium/seq_abcd.json"
+    },
+    {
+     "id": "seq_abcde",
+     "title": "SEQ(A, B, C, D, E)",
+     "emblem": "shark",
+     "difficulty": 3,
+     "blurb": "Branches that share a common sub-result.",
+     "num_subqueries": 4,
+     "file": "medium/seq_abcde.json"
+    },
+    {
+     "id": "and_nested",
+     "title": "AND(SEQ(A,B,C), D, SEQ(E,F))",
+     "emblem": "seedling",
+     "difficulty": 4,
+     "blurb": "A rich nested query touching all six streams.",
+     "num_subqueries": 5,
+     "file": "medium/and_nested.json"
+    }
+   ]
   },
   {
-   "id": "seq_abcde",
-   "title": "SEQ(A, B, C, D, E)",
-   "emblem": "shark",
-   "difficulty": 3,
-   "blurb": "Branches that share a common sub-result.",
-   "num_subqueries": 4,
-   "file": "seq_abcde.json"
-  },
-  {
-   "id": "and_nested",
-   "title": "AND(SEQ(A,B,C), D, SEQ(E,F))",
-   "emblem": "seedling",
-   "difficulty": 4,
-   "blurb": "A rich nested query touching all six streams.",
-   "num_subqueries": 5,
-   "file": "and_nested.json"
+   "id": "large",
+   "label": "Grand Reef",
+   "network_size": 24,
+   "scenarios": [
+    {
+     "id": "seq_abc",
+     "title": "SEQ(A, B, C)",
+     "emblem": "crab",
+     "difficulty": 1,
+     "blurb": "A short sequence over three streams. Warm-up.",
+     "num_subqueries": 1,
+     "file": "large/seq_abc.json"
+    },
+    {
+     "id": "seq_abcd",
+     "title": "SEQ(A, B, C, D)",
+     "emblem": "turtle",
+     "difficulty": 2,
+     "blurb": "A longer chain — one more operator to place.",
+     "num_subqueries": 1,
+     "file": "large/seq_abcd.json"
+    },
+    {
+     "id": "seq_abcde",
+     "title": "SEQ(A, B, C, D, E)",
+     "emblem": "shark",
+     "difficulty": 3,
+     "blurb": "Branches that share a common sub-result.",
+     "num_subqueries": 1,
+     "file": "large/seq_abcde.json"
+    },
+    {
+     "id": "and_nested",
+     "title": "AND(SEQ(A,B,C), D, SEQ(E,F))",
+     "emblem": "seedling",
+     "difficulty": 4,
+     "blurb": "A rich nested query touching all six streams.",
+     "num_subqueries": 1,
+     "file": "large/and_nested.json"
+    }
+   ]
   }
  ]
 }

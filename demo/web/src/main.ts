@@ -4,14 +4,15 @@
 
 import { AppState } from "./state";
 import { computeLayout, renderReef, type Layout, type ReefView } from "./reef";
-import { renderQueryBar, renderTray, renderScorecard } from "./panel";
+import { renderTopologyBar, renderQueryBar, renderTray, renderScorecard } from "./panel";
 import { modalHtml } from "./modal";
+import type { Scenario } from "./types";
 
 const $ = (id: string) => document.getElementById(id)!;
 
 const state = new AppState();
 let layout: Layout | null = null;
-let layoutFor: string | null = null;
+let layoutFor: Scenario | null = null;
 
 function reefView(): ReefView {
   return {
@@ -32,11 +33,17 @@ function render(): void {
     $("reef").innerHTML = `<div class="loading">Loading…</div>`;
     return;
   }
-  if (layoutFor !== state.scenario.scenario_id) {
+  // Keyed on object identity, not scenario_id (not unique across topologies —
+  // every size has its own "seq_abc") or a derived string (racy: loadScenario
+  // emits once while still loading, before state.scenario has actually
+  // swapped to the new data). A fresh scenario object only ever appears once
+  // its fetch has fully resolved, so identity is exactly the right key.
+  if (layoutFor !== state.scenario) {
     layout = computeLayout(state.scenario);
-    layoutFor = state.scenario.scenario_id;
+    layoutFor = state.scenario;
   }
   $("reef").innerHTML = renderReef(state.scenario, layout!, state.subMeta, reefView());
+  $("topologyBar").innerHTML = renderTopologyBar(state);
   $("queryBar").innerHTML = renderQueryBar(state);
   $("tray").innerHTML = renderTray(state);
   $("scorecard").innerHTML = renderScorecard(state);
@@ -64,6 +71,11 @@ function onReefActivate(target: EventTarget | null): void {
 }
 
 function wire(): void {
+  $("topologyBar").addEventListener("click", (e) => {
+    const id = closestAttr(e.target, "data-topology");
+    if (id) state.selectTopology(id);
+  });
+
   $("queryBar").addEventListener("click", (e) => {
     const id = closestAttr(e.target, "data-scenario");
     if (id) state.loadScenario(id);

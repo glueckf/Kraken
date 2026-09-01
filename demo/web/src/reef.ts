@@ -22,26 +22,34 @@ export interface ReefView {
 
 const VB_W = 1000;
 const VB_H = 640;
-const ROW_Y: Record<number, number> = { 0: 86, 1: 214, 2: 362, 3: 548 };
+const TOP_Y = 86; // leaves room for König Cloud's crown above the topmost row
+const BOTTOM_MARGIN = 60;
 
 export type Layout = Map<number, { x: number; y: number; r: number }>;
 
 export function computeLayout(scenario: Scenario): Layout {
   const layout: Layout = new Map();
   const byLayer = new Map<number, number[]>();
+  const nodeById = new Map(scenario.topology.nodes.map((n) => [n.id, n]));
   for (const n of scenario.topology.nodes) {
     if (!byLayer.has(n.layer)) byLayer.set(n.layer, []);
     byLayer.get(n.layer)!.push(n.id);
   }
+  // Rows are spaced evenly across the whole canvas height, based on however
+  // many layers THIS scenario actually has — different network sizes have
+  // different depths (levels ≈ log2(node count)), so a fixed 4-row table
+  // would overflow (or waste space) for other sizes.
+  const maxLayer = Math.max(...byLayer.keys());
+  const step = maxLayer > 0 ? (VB_H - BOTTOM_MARGIN - TOP_Y) / maxLayer : 0;
   for (const [layer, ids] of byLayer) {
     ids.sort((a, b) => a - b);
-    const y = ROW_Y[layer] ?? 66 + layer * 150;
+    const y = TOP_Y + layer * step;
     const count = ids.length;
     const margin = 96;
     const span = VB_W - margin * 2;
     ids.forEach((id, i) => {
       const x = count === 1 ? VB_W / 2 : margin + (span * i) / (count - 1);
-      const r = layer === 0 ? 40 : layer === 3 ? 24 : 30;
+      const r = layer === 0 ? 40 : nodeById.get(id)!.is_leaf ? 24 : 30;
       layout.set(id, { x, y, r });
     });
   }

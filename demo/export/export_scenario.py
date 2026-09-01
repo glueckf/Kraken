@@ -19,8 +19,12 @@ if os.environ.get("PYTHONHASHSEED") != "0":
 
 import io
 import json
+import random
+import subprocess
 import contextlib
 import traceback
+
+import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, "..", ".."))
@@ -38,6 +42,15 @@ SINKS = (0,)
 XI = 0.0
 COST_WEIGHT = 0.5
 FLOAT_TOL = 1e-6
+
+# Three topology sizes sharing the same 4 story queries. "medium" is the
+# original hand-built 12-node reef (untouched); "small"/"large" are randomly
+# generated (see build_scenario) and only need a stable seed to reproduce.
+TOPOLOGIES = [
+    dict(id="small", label="Small Reef", network_size=8, seed=1008),
+    dict(id="medium", label="Reef", network_size=12, seed=None),
+    dict(id="large", label="Grand Reef", network_size=24, seed=1024),
+]
 
 
 # ----------------------------------------------------------------------------
@@ -84,14 +97,28 @@ def num(x):
     return x
 
 
-def build_scenario(spec):
+def build_scenario(spec, topology):
     q = number_children(spec["build"]())
     se.generate_hardcoded_workload = lambda: [q]
 
-    cfg = se.SimulationConfig.create_deterministic(
-        network_size=12, num_event_types=6, xi=XI, cost_weight=COST_WEIGHT,
-        latency_threshold=None, output_dataset_name="demo_%s" % spec["id"],
-    )
+    network_size = topology["network_size"]
+    if network_size == 12:
+        # The original 12-node reef: hand-built tree, no RNG involved at all.
+        cfg = se.SimulationConfig.create_deterministic(
+            network_size=12, num_event_types=6, xi=XI, cost_weight=COST_WEIGHT,
+            latency_threshold=None, output_dataset_name="demo_%s" % spec["id"],
+        )
+    else:
+        # A sized-but-random reef. Topology generation draws from both stdlib
+        # `random` (parent/edge sampling) and `numpy.random` (event rates/leaf
+        # assignment), so both must be seeded right before run() for the
+        # export to be byte-reproducible across re-runs.
+        random.seed(topology["seed"])
+        np.random.seed(topology["seed"])
+        cfg = se.SimulationConfig.create_sized_deterministic(
+            network_size=network_size, num_event_types=6, xi=XI, cost_weight=COST_WEIGHT,
+            latency_threshold=None, output_dataset_name="demo_%s_%s" % (topology["id"], spec["id"]),
+        )
     sim = se.Simulation(cfg)
     with contextlib.redirect_stdout(io.StringIO()):
         sim.run()
@@ -263,40 +290,8 @@ def build_scenario(spec):
     return scenario, mismatches
 
 
-def main():
-    os.makedirs(OUT_DIR, exist_ok=True)
-    manifest = {"topology_id": "reef12", "scenarios": []}
-    ok = True
-    for spec in scenarios_def.SCENARIOS:
-        print(f"--- exporting {spec['id']} ({spec['title']}) ---")
-        try:
-            scenario, mismatches = build_scenario(spec)
-        except Exception as e:
-            ok = False
-            print(f"  !! FAILED: {e!r}")
-            traceback.print_exc()
-            continue
-        if mismatches:
-            ok = False
-            print(f"  !! reference/engine all-push mismatch: {mismatches}")
-        path = os.path.join(OUT_DIR, f"{spec['id']}.json")
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(scenario, f, indent=1, ensure_ascii=False)
-        n_sub = len(scenario["processing_order"])
-        s = scenario["strategies"]
-        print(f"  ok: {n_sub} subqueries | kraken cost={s['kraken']['cost']:.1f} "
-              f"lat={s['kraken']['latency']:.1f} | wrote {os.path.relpath(path, REPO)}")
-        manifest["scenarios"].append({
-            "id": spec["id"], "title": spec["title"], "emblem": spec["emblem"],
-            "difficulty": spec["difficulty"], "blurb": spec["blurb"],
-            "num_subqueries": n_sub, "file": f"{spec['id']}.json",
-        })
-
-    with open(os.path.join(OUT_DIR, "manifest.json"), "w", encoding="utf-8") as f:
-        json.dump(manifest, f, indent=1, ensure_ascii=False)
-    print(f"\nmanifest: {len(manifest['scenarios'])} scenarios -> {os.path.relpath(OUT_DIR, REPO)}")
-
-    # cleanup side-effect file written into cwd by the INEv placement code
+def _cleanup_junk():
+    # side-effect file written into cwd by the INEv placement code
     for junk in ("msFilter.txt",):
         for base in (os.getcwd(), SRC):
             p = os.path.join(base, junk)
@@ -305,6 +300,83 @@ def main():
                     os.remove(p)
                 except OSError:
                     pass
+
+
+def export_one_topology(topology):
+    """Build + write all scenarios for a single topology. Returns (manifest_entry, ok)."""
+    topo_dir = os.path.join(OUT_DIR, topology["id"])
+    os.makedirs(topo_dir, exist_ok=True)
+    entry = {
+        "id": topology["id"], "label": topology["label"],
+        "network_size": topology["network_size"], "scenarios": [],
+    }
+    ok = True
+    for spec in scenarios_def.SCENARIOS:
+        print(f"--- exporting {topology['id']}/{spec['id']} ({spec['title']}) ---")
+        try:
+            scenario, mismatches = build_scenario(spec, topology)
+        except Exception as e:
+            ok = False
+            print(f"  !! FAILED: {e!r}")
+            traceback.print_exc()
+            continue
+        if mismatches:
+            ok = False
+            print(f"  !! reference/engine all-push mismatch: {mismatches}")
+        path = os.path.join(topo_dir, f"{spec['id']}.json")
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(scenario, f, indent=1, ensure_ascii=False)
+        n_sub = len(scenario["processing_order"])
+        s = scenario["strategies"]
+        print(f"  ok: {n_sub} subqueries | kraken cost={s['kraken']['cost']:.1f} "
+              f"lat={s['kraken']['latency']:.1f} | wrote {os.path.relpath(path, REPO)}")
+        entry["scenarios"].append({
+            "id": spec["id"], "title": spec["title"], "emblem": spec["emblem"],
+            "difficulty": spec["difficulty"], "blurb": spec["blurb"],
+            "num_subqueries": n_sub, "file": f"{topology['id']}/{spec['id']}.json",
+        })
+    return entry, ok
+
+
+_TOPOLOGY_BY_ID = {t["id"]: t for t in TOPOLOGIES}
+
+
+def main():
+    # Child mode: `export_scenario.py <topology-id>` builds just that one
+    # topology and writes its manifest fragment. Each topology gets its own
+    # fresh interpreter (see the driver below) so RNG state from one topology
+    # (random.seed for the sized-random ones) can never leak into another —
+    # in particular it can't perturb the untouched, hand-built "medium" reef.
+    if len(sys.argv) > 1 and sys.argv[1] in _TOPOLOGY_BY_ID:
+        topology = _TOPOLOGY_BY_ID[sys.argv[1]]
+        entry, ok = export_one_topology(topology)
+        frag_path = os.path.join(OUT_DIR, f".manifest-{topology['id']}.json")
+        with open(frag_path, "w", encoding="utf-8") as f:
+            json.dump(entry, f)
+        _cleanup_junk()
+        sys.exit(0 if ok else 1)
+
+    # Driver mode: one fresh subprocess per topology, then merge manifests.
+    os.makedirs(OUT_DIR, exist_ok=True)
+    manifest = {"topologies": []}
+    ok = True
+    for topology in TOPOLOGIES:
+        print(f"=== topology: {topology['id']} ({topology['network_size']} nodes) ===")
+        r = subprocess.run([sys.executable, os.path.abspath(__file__), topology["id"]])
+        frag_path = os.path.join(OUT_DIR, f".manifest-{topology['id']}.json")
+        if r.returncode != 0 or not os.path.exists(frag_path):
+            ok = False
+            print(f"  !! subprocess failed for topology {topology['id']} (exit {r.returncode})")
+            continue
+        with open(frag_path, encoding="utf-8") as f:
+            manifest["topologies"].append(json.load(f))
+        os.remove(frag_path)
+
+    with open(os.path.join(OUT_DIR, "manifest.json"), "w", encoding="utf-8") as f:
+        json.dump(manifest, f, indent=1, ensure_ascii=False)
+    n_scenarios = sum(len(t["scenarios"]) for t in manifest["topologies"])
+    print(f"\nmanifest: {len(manifest['topologies'])} topologies, "
+          f"{n_scenarios} scenarios -> {os.path.relpath(OUT_DIR, REPO)}")
 
     if not ok:
         sys.exit(1)

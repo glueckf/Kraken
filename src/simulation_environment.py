@@ -45,6 +45,7 @@ class SimulationMode(Enum):
     FIXED_TOPOLOGY = "fixed_topology"  # Fixed network topology, rest random
     FIXED_WORKLOAD = "fixed_workload"  # Fixed topology + workload, rest random
     FULLY_DETERMINISTIC = "deterministic"  # All components fixed for reproducibility
+    SIZED_TOPOLOGY = "sized_topology"  # Randomly generated topology sized by network_size, fixed workload + selectivities
 
 
 class PlacementAlgorithm(Enum):
@@ -255,11 +256,15 @@ class SimulationConfig:
         return self.mode in [
             SimulationMode.FIXED_WORKLOAD,
             SimulationMode.FULLY_DETERMINISTIC,
+            SimulationMode.SIZED_TOPOLOGY,
         ]
 
     def is_selectivities_fixed(self) -> bool:
         """Check if selectivities should be hardcoded."""
-        return self.mode == SimulationMode.FULLY_DETERMINISTIC
+        return self.mode in [
+            SimulationMode.FULLY_DETERMINISTIC,
+            SimulationMode.SIZED_TOPOLOGY,
+        ]
 
     @classmethod
     def create_random(cls, **kwargs) -> "SimulationConfig":
@@ -280,6 +285,15 @@ class SimulationConfig:
     def create_deterministic(cls, **kwargs) -> "SimulationConfig":
         """Create fully deterministic configuration for reproducible results."""
         return cls(mode=SimulationMode.FULLY_DETERMINISTIC, **kwargs)
+
+    @classmethod
+    def create_sized_deterministic(cls, **kwargs) -> "SimulationConfig":
+        """Fixed workload + selectivities, but a randomly generated topology
+        sized by `network_size` instead of the hardcoded 12-node tree.
+        Reproducible only if the caller seeds `random`/`numpy.random` before
+        running the simulation — topology generation draws from both.
+        """
+        return cls(mode=SimulationMode.SIZED_TOPOLOGY, **kwargs)
 
 
 # ==================== PLACEHOLDER FUNCTIONS ====================

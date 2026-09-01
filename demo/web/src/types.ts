@@ -11,9 +11,15 @@ export interface ManifestEntry {
   file: string;
 }
 
-export interface Manifest {
-  topology_id: string;
+export interface TopologyEntry {
+  id: string;
+  label: string;
+  network_size: number;
   scenarios: ManifestEntry[];
+}
+
+export interface Manifest {
+  topologies: TopologyEntry[];
 }
 
 export interface Node {

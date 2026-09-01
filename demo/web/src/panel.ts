@@ -16,10 +16,27 @@ function fmtLat(n: number): string {
   return Number.isInteger(n) ? String(n) : n.toFixed(1);
 }
 
-export function renderQueryBar(state: AppState): string {
+export function renderTopologyBar(state: AppState): string {
   if (!state.manifest) return "";
+  const cur = state.topologyId;
+  const items = state.manifest.topologies
+    .map((t) => {
+      const on = t.id === cur ? "on" : "";
+      return (
+        `<button class="tcard ${on}" data-topology="${t.id}" title="${escapeHtml(t.label)} — ${t.network_size} nodes" aria-pressed="${t.id === cur}">` +
+        `<span class="tname">${escapeHtml(t.label)}</span>` +
+        `<span class="tsize">${t.network_size} nodes</span>` +
+        `</button>`
+      );
+    })
+    .join("");
+  return `<div class="query-label">Pick a reef size</div><div class="tlist">${items}</div>`;
+}
+
+export function renderQueryBar(state: AppState): string {
+  if (!state.topology) return "";
   const cur = state.scenario?.scenario_id;
-  const items = state.manifest.scenarios
+  const items = state.topology.scenarios
     .map((s, i) => {
       const on = s.id === cur ? "on" : "";
       return (
