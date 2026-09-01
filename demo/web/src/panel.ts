@@ -3,6 +3,7 @@
 
 import type { AppState } from "./state";
 import type { Baselines, StrategyId } from "./types";
+import { eventIconSvg, glyphFor } from "./icons";
 
 const STRAT_ORDER: StrategyId[] = ["all_push", "inev", "prepp", "sequential", "kraken"];
 
@@ -46,7 +47,9 @@ export function renderTray(state: AppState): string {
       const inputs = proj.deps
         .map((d) => {
           const dm = state.subMeta.get(d);
-          return dm ? `<span class="pill mini" style="background:${dm.color}">${dm.tag}</span>` : `<span class="pill mini prim">${d}</span>`;
+          return dm
+            ? `<span class="pill mini" style="background:${dm.color}">${dm.tag}</span>`
+            : `<span class="pill mini evt" style="background:${glyphFor(d).color}">${eventIconSvg(d, 11)}${d}</span>`;
         })
         .join("");
       return (
@@ -54,7 +57,7 @@ export function renderTray(state: AppState): string {
         `<span class="tag" style="background:${m.color}">${m.tag}${m.isRoot ? "★" : ""}</span>` +
         `<span class="tray-body"><span class="tray-name">${escapeHtml(name)}</span>` +
         `<span class="tray-inputs">needs ${inputs}</span></span>` +
-        `<span class="tray-loc">${placed ? (node === 0 ? "☁ cloud" : "n" + node) : "—"}</span>` +
+        `<span class="tray-loc">${placed ? (node === 0 ? "👑 König Cloud" : "n" + node) : "—"}</span>` +
         `</div>`
       );
     })

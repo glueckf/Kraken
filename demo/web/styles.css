@@ -22,6 +22,28 @@
   --node-lbl: #2b3644;
   --chip-tx: #ffffff;
 
+  /* König Cloud's realm: watchtowers, coral pods, and the sea behind them */
+  --sea-light: #bfe4e6;
+  --sea-mid: #4f9db3;
+  --sea-deep: #12384a;
+  --sun: #ffe6a8;
+  --tower-stroke: #8a6a4e;
+  --tower-notch: #6f5236;
+  --tower-fill: #e4d3ab;
+  --coral-petal: #e0728a;
+  --coral-fill: #f5d3db;
+  --crown-fill: #e8b93c;
+  --crown-stroke: #a5771c;
+  --island-fill: #e8d9ad;
+  --castle-fill: #d7c5e0;
+  --castle-stroke: #8a6a9c;
+  --pool-water: #4fc6d8;
+  --pool-rim: #f3ede0;
+  --palm-trunk: #8a6a4e;
+  --palm-leaf: #2f9e5c;
+  --scene-text: #f3fbfd; /* labels sit on the sea gradient, not the page bg — fixed for contrast in both themes */
+  --scene-text-halo: rgba(8, 24, 32, 0.6);
+
   --radius: 12px;
   --shadow: 0 1px 2px rgba(20, 30, 45, 0.06);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -48,6 +70,18 @@
     --edge: #47566a;
     --node-lbl: #d6dee8;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+
+    --sea-light: #285a68;
+    --sea-mid: #123a4a;
+    --sea-deep: #081b26;
+    --sun: #ffd98a;
+    --tower-stroke: #b89474;
+    --tower-notch: #9c7a58;
+    --tower-fill: #c9b78c;
+    --coral-petal: #e0728a;
+    --coral-fill: #e7b9c4;
+    --crown-fill: #f0c94c;
+    --crown-stroke: #8a5f14;
   }
 }
 
@@ -91,7 +125,7 @@ body {
 .reef-wrap {
   min-height: 0; min-width: 0;
   border-radius: var(--radius); overflow: hidden;
-  background: var(--surface); border: 1px solid var(--line);
+  background: var(--sea-deep); border: 1px solid var(--line);
 }
 .reef, .reef-svg { width: 100%; height: 100%; display: block; }
 .loading, .fatal { color: var(--ink-soft); padding: 24px; font-size: 13px; }
@@ -105,13 +139,33 @@ body {
 .panel > * { min-width: 0; }
 
 /* ---------- reef graph ---------- */
-.edge { fill: none; stroke: var(--edge); stroke-width: 1.6; }
+.coral-decor path { fill: color-mix(in srgb, var(--sea-deep) 55%, #000 10%); opacity: 0.55; pointer-events: none; }
+.edge { fill: none; stroke: var(--edge); stroke-width: 1.6; opacity: 0.85; }
 .node { cursor: pointer; }
 .node:focus { outline: none; }
 .node-dot { fill: var(--node-fill); stroke: var(--node-stroke); stroke-width: 1.5; }
-.node.cloud .cloud-shape { fill: var(--node-fill); stroke: var(--accent); stroke-width: 1.75; }
-.node .node-lbl { fill: var(--node-lbl); font-size: 12px; text-anchor: middle; font-weight: 600; pointer-events: none; }
-.node .evt { fill: var(--ink-soft); font-size: 11.5px; text-anchor: middle; font-weight: 600; pointer-events: none; }
+.node.cloud .cloud-shape { fill: var(--island-fill); stroke: var(--accent); stroke-width: 1.75; }
+.castle-body { fill: var(--castle-fill); stroke: var(--castle-stroke); stroke-width: 1.2; }
+.castle-door { fill: var(--castle-stroke); }
+.castle-notch { fill: var(--castle-fill); stroke: var(--castle-stroke); stroke-width: 1; }
+.pool-rim { fill: var(--pool-rim); }
+.pool-water { fill: var(--pool-water); }
+.palm-trunk { fill: none; stroke: var(--palm-trunk); stroke-width: 2; stroke-linecap: round; }
+.palm-leaf { fill: none; stroke: var(--palm-leaf); stroke-width: 2; stroke-linecap: round; }
+.node.fog .node-dot { fill: var(--tower-fill); stroke: var(--tower-stroke); }
+.node.leaf .node-dot { fill: var(--coral-fill); stroke: var(--coral-petal); }
+.tower-notch { fill: var(--tower-notch); }
+.tower-pole { stroke: var(--tower-stroke); stroke-width: 1.4; }
+.tower-flag { fill: var(--warm); }
+.coral-petal { fill: var(--coral-petal); opacity: 0.8; }
+.crown path { fill: var(--crown-fill); stroke: var(--crown-stroke); stroke-width: 0.8; }
+.crown circle { fill: var(--bad); }
+.node .node-lbl, .node .evt-lbl {
+  fill: var(--scene-text); text-anchor: middle; font-weight: 600; pointer-events: none;
+  paint-order: stroke fill; stroke: var(--scene-text-halo); stroke-width: 3px; stroke-linejoin: round;
+}
+.node .node-lbl { font-size: 12px; }
+.node .evt-lbl { font-size: 10.5px; }
 .node.source .node-dot { stroke: var(--accent); stroke-width: 3; }
 .node:hover .node-dot { stroke: var(--accent); }
 .node:focus-visible .node-dot, .node:focus-visible .cloud-shape { stroke: var(--accent); stroke-width: 3; }
@@ -160,6 +214,9 @@ body {
 .tray-inputs { font-size: 10.5px; color: var(--ink-soft); display: flex; align-items: center; gap: 3px; flex-wrap: wrap; margin-top: 1px; }
 .pill.mini { color: #fff; font-size: 9.5px; padding: 0 5px; border-radius: 5px; line-height: 15px; }
 .pill.mini.prim { background: var(--ink-soft); }
+.pill.mini.evt { display: inline-flex; align-items: center; gap: 3px; padding: 0 6px 0 4px; }
+.pill.mini.evt .evt-icon { display: block; flex: none; }
+.evt-icon { vertical-align: middle; }
 .tray-loc { font-size: 11px; color: var(--ink-soft); font-variant: tabular-nums; white-space: nowrap; }
 .tray-hint { display: block; font-size: 11.5px; color: var(--ink-soft); margin-top: 9px; }
 .tray-hint.ok { color: var(--good); font-weight: 600; }

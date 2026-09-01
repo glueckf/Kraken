@@ -4,6 +4,7 @@
 // re-render on each state change (12 nodes is cheap); clicks handled by delegation.
 
 import type { Scenario } from "./types";
+import { eventIconGroup } from "./icons";
 
 export interface SubMeta {
   idx: number;
@@ -52,8 +53,9 @@ function edgePath(a: { x: number; y: number }, b: { x: number; y: number }): str
   return `M ${a.x} ${a.y} C ${a.x} ${my}, ${b.x} ${my}, ${b.x} ${b.y}`;
 }
 
-function cloudPath(cx: number, cy: number, s: number): string {
-  // simple stylized cloud made of arcs, centered at (cx, cy)
+function islandPath(cx: number, cy: number, s: number): string {
+  // King Cloud's little island: a rounded silhouette in the same footprint the
+  // old cloud shape used, so the layout math around it doesn't have to change.
   const x = cx - s;
   const y = cy - s * 0.35;
   return (
@@ -64,6 +66,120 @@ function cloudPath(cx: number, cy: number, s: number): string {
     `a ${s * 0.4} ${s * 0.4} 0 0 1 -${s * 0.2} ${s * 0.75} ` +
     `l -${s * 2.05} 0 ` +
     `a ${s * 0.42} ${s * 0.42} 0 0 1 -${s * 0.25} -${s * 0.75} Z`
+  );
+}
+
+function crownGroup(cx: number, topY: number, s: number): string {
+  // A tiny crown resting just above the castle — the one thing King Cloud never delegates.
+  const w = s * 1.3;
+  const h = s * 0.56;
+  const y = topY - h - s * 0.12;
+  const x0 = cx - w / 2;
+  return (
+    `<g class="crown">` +
+    `<path d="M ${x0} ${y + h} L ${x0} ${y + h * 0.32} L ${x0 + w * 0.22} ${y + h * 0.72} L ${x0 + w * 0.5} ${y} L ${x0 + w * 0.78} ${y + h * 0.72} L ${x0 + w} ${y + h * 0.32} L ${x0 + w} ${y + h} Z"/>` +
+    `<circle cx="${x0 + w * 0.5}" cy="${y - 1}" r="${s * 0.09}"/>` +
+    `</g>`
+  );
+}
+
+function castleGroup(cx: number, cy: number, s: number): { markup: string; topY: number } {
+  // A small keep for King Cloud to actually live in, under the crown.
+  const w = s * 0.95;
+  const h = s * 0.8;
+  const x0 = cx - w / 2;
+  const y0 = cy - h;
+  const notchW = w * 0.2;
+  const notches = [0, 1, 2, 3]
+    .map((i) => {
+      const nx = x0 + i * (w / 3) - notchW / 2;
+      return `<rect class="castle-notch" x="${nx}" y="${y0 - notchW * 0.85}" width="${notchW}" height="${notchW}"/>`;
+    })
+    .join("");
+  const doorW = w * 0.26;
+  return {
+    markup:
+      `<g class="castle">` +
+      `<rect class="castle-body" x="${x0}" y="${y0}" width="${w}" height="${h}" rx="1.5"/>` +
+      `<rect class="castle-door" x="${cx - doorW / 2}" y="${y0 + h * 0.5}" width="${doorW}" height="${h * 0.5}" rx="1.5"/>` +
+      notches +
+      `</g>`,
+    topY: y0 - notchW * 0.85,
+  };
+}
+
+function poolAndPalm(cx: number, cy: number, s: number): string {
+  // The pool he moved to the island for, plus a palm for lounging in its shade.
+  const px = cx + s * 1.05;
+  const py = cy + s * 0.32;
+  const tx = cx - s * 1.2;
+  const ty = cy + s * 0.15;
+  return (
+    `<g class="king-pool">` +
+    `<ellipse class="pool-rim" cx="${px}" cy="${py}" rx="${s * 0.6}" ry="${s * 0.26}"/>` +
+    `<ellipse class="pool-water" cx="${px}" cy="${py}" rx="${s * 0.48}" ry="${s * 0.19}"/>` +
+    `</g>` +
+    `<g class="palm" transform="translate(${tx} ${ty})">` +
+    `<path class="palm-trunk" d="M0 ${s * 0.45} Q ${s * 0.14} ${s * 0.05} 0 -${s * 0.12}"/>` +
+    `<path class="palm-leaf" d="M0 -${s * 0.12} q -${s * 0.42} -${s * 0.04} -${s * 0.56} ${s * 0.16}"/>` +
+    `<path class="palm-leaf" d="M0 -${s * 0.12} q ${s * 0.42} -${s * 0.04} ${s * 0.56} ${s * 0.16}"/>` +
+    `<path class="palm-leaf" d="M0 -${s * 0.12} q -${s * 0.1} -${s * 0.32} -${s * 0.28} -${s * 0.4}"/>` +
+    `<path class="palm-leaf" d="M0 -${s * 0.12} q ${s * 0.1} -${s * 0.32} ${s * 0.28} -${s * 0.4}"/>` +
+    `</g>`
+  );
+}
+
+function towerToppers(cx: number, cy: number, r: number): string {
+  // Crenellations + a small pennant, turning the plain fog circle into a watchtower.
+  const topY = cy - r;
+  const notchW = r * 0.3;
+  const notches = [-1.05, 0, 1.05]
+    .map(
+      (k) =>
+        `<rect class="tower-notch" x="${cx + k * notchW - notchW / 2.4}" y="${topY - notchW * 0.85}" width="${notchW / 1.2}" height="${notchW}" rx="1"/>`,
+    )
+    .join("");
+  const poleX = cx + r * 0.18;
+  const poleTopY = topY - r * 0.9;
+  return (
+    `<line class="tower-pole" x1="${poleX}" y1="${topY}" x2="${poleX}" y2="${poleTopY}"/>` +
+    `<path class="tower-flag" d="M ${poleX} ${poleTopY} l ${r * 0.5} ${r * 0.17} l -${r * 0.5} ${r * 0.17} Z"/>` +
+    notches
+  );
+}
+
+function coralPetals(cx: number, cy: number, r: number): string {
+  // A ring of little petals around the source pods, standing in for coral/anemones.
+  let out = "";
+  const n = 5;
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2 - Math.PI / 2;
+    const px = cx + Math.cos(a) * r * 0.94;
+    const py = cy + Math.sin(a) * r * 0.94;
+    out += `<circle class="coral-petal" cx="${px}" cy="${py}" r="${r * 0.32}"/>`;
+  }
+  return out;
+}
+
+function background(): string {
+  return (
+    `<defs>` +
+    `<linearGradient id="seaGrad" x1="0" y1="0" x2="0" y2="1">` +
+    `<stop offset="0%" style="stop-color:var(--sea-light)"/>` +
+    `<stop offset="55%" style="stop-color:var(--sea-mid)"/>` +
+    `<stop offset="100%" style="stop-color:var(--sea-deep)"/>` +
+    `</linearGradient>` +
+    `<radialGradient id="sunGlow" cx="50%" cy="4%" r="65%">` +
+    `<stop offset="0%" style="stop-color:var(--sun);stop-opacity:0.4"/>` +
+    `<stop offset="100%" style="stop-color:var(--sun);stop-opacity:0"/>` +
+    `</radialGradient>` +
+    `</defs>` +
+    `<rect x="0" y="0" width="${VB_W}" height="${VB_H}" fill="url(#seaGrad)"/>` +
+    `<rect x="0" y="0" width="${VB_W}" height="${VB_H}" fill="url(#sunGlow)"/>` +
+    `<g class="coral-decor" aria-hidden="true">` +
+    `<path d="M0 ${VB_H} v-52 q42 -32 84 -6 q32 -22 64 4 q54 -36 106 -2 v56 z"/>` +
+    `<path d="M${VB_W} ${VB_H} v-46 q-48 -28 -96 -4 q-28 -20 -60 2 q-58 -30 -110 0 v48 z"/>` +
+    `</g>`
   );
 }
 
@@ -101,25 +217,37 @@ export function renderReef(scenario: Scenario, layout: Layout, subMeta: Map<stri
       .filter(Boolean)
       .join(" ");
 
-    const label = n.is_cloud ? "Cloud" : `n${n.id}`;
+    const label = n.is_cloud ? "König Cloud" : `n${n.id}`;
     const ariaPlaced = (atNode.get(n.id) || []).length
       ? `, holds ${(atNode.get(n.id) || []).length} operator(s)`
       : "";
-    const aria = `${n.is_cloud ? "Cloud sink node" : n.is_leaf ? "Source node " + n.id : "Fog node " + n.id}${ariaPlaced}`;
+    const aria = `${n.is_cloud ? "König Cloud, the sink" : n.is_leaf ? "Reef source node " + n.id : "Watchtower " + n.id}${ariaPlaced}`;
 
     let shape: string;
     if (n.is_cloud) {
-      shape = `<path class="cloud-shape" d="${cloudPath(x, y, 34)}"/>`;
+      const castle = castleGroup(x, y, 34);
+      shape =
+        `<path class="cloud-shape" d="${islandPath(x, y, 34)}"/>` +
+        poolAndPalm(x, y, 34) +
+        castle.markup +
+        crownGroup(x, castle.topY, 30);
+    } else if (n.is_leaf) {
+      shape = `<circle class="node-dot" cx="${x}" cy="${y}" r="${r}"/>` + coralPetals(x, y, r);
     } else {
-      shape = `<circle class="node-dot" cx="${x}" cy="${y}" r="${r}"/>`;
+      shape = `<circle class="node-dot" cx="${x}" cy="${y}" r="${r}"/>` + towerToppers(x, y, r);
     }
 
-    // event pods for leaves (which streams they emit)
+    // event pods for leaves (which message types they emit)
     let events = "";
     if (n.is_leaf) {
       const letters = Object.keys(n.events);
+      const step = 20;
       letters.forEach((L, i) => {
-        events += `<text class="evt" x="${x + (i - (letters.length - 1) / 2) * 16}" y="${y + r + 16}">${L}</text>`;
+        const ex = x + (i - (letters.length - 1) / 2) * step;
+        const ey = y + r + 14;
+        events +=
+          eventIconGroup(L, ex, ey, 15) +
+          `<text class="evt-lbl" x="${ex}" y="${ey + 15}">${L}</text>`;
       });
     }
 
@@ -159,6 +287,7 @@ export function renderReef(scenario: Scenario, layout: Layout, subMeta: Map<stri
 
   return (
     `<svg viewBox="0 0 ${VB_W} ${VB_H}" class="reef-svg" preserveAspectRatio="xMidYMid meet" role="group" aria-label="Fog-cloud topology; tap a node to place the selected operator">` +
+    background() +
     `<g class="edges">${edges}</g>` +
     `<g class="nodes">${g}</g>` +
     `</svg>`
