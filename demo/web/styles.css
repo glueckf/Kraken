@@ -165,6 +165,7 @@ body {
   paint-order: stroke fill; stroke: var(--scene-text-halo); stroke-width: 3px; stroke-linejoin: round;
 }
 .node .node-lbl { font-size: 12px; }
+.node .node-lbl.on-isle { font-size: 10px; }
 .node .evt-lbl { font-size: 10.5px; }
 .node.source .node-dot { stroke: var(--accent); stroke-width: 3; }
 .node:hover .node-dot { stroke: var(--accent); }

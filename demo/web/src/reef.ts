@@ -110,23 +110,23 @@ function castleGroup(cx: number, cy: number, s: number): { markup: string; topY:
 
 function poolAndPalm(cx: number, cy: number, s: number): string {
   // The pool he moved to the island for, plus a palm for lounging in its shade.
-  // Offsets are pulled well inside the island's own footprint (it's wider than
-  // it is tall) so nothing pokes past the coastline.
-  const px = cx + s * 0.58;
-  const py = cy + s * 0.2;
-  const tx = cx - s * 0.56;
-  const ty = cy + s * 0.05;
+  // Both sit at the castle's own ground level (beside it, not below it) so the
+  // strip directly under the castle stays clear for the "König Cloud" label.
+  const px = cx + s * 0.9;
+  const py = cy - s * 0.1;
+  const tx = cx - s * 1.1;
+  const ty = cy + s * 0.02;
   return (
     `<g class="king-pool">` +
-    `<ellipse class="pool-rim" cx="${px}" cy="${py}" rx="${s * 0.32}" ry="${s * 0.14}"/>` +
-    `<ellipse class="pool-water" cx="${px}" cy="${py}" rx="${s * 0.25}" ry="${s * 0.1}"/>` +
+    `<ellipse class="pool-rim" cx="${px}" cy="${py}" rx="${s * 0.24}" ry="${s * 0.13}"/>` +
+    `<ellipse class="pool-water" cx="${px}" cy="${py}" rx="${s * 0.19}" ry="${s * 0.095}"/>` +
     `</g>` +
     `<g class="palm" transform="translate(${tx} ${ty})">` +
-    `<path class="palm-trunk" d="M0 ${s * 0.3} Q ${s * 0.09} ${s * 0.03} 0 -${s * 0.08}"/>` +
-    `<path class="palm-leaf" d="M0 -${s * 0.08} q -${s * 0.26} -${s * 0.03} -${s * 0.35} ${s * 0.1}"/>` +
-    `<path class="palm-leaf" d="M0 -${s * 0.08} q ${s * 0.26} -${s * 0.03} ${s * 0.35} ${s * 0.1}"/>` +
-    `<path class="palm-leaf" d="M0 -${s * 0.08} q -${s * 0.06} -${s * 0.2} -${s * 0.17} -${s * 0.25}"/>` +
-    `<path class="palm-leaf" d="M0 -${s * 0.08} q ${s * 0.06} -${s * 0.2} ${s * 0.17} -${s * 0.25}"/>` +
+    `<path class="palm-trunk" d="M0 ${s * 0.38} Q ${s * 0.11} ${s * 0.04} 0 -${s * 0.1}"/>` +
+    `<path class="palm-leaf" d="M0 -${s * 0.1} q -${s * 0.32} -${s * 0.035} -${s * 0.44} ${s * 0.12}"/>` +
+    `<path class="palm-leaf" d="M0 -${s * 0.1} q ${s * 0.32} -${s * 0.035} ${s * 0.44} ${s * 0.12}"/>` +
+    `<path class="palm-leaf" d="M0 -${s * 0.1} q -${s * 0.08} -${s * 0.26} -${s * 0.22} -${s * 0.32}"/>` +
+    `<path class="palm-leaf" d="M0 -${s * 0.1} q ${s * 0.08} -${s * 0.26} ${s * 0.22} -${s * 0.32}"/>` +
     `</g>`
   );
 }
@@ -282,7 +282,7 @@ export function renderReef(scenario: Scenario, layout: Layout, subMeta: Map<stri
       `<g class="${cls}" data-node="${n.id}" tabindex="0" role="button" aria-label="${aria}">` +
       ghost +
       shape +
-      `<text class="node-lbl${n.is_cloud ? " below" : ""}" x="${x}" y="${y + (n.is_cloud ? 44 * 0.45 + 15 : 5)}">${label}</text>` +
+      `<text class="node-lbl${n.is_cloud ? " on-isle" : ""}" x="${x}" y="${y + (n.is_cloud ? 15 : 5)}">${label}</text>` +
       events +
       chips +
       `</g>`;
