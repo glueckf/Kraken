@@ -22,7 +22,7 @@ export interface ReefView {
 
 const VB_W = 1000;
 const VB_H = 640;
-const ROW_Y: Record<number, number> = { 0: 66, 1: 214, 2: 362, 3: 548 };
+const ROW_Y: Record<number, number> = { 0: 86, 1: 214, 2: 362, 3: 548 };
 
 export type Layout = Map<number, { x: number; y: number; r: number }>;
 
@@ -110,21 +110,23 @@ function castleGroup(cx: number, cy: number, s: number): { markup: string; topY:
 
 function poolAndPalm(cx: number, cy: number, s: number): string {
   // The pool he moved to the island for, plus a palm for lounging in its shade.
-  const px = cx + s * 1.05;
-  const py = cy + s * 0.32;
-  const tx = cx - s * 1.2;
-  const ty = cy + s * 0.15;
+  // Offsets are pulled well inside the island's own footprint (it's wider than
+  // it is tall) so nothing pokes past the coastline.
+  const px = cx + s * 0.58;
+  const py = cy + s * 0.2;
+  const tx = cx - s * 0.56;
+  const ty = cy + s * 0.05;
   return (
     `<g class="king-pool">` +
-    `<ellipse class="pool-rim" cx="${px}" cy="${py}" rx="${s * 0.6}" ry="${s * 0.26}"/>` +
-    `<ellipse class="pool-water" cx="${px}" cy="${py}" rx="${s * 0.48}" ry="${s * 0.19}"/>` +
+    `<ellipse class="pool-rim" cx="${px}" cy="${py}" rx="${s * 0.32}" ry="${s * 0.14}"/>` +
+    `<ellipse class="pool-water" cx="${px}" cy="${py}" rx="${s * 0.25}" ry="${s * 0.1}"/>` +
     `</g>` +
     `<g class="palm" transform="translate(${tx} ${ty})">` +
-    `<path class="palm-trunk" d="M0 ${s * 0.45} Q ${s * 0.14} ${s * 0.05} 0 -${s * 0.12}"/>` +
-    `<path class="palm-leaf" d="M0 -${s * 0.12} q -${s * 0.42} -${s * 0.04} -${s * 0.56} ${s * 0.16}"/>` +
-    `<path class="palm-leaf" d="M0 -${s * 0.12} q ${s * 0.42} -${s * 0.04} ${s * 0.56} ${s * 0.16}"/>` +
-    `<path class="palm-leaf" d="M0 -${s * 0.12} q -${s * 0.1} -${s * 0.32} -${s * 0.28} -${s * 0.4}"/>` +
-    `<path class="palm-leaf" d="M0 -${s * 0.12} q ${s * 0.1} -${s * 0.32} ${s * 0.28} -${s * 0.4}"/>` +
+    `<path class="palm-trunk" d="M0 ${s * 0.3} Q ${s * 0.09} ${s * 0.03} 0 -${s * 0.08}"/>` +
+    `<path class="palm-leaf" d="M0 -${s * 0.08} q -${s * 0.26} -${s * 0.03} -${s * 0.35} ${s * 0.1}"/>` +
+    `<path class="palm-leaf" d="M0 -${s * 0.08} q ${s * 0.26} -${s * 0.03} ${s * 0.35} ${s * 0.1}"/>` +
+    `<path class="palm-leaf" d="M0 -${s * 0.08} q -${s * 0.06} -${s * 0.2} -${s * 0.17} -${s * 0.25}"/>` +
+    `<path class="palm-leaf" d="M0 -${s * 0.08} q ${s * 0.06} -${s * 0.2} ${s * 0.17} -${s * 0.25}"/>` +
     `</g>`
   );
 }
@@ -225,12 +227,13 @@ export function renderReef(scenario: Scenario, layout: Layout, subMeta: Map<stri
 
     let shape: string;
     if (n.is_cloud) {
-      const castle = castleGroup(x, y, 34);
+      const S = 44; // bigger island — enough room for the castle, pool, and palm to sit inside its coastline
+      const castle = castleGroup(x, y, S);
       shape =
-        `<path class="cloud-shape" d="${islandPath(x, y, 34)}"/>` +
-        poolAndPalm(x, y, 34) +
+        `<path class="cloud-shape" d="${islandPath(x, y, S)}"/>` +
+        poolAndPalm(x, y, S) +
         castle.markup +
-        crownGroup(x, castle.topY, 30);
+        crownGroup(x, castle.topY, S * 0.88);
     } else if (n.is_leaf) {
       shape = `<circle class="node-dot" cx="${x}" cy="${y}" r="${r}"/>` + coralPetals(x, y, r);
     } else {
@@ -279,7 +282,7 @@ export function renderReef(scenario: Scenario, layout: Layout, subMeta: Map<stri
       `<g class="${cls}" data-node="${n.id}" tabindex="0" role="button" aria-label="${aria}">` +
       ghost +
       shape +
-      `<text class="node-lbl" x="${x}" y="${y + (n.is_cloud ? 4 : 5)}">${label}</text>` +
+      `<text class="node-lbl${n.is_cloud ? " below" : ""}" x="${x}" y="${y + (n.is_cloud ? 44 * 0.45 + 15 : 5)}">${label}</text>` +
       events +
       chips +
       `</g>`;
