@@ -145,9 +145,14 @@ export class AppState {
   /**
    * Why `node` can't host `subqueryName` right now, or null if it's fine.
    * Events only flow upward (child -> parent) toward the cloud, so a node
-   * can only host an operator if every one of its dependencies has a source
-   * somewhere in that node's own subtree (a primitive event's producer, or —
-   * for a sub-query dependency — wherever the player already placed it).
+   * can only host an operator if every one of its dependencies is fully
+   * reachable from that node's own subtree — for a primitive event, that
+   * means *every* node producing it (an operator needs the complete stream,
+   * not just whichever producer happens to be reachable — the cost model
+   * sums over every source of a primitive, so missing even one would mean
+   * computing on incomplete data); for a sub-query dependency, wherever the
+   * player already placed it (a single materialized output, so just that
+   * one node).
    */
   placementIssue(subqueryName: string, node: number): string | null {
     const sc = this.scenario;
@@ -159,8 +164,8 @@ export class AppState {
     for (const dep of proj.deps) {
       const producers = sc.event_map.producers[dep];
       if (producers) {
-        if (!producers.some((p) => reach.has(p))) {
-          return `n${node} has no path from ${dep}'s source — events only flow upward from where they're produced. Check which nodes sit downstream of n${node}.`;
+        if (!producers.every((p) => reach.has(p))) {
+          return `n${node} doesn't reach every source of ${dep} — an operator needs the complete stream, and events only flow upward from where they're produced. Check which nodes sit downstream of n${node}.`;
         }
       } else {
         const depNode = this.placement[dep];
