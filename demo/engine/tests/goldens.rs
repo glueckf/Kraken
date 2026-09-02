@@ -8,8 +8,12 @@ use std::collections::HashMap;
 const SCENARIOS: &[&str] = &["seq_abc", "seq_abcd", "seq_abcde", "and_nested"];
 
 fn load(id: &str) -> Scenario {
+    // "medium" is the original hand-built 12-node reef these goldens were
+    // written against; scenarios now live under a per-topology subfolder
+    // (see export_scenario.py's topologies.py) since the network-size
+    // feature added "large" alongside it.
     let path = format!(
-        "{}/../web/scenarios/{}.json",
+        "{}/../web/scenarios/medium/{}.json",
         env!("CARGO_MANIFEST_DIR"),
         id
     );
