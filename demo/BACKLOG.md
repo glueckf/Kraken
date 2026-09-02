@@ -17,6 +17,17 @@ does.
    reason export_scenario.py isolates its own exports. `window.KRAKEN_BACKEND`
    in [index.html](web/index.html) points at it for local dev; not deployed
    anywhere yet.
+   Also DONE: the player can now make the push/pull call themselves instead
+   of it always being auto-optimized — a chip row per multi-primitive
+   operator (`renderPushPullRow` in [panel.ts](web/src/panel.ts)) lets them
+   pick which stream gets pushed (rate shown per chip so the choice is
+   informed), or leave it to the optimizer. Required a small additive change
+   to `prepp.py`/`cost_calculator.py` (`forced_push_primitive`, both default
+   `None` — re-exported all 8 scenarios and diffed against committed JSON to
+   confirm zero behavior change when unused) to cost the player's *specific*
+   choice rather than always the cheapest one, so a bad call actually costs
+   what it costs (verified: pushing the wrong/high-rate stream costs ~150x
+   more, roughly all-push) instead of silently being corrected.
 2. **Simplify the query representation** for a non-technical audience.
    Currently queries are shown as raw expressions (`SEQ(A, B, C)`), which
    reads as programming syntax rather than "spot the shark alarm."
