@@ -29,6 +29,8 @@ export class AppState {
   placement: Placement = {};
   activeSubquery: string | null = null;
   placementError: string | null = null;
+  /** subquery name -> primitive letter the player chose to push (rest pulled). */
+  pushChoice: Record<string, string> = {};
   reveal = false;
   private descendants: Map<number, Set<number>> = new Map();
 
@@ -108,6 +110,7 @@ export class AppState {
 
       this.placement = {};
       this.placementError = null;
+      this.pushChoice = {};
       this.reveal = false;
       this.clientScore = null;
       this.official = null;
@@ -196,11 +199,25 @@ export class AppState {
 
   clear(): void {
     this.placement = {};
+    this.pushChoice = {};
     this.activeSubquery = this.subqueries[0] ?? null;
     this.reveal = false;
     this.clientScore = null;
     this.official = null;
     this.emit();
+  }
+
+  /** Toggle whether `primitive` is the one the player pushes for `subqueryName`
+   * (the rest are pulled) — clicking the already-chosen one clears back to
+   * "let the optimizer decide". */
+  setPushPrimitive(subqueryName: string, primitive: string): void {
+    if (this.pushChoice[subqueryName] === primitive) {
+      delete this.pushChoice[subqueryName];
+    } else {
+      this.pushChoice[subqueryName] = primitive;
+    }
+    this.reveal = false;
+    this.rescore();
   }
 
   toggleReveal(): void {
@@ -250,11 +267,12 @@ export class AppState {
   private async refine(): Promise<void> {
     const token = ++this.refineToken;
     const snapshot: Placement = { ...this.placement };
+    const pushSnapshot = { ...this.pushChoice };
     let result: PushPullResult | null = null;
     try {
       // "<topology>/<query>" — query ids alone aren't unique across topologies,
       // and the backend needs to know which one to reconstruct.
-      result = await refinePushPull(`${this.topologyId}/${this.scenario!.scenario_id}`, snapshot);
+      result = await refinePushPull(`${this.topologyId}/${this.scenario!.scenario_id}`, snapshot, pushSnapshot);
     } catch {
       result = null;
     }

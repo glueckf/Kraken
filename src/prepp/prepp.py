@@ -465,7 +465,13 @@ def determine_randomized_distribution_push_pull_costs(
     eventtypes_single_selectivities,
     single_selectivity_of_eventtype_within_projection,
     cloud_evaluation_node,
+    forced_push_primitive=None,
 ):
+    """forced_push_primitive: when given (a single primitive event letter, e.g.
+    "B"), skip the exact-plan search for algorithm "e" and instead cost a plan
+    that pushes exactly that primitive and pulls the rest — i.e. the player's
+    own push/pull choice rather than the optimizer's. None (the default)
+    preserves the original search-driven behavior exactly."""
     total_greedy_costs = 0
     total_exact_costs = 0
     total_factorial_costs = 0
@@ -519,11 +525,20 @@ def determine_randomized_distribution_push_pull_costs(
 
                 if algorithm == "e":
                     start_exact = timer()
-                    exact_push_pull_plan_for_a_projection, exact_costs = (
-                        push_pull_plan_generator_exact.determine_exact_push_pull_plan(
-                            query, current_node, allPairs
+                    if forced_push_primitive is not None and forced_push_primitive in old_copy:
+                        # Player-forced choice: push exactly this one primitive,
+                        # pull the rest — skip the optimizer's own search entirely.
+                        rest = [e for e in old_copy if e != forced_push_primitive]
+                        exact_push_pull_plan_for_a_projection = [[forced_push_primitive]] + (
+                            [rest] if rest else []
                         )
-                    )
+                        exact_costs = 0.0
+                    else:
+                        exact_push_pull_plan_for_a_projection, exact_costs = (
+                            push_pull_plan_generator_exact.determine_exact_push_pull_plan(
+                                query, current_node, allPairs
+                            )
+                        )
 
                     end_exact = timer()
                     exact_exec_times.append(end_exact - start_exact)
@@ -935,6 +950,7 @@ def generate_prePP(
     plan_print,
     allPairs,
     is_deterministic=False,
+    forced_push_primitive=None,
 ):
     # print(f"[PREPP_DEBUG] generate_prePP called with is_deterministic={is_deterministic}")
     # Accessing the arguments
@@ -1296,6 +1312,7 @@ def generate_prePP(
                         eventtypes_single_selectivities,
                         single_selectivity_of_eventtype_within_projection,
                         CLOUD_EVALUATION_NODE,
+                        forced_push_primitive=forced_push_primitive,
                     )
                 except Exception as e:
                     logger.error(

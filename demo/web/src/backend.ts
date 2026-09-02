@@ -25,6 +25,7 @@ export function backendConfigured(): boolean {
 export async function refinePushPull(
   scenarioId: string,
   placement: Placement,
+  pushChoice: Record<string, string> = {},
   timeoutMs = 4000,
 ): Promise<PushPullResult | null> {
   const base = backendBase();
@@ -35,7 +36,7 @@ export async function refinePushPull(
     const res = await fetch(`${base}/score`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scenario_id: scenarioId, placement }),
+      body: JSON.stringify({ scenario_id: scenarioId, placement, push_choice: pushChoice }),
       signal: ctrl.signal,
     });
     if (!res.ok) return null;

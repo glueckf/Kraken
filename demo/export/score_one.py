@@ -1,16 +1,25 @@
-"""Isolated push-pull scoring worker: given a topology id, a query id, and a
-placement, reconstructs that exact simulation context (same size/seed as
-export_scenario.py used) and scores the placement using Kraken's own
-CostCalculator — for each projection, in dependency order, the cheapest
+"""Isolated push-pull scoring worker: given a topology id, a query id, a
+placement, and (optionally) the player's own push/pull choices, reconstructs
+that exact simulation context (same size/seed as export_scenario.py used)
+and scores it using Kraken's own CostCalculator.
+
+For a projection with no push choice given, this picks the cheapest
 available communication strategy (push vs push-pull) at whatever node the
-caller placed it. This is exactly what the "Sequential" baseline already
-does for INEv's placement, generalized to any placement.
+caller placed it — the same thing the "Sequential" baseline already does for
+INEv's placement, generalized to any placement. For a projection where the
+player DID choose which primitive to push, that exact choice is costed
+instead (see forced_push_primitive in prepp.py / cost_calculator.py) — so a
+good push/pull call is rewarded and a bad one costs what it actually costs,
+rather than always silently falling back to the optimizer's own pick.
 
 Runs as its own process (see server.py) so RNG state from scoring one
 topology can never leak into another's reconstruction — the same reason
 export_scenario.py isolates each topology into its own subprocess.
 
-Usage: python score_one.py <topology_id> <scenario_id> '<placement-json>'
+Usage: python score_one.py <topology_id> <scenario_id> '<placement-json>' ['<push-choice-json>']
+push-choice-json (optional, default "{}"): {projection_name: primitive_letter}
+— only for projections the player has made an explicit push/pull call on;
+any projection missing from it falls back to the optimizer's own choice.
 Prints one JSON line to stdout: {"cost", "latency", "per_placement"} or
 {"error": "..."} on failure (exit code 1).
 """
@@ -49,10 +58,11 @@ def fail(message: str):
 
 
 def main():
-    if len(sys.argv) != 4:
-        fail("usage: score_one.py <topology_id> <scenario_id> <placement-json>")
+    if len(sys.argv) not in (4, 5):
+        fail("usage: score_one.py <topology_id> <scenario_id> <placement-json> ['<push-choice-json>']")
 
     topology_id, scenario_id, placement_json = sys.argv[1], sys.argv[2], sys.argv[3]
+    push_choice_json = sys.argv[4] if len(sys.argv) == 5 else "{}"
 
     topology = next((t for t in TOPOLOGIES if t["id"] == topology_id), None)
     if topology is None:
@@ -65,6 +75,10 @@ def main():
         placement = json.loads(placement_json)
     except json.JSONDecodeError as e:
         fail(f"invalid placement JSON: {e}")
+    try:
+        push_choice = json.loads(push_choice_json)
+    except json.JSONDecodeError as e:
+        fail(f"invalid push-choice JSON: {e}")
 
     q = number_children(spec["build"]())
     se.generate_hardcoded_workload = lambda: [q]
@@ -103,8 +117,18 @@ def main():
         for p in order:
             name = str(p)
             node = int(placement[name])
-            strategy_results = problem.cost_calculator.calculate(p, node, s_current)
-            best = min(strategy_results, key=lambda r: r["individual_cost"])
+            forced = push_choice.get(name)
+            strategy_results = problem.cost_calculator.calculate(
+                p, node, s_current, forced_push_primitive=forced
+            )
+            if forced is not None:
+                # The player made an explicit push/pull call — cost exactly
+                # that choice (last entry = the forced attempt, or the sole
+                # all-push entry if push-pull couldn't be computed at all),
+                # not whichever strategy happens to be cheapest.
+                best = strategy_results[-1]
+            else:
+                best = min(strategy_results, key=lambda r: r["individual_cost"])
             per_placement[name] = {
                 "node": node,
                 "strategy": best["strategy"],

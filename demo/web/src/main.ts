@@ -115,6 +115,12 @@ function wire(): void {
 }
 
 function trayActivate(target: EventTarget | null): void {
+  const pp = closestAttr(target, "data-pp");
+  if (pp) {
+    const [subEnc, letter] = pp.split("::");
+    state.setPushPrimitive(decodeURIComponent(subEnc), letter);
+    return;
+  }
   const sub = closestAttr(target, "data-sub");
   if (!sub) return;
   const name = decodeURIComponent(sub);

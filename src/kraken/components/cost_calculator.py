@@ -34,7 +34,7 @@ class CostCalculator:
         self._static_buffer_cache: Optional[str] = None
 
     def calculate(
-        self, p: Any, n: int, s_current: SolutionCandidate
+        self, p: Any, n: int, s_current: SolutionCandidate, forced_push_primitive: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Orchestrate the full cost calculation pipeline.
 
@@ -42,12 +42,18 @@ class CostCalculator:
             p: Projection being placed
             n: Node ID where placement is considered
             s_current: Current solution state
+            forced_push_primitive: when given, the push-pull strategy (if
+                computed at all) pushes exactly this one primitive event and
+                pulls the rest, instead of letting PrePP search for the
+                cheapest split — this is how a player's own push/pull choice
+                gets scored, rather than the optimizer's. None (the default)
+                is the original search-driven behavior.
 
         Returns:
             List of dictionaries with strategy-specific costs and metrics
         """
         # Get raw costs for all strategies
-        raw_strategies = self._get_raw_costs_for_strategies(p, n, s_current)
+        raw_strategies = self._get_raw_costs_for_strategies(p, n, s_current, forced_push_primitive)
 
         # Apply adjustments to each strategy
         final_strategies = []
@@ -61,7 +67,7 @@ class CostCalculator:
         return final_strategies
 
     def _get_raw_costs_for_strategies(
-        self, p: Any, n: int, s_current: SolutionCandidate
+        self, p: Any, n: int, s_current: SolutionCandidate, forced_push_primitive: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Get raw costs for all valid strategies.
 
@@ -106,6 +112,7 @@ class CostCalculator:
             plan_print=PLAN_PRINT,
             allPairs=all_pairs,
             is_deterministic=is_deterministic,
+            forced_push_primitive=forced_push_primitive,
         )
 
         # Process PrePP results to extract push-pull strategy

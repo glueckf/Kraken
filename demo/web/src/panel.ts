@@ -2,7 +2,7 @@
 // leaderboard. Pure HTML-string builders; main.ts owns the DOM + delegated events.
 
 import type { AppState } from "./state";
-import type { Baselines, StrategyId } from "./types";
+import type { Baselines, Projection, StrategyId } from "./types";
 import { eventIconSvg, glyphFor } from "./icons";
 
 const STRAT_ORDER: StrategyId[] = ["all_push", "inev", "prepp", "sequential", "kraken"];
@@ -14,6 +14,40 @@ function fmtCost(n: number): string {
 }
 function fmtLat(n: number): string {
   return Number.isInteger(n) ? String(n) : n.toFixed(1);
+}
+function fmtRate(n: number): string {
+  return n >= 1000 ? Math.round(n / 100) / 10 + "k" : String(Math.round(n));
+}
+
+/**
+ * For an operator with 2+ raw input streams, let the player pick which one
+ * gets pushed (fully transmitted) — the rest are pulled (only matches
+ * requested). Rate is shown so the choice is informed: pushing the low-rate
+ * stream and pulling the high-rate one is usually cheaper.
+ */
+function renderPushPullRow(state: AppState, name: string, proj: Projection): string {
+  if (proj.primitives.length < 2) return "";
+  const sc = state.scenario!;
+  const chosen = state.pushChoice[name];
+  const chips = proj.primitives
+    .map((letter) => {
+      const rateMap = sc.event_map.local_rate_lookup[letter];
+      const rate = rateMap ? Object.values(rateMap)[0] : undefined;
+      const isPush = chosen === letter;
+      const isPull = !!chosen && !isPush;
+      const role = isPush ? "PUSH" : isPull ? "pull" : "";
+      return (
+        `<button class="pp-chip${isPush ? " push" : ""}${isPull ? " pull" : ""}" data-pp="${encodeURIComponent(name)}::${letter}" ` +
+        `title="${letter}: ${rate !== undefined ? rate + "/s" : "rate unknown"}">` +
+        eventIconSvg(letter, 12) +
+        `<span class="pp-letter">${letter}</span>` +
+        `<span class="pp-rate">${rate !== undefined ? fmtRate(rate) + "/s" : ""}</span>` +
+        (role ? `<span class="pp-role">${role}</span>` : "") +
+        `</button>`
+      );
+    })
+    .join("");
+  return `<div class="pp-row"><span class="pp-label">push</span>${chips}</div>`;
 }
 
 export function renderTopologyBar(state: AppState): string {
@@ -69,14 +103,14 @@ export function renderTray(state: AppState): string {
             : `<span class="pill mini evt" style="background:${glyphFor(d).color}">${eventIconSvg(d, 11)}${d}</span>`;
         })
         .join("");
-      return (
+      const row =
         `<div class="tray-row ${active ? "active" : ""} ${placed ? "placed" : ""}" data-sub="${encodeURIComponent(name)}" tabindex="0" role="button" aria-pressed="${active}">` +
         `<span class="tag" style="background:${m.color}">${m.tag}${m.isRoot ? "★" : ""}</span>` +
         `<span class="tray-body"><span class="tray-name">${escapeHtml(name)}</span>` +
         `<span class="tray-inputs">needs ${inputs}</span></span>` +
         `<span class="tray-loc">${placed ? (node === 0 ? "👑 König Cloud" : "n" + node) : "—"}</span>` +
-        `</div>`
-      );
+        `</div>`;
+      return row + renderPushPullRow(state, name, proj);
     })
     .join("");
 

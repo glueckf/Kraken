@@ -48,8 +48,11 @@ def score():
     body = request.get_json(silent=True) or {}
     scenario_id = body.get("scenario_id", "")
     placement = body.get("placement")
+    push_choice = body.get("push_choice", {})
     if not isinstance(placement, dict):
         return jsonify({"error": "missing or invalid 'placement'"}), 400
+    if not isinstance(push_choice, dict):
+        return jsonify({"error": "'push_choice' must be an object if given"}), 400
 
     if "/" not in scenario_id:
         return jsonify({"error": "scenario_id must be '<topology_id>/<query_id>'"}), 400
@@ -57,7 +60,7 @@ def score():
 
     try:
         result = subprocess.run(
-            [sys.executable, WORKER, topology_id, query_id, json.dumps(placement)],
+            [sys.executable, WORKER, topology_id, query_id, json.dumps(placement), json.dumps(push_choice)],
             capture_output=True, text=True, timeout=20,
         )
     except subprocess.TimeoutExpired:

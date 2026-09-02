@@ -236,6 +236,26 @@ body {
 .tray-hint.ok { color: var(--good); font-weight: 600; }
 .tray-hint.err { color: var(--bad); font-weight: 600; margin-top: 6px; }
 
+/* ---------- push/pull chips ---------- */
+.pp-row {
+  display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
+  padding: 6px 8px 8px 40px; margin-top: -4px;
+}
+.pp-label { font-size: 9.5px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.05em; margin-right: 2px; }
+.pp-chip {
+  display: inline-flex; align-items: center; gap: 3px; border: 1px solid var(--line-strong);
+  background: var(--panel-2); color: var(--ink); border-radius: 7px; padding: 3px 6px;
+  cursor: pointer; font-size: 10.5px;
+}
+.pp-chip:hover { border-color: var(--accent); }
+.pp-chip .evt-icon { flex: none; }
+.pp-chip .pp-rate { color: var(--ink-soft); font-variant: tabular-nums; }
+.pp-chip .pp-role { font-weight: 700; font-size: 9px; letter-spacing: 0.03em; }
+.pp-chip.push { border-color: var(--accent); background: var(--accent-soft); }
+.pp-chip.push .pp-role { color: var(--accent); }
+.pp-chip.pull { opacity: 0.6; }
+.pp-chip.pull .pp-role { color: var(--ink-soft); }
+
 /* ---------- scorecard ---------- */
 .sc-empty-title { font-size: 13px; font-weight: 600; margin-bottom: 10px; }
 .sc-empty-sub { font-size: 11.5px; color: var(--ink-soft); margin-top: 10px; line-height: 1.5; }
