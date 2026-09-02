@@ -85,11 +85,14 @@ export function renderTray(state: AppState): string {
     : state.complete
       ? `<span class="tray-hint ok">All operators placed.</span>`
       : `<span class="tray-hint">Tap an operator, then tap a node.</span>`;
+  const errorHint = state.placementError
+    ? `<span class="tray-hint err">${escapeHtml(state.placementError)}</span>`
+    : "";
 
   return (
     `<div class="tray-head"><span>Operators to place</span>` +
     `<span class="progress-txt">${state.placedCount}/${sc.processing_order.length}</span></div>` +
-    `<div class="tray-rows">${rows}</div>${hint}`
+    `<div class="tray-rows">${rows}</div>${errorHint}${hint}`
   );
 }
 

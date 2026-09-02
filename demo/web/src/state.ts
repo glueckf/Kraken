@@ -28,7 +28,9 @@ export class AppState {
 
   placement: Placement = {};
   activeSubquery: string | null = null;
+  placementError: string | null = null;
   reveal = false;
+  private descendants: Map<number, Set<number>> = new Map();
 
   clientScore: ScoreResult | null = null;
   official: OfficialScore | null = null;
@@ -90,6 +92,7 @@ export class AppState {
       this.engine = await Engine.create(scenario);
       this.scenario = scenario;
       this.baselines = this.engine.baselines();
+      this.descendants = computeDescendants(scenario);
 
       // subquery display metadata
       this.subMeta = new Map();
@@ -104,6 +107,7 @@ export class AppState {
       });
 
       this.placement = {};
+      this.placementError = null;
       this.reveal = false;
       this.clientScore = null;
       this.official = null;
@@ -131,11 +135,49 @@ export class AppState {
 
   selectSubquery(name: string): void {
     this.activeSubquery = this.activeSubquery === name ? null : name;
+    this.placementError = null;
     this.emit();
+  }
+
+  /**
+   * Why `node` can't host `subqueryName` right now, or null if it's fine.
+   * Events only flow upward (child -> parent) toward the cloud, so a node
+   * can only host an operator if every one of its dependencies has a source
+   * somewhere in that node's own subtree (a primitive event's producer, or —
+   * for a sub-query dependency — wherever the player already placed it).
+   */
+  placementIssue(subqueryName: string, node: number): string | null {
+    const sc = this.scenario;
+    if (!sc) return null;
+    const proj = sc.projections.find((p) => p.name === subqueryName);
+    if (!proj) return null;
+    const reach = this.descendants.get(node);
+    if (!reach) return `Unknown node n${node}.`;
+    for (const dep of proj.deps) {
+      const producers = sc.event_map.producers[dep];
+      if (producers) {
+        if (!producers.some((p) => reach.has(p))) {
+          return `n${node} has no path from ${dep}'s source — events only flow upward from where they're produced. Check which nodes sit downstream of n${node}.`;
+        }
+      } else {
+        const depNode = this.placement[dep];
+        if (depNode === undefined || !reach.has(depNode)) {
+          return `n${node} has no path from ${dep} — an operator needs to sit above (or at) all of its inputs in the network.`;
+        }
+      }
+    }
+    return null;
   }
 
   placeActiveAt(node: number): void {
     if (this.activeSubquery == null) return;
+    const issue = this.placementIssue(this.activeSubquery, node);
+    if (issue) {
+      this.placementError = issue;
+      this.emit();
+      return;
+    }
+    this.placementError = null;
     this.placement[this.activeSubquery] = node;
     // auto-advance to the next unplaced subquery
     const next = this.subqueries.find((s) => !(s in this.placement));
@@ -147,6 +189,7 @@ export class AppState {
   pickUp(name: string): void {
     delete this.placement[name];
     this.activeSubquery = name;
+    this.placementError = null;
     this.reveal = false;
     this.rescore();
   }
@@ -230,4 +273,26 @@ async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url, { cache: "no-cache" });
   if (!res.ok) throw new Error(`${res.status} ${url}`);
   return (await res.json()) as T;
+}
+
+/** For every node, the set of nodes reachable by following `children`
+ * (itself included) — i.e. "can an operator here receive events from X".
+ */
+function computeDescendants(scenario: Scenario): Map<number, Set<number>> {
+  const nodes = scenario.topology.nodes;
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const result = new Map<number, Set<number>>();
+  for (const n of nodes) {
+    const seen = new Set<number>([n.id]);
+    const stack = [...n.children];
+    while (stack.length) {
+      const c = stack.pop()!;
+      if (seen.has(c)) continue;
+      seen.add(c);
+      const cn = byId.get(c);
+      if (cn) stack.push(...cn.children);
+    }
+    result.set(n.id, seen);
+  }
+  return result;
 }
