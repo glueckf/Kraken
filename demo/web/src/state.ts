@@ -209,7 +209,9 @@ export class AppState {
     const snapshot: Placement = { ...this.placement };
     let result: PushPullResult | null = null;
     try {
-      result = await refinePushPull(this.scenario!.scenario_id, snapshot);
+      // "<topology>/<query>" — query ids alone aren't unique across topologies,
+      // and the backend needs to know which one to reconstruct.
+      result = await refinePushPull(`${this.topologyId}/${this.scenario!.scenario_id}`, snapshot);
     } catch {
       result = null;
     }

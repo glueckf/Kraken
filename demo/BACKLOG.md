@@ -6,12 +6,17 @@ does.
 
 ## Functional (current priority)
 
-1. **Extend communication.** The demo only scores the client-side all-push
-   estimate today (`window.KRAKEN_BACKEND` is empty in
-   [index.html](web/index.html), see `backendConfigured()` in
-   [state.ts](web/src/state.ts)). No push-pull backend is wired up, so the
-   demo can't show Kraken's actual communication-strategy co-optimization —
-   only placement.
+1. **Extend communication** — DONE: a local push-pull scoring backend
+   ([backend/server.py](backend/server.py)) reuses Kraken's own
+   `CostCalculator`/`PlacementProblem` ([cost_calculator.py](../src/kraken/components/cost_calculator.py),
+   [problem.py](../src/kraken/problem.py)) to pick the cheapest push/push-pull
+   strategy per operator for whatever placement the user chose — the same
+   model "Sequential" already uses for INEv's placement, generalized to any
+   placement. Each request scores in its own subprocess
+   ([export/score_one.py](export/score_one.py)), for the same RNG-isolation
+   reason export_scenario.py isolates its own exports. `window.KRAKEN_BACKEND`
+   in [index.html](web/index.html) points at it for local dev; not deployed
+   anywhere yet.
 2. **Simplify the query representation** for a non-technical audience.
    Currently queries are shown as raw expressions (`SEQ(A, B, C)`), which
    reads as programming syntax rather than "spot the shark alarm."
