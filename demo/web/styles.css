@@ -255,6 +255,10 @@ body {
 .pp-chip.push .pp-role { color: var(--accent); }
 .pp-chip.pull { opacity: 0.6; }
 .pp-chip.pull .pp-role { color: var(--ink-soft); }
+.pp-sub-tag { color: #fff; font-size: 9.5px; font-weight: 700; border-radius: 4px; padding: 1px 5px; }
+.pp-row.needed { background: color-mix(in srgb, var(--bad) 8%, transparent); border-radius: 8px; }
+.pp-row.needed .pp-label { color: var(--bad); font-weight: 700; }
+.pp-row.needed .pp-chip { border-color: color-mix(in srgb, var(--bad) 45%, var(--line-strong)); }
 
 /* ---------- scorecard ---------- */
 .sc-empty-title { font-size: 13px; font-weight: 600; margin-bottom: 10px; }

@@ -136,6 +136,24 @@ export class AppState {
     return this.subqueries.filter((s) => s in this.placement).length;
   }
 
+  /** Subqueries with 2+ dependencies where the player hasn't made a push/pull
+   * call yet — that choice is required, not just an optional extra, so a
+   * placement isn't "done" while one of these is still unset. */
+  get pendingPushChoices(): string[] {
+    const sc = this.scenario;
+    if (!sc) return [];
+    return this.subqueries.filter((name) => {
+      const proj = sc.projections.find((p) => p.name === name);
+      return !!proj && proj.deps.length > 1 && !(name in this.pushChoice);
+    });
+  }
+
+  /** True once every operator is placed AND every push/pull call is made —
+   * this, not `complete`, gates scoring. */
+  get readyToScore(): boolean {
+    return this.complete && this.pendingPushChoices.length === 0;
+  }
+
   selectSubquery(name: string): void {
     this.activeSubquery = this.activeSubquery === name ? null : name;
     this.placementError = null;
@@ -212,14 +230,15 @@ export class AppState {
     this.emit();
   }
 
-  /** Toggle whether `primitive` is the one the player pushes for `subqueryName`
+  /** Toggle whether `dep` (one of subqueryName's own `deps` — a primitive
+   * letter or an already-placed sub-query) is the one the player pushes
    * (the rest are pulled) — clicking the already-chosen one clears back to
    * "let the optimizer decide". */
-  setPushPrimitive(subqueryName: string, primitive: string): void {
-    if (this.pushChoice[subqueryName] === primitive) {
+  setPushChoice(subqueryName: string, dep: string): void {
+    if (this.pushChoice[subqueryName] === dep) {
       delete this.pushChoice[subqueryName];
     } else {
-      this.pushChoice[subqueryName] = primitive;
+      this.pushChoice[subqueryName] = dep;
     }
     this.reveal = false;
     this.rescore();
@@ -246,7 +265,7 @@ export class AppState {
   }
 
   private rescore(): void {
-    if (!this.engine || !this.complete) {
+    if (!this.engine || !this.readyToScore) {
       this.clientScore = null;
       this.official = null;
       this.emit();
@@ -281,7 +300,7 @@ export class AppState {
     } catch {
       result = null;
     }
-    if (token !== this.refineToken || !this.complete) return; // stale / placement changed
+    if (token !== this.refineToken || !this.readyToScore) return; // stale / placement or push choice changed
     if (result && this.engine) {
       const norm = this.engine.normalizePoint(result.cost, result.latency);
       this.official = { cost: result.cost, latency: result.latency, norm, mode: "pushpull", pending: false };

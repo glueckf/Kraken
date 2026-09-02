@@ -20,34 +20,51 @@ function fmtRate(n: number): string {
 }
 
 /**
- * For an operator with 2+ raw input streams, let the player pick which one
- * gets pushed (fully transmitted) — the rest are pulled (only matches
- * requested). Rate is shown so the choice is informed: pushing the low-rate
- * stream and pulling the high-rate one is usually cheaper.
+ * For an operator with 2+ dependencies, let the player pick which one gets
+ * pushed (fully transmitted) — the rest are pulled (only matches
+ * requested). A dependency is either a raw primitive (rate shown, so the
+ * choice is informed — pushing the low-rate stream and pulling the
+ * high-rate one is usually cheaper) or an already-placed sub-query (shown
+ * with its own sN tag, since its role here was already decided one level
+ * down — this operator only chooses between that combined result and its
+ * other input(s), not the raw primitives underneath it again).
+ * Mandatory: state.readyToScore requires one of these per multi-dep operator.
  */
 function renderPushPullRow(state: AppState, name: string, proj: Projection): string {
-  if (proj.primitives.length < 2) return "";
+  if (proj.deps.length < 2) return "";
   const sc = state.scenario!;
   const chosen = state.pushChoice[name];
-  const chips = proj.primitives
-    .map((letter) => {
-      const rateMap = sc.event_map.local_rate_lookup[letter];
-      const rate = rateMap ? Object.values(rateMap)[0] : undefined;
-      const isPush = chosen === letter;
+  const chips = proj.deps
+    .map((dep) => {
+      const sub = state.subMeta.get(dep);
+      const isPush = chosen === dep;
       const isPull = !!chosen && !isPush;
       const role = isPush ? "PUSH" : isPull ? "pull" : "";
+      const roleHtml = role ? `<span class="pp-role">${role}</span>` : "";
+      if (sub) {
+        const depProj = sc.projections.find((p) => p.name === dep);
+        const rate = depProj ? fmtRate(depProj.output_rate) + "/s" : "";
+        return (
+          `<button class="pp-chip${isPush ? " push" : ""}${isPull ? " pull" : ""}" data-pp="${encodeURIComponent(name)}::${encodeURIComponent(dep)}" ` +
+          `title="${escapeHtml(dep)}: ${rate || "rate unknown"}">` +
+          `<span class="pp-sub-tag" style="background:${sub.color}">${sub.tag}</span>` +
+          `<span class="pp-rate">${rate}</span>${roleHtml}` +
+          `</button>`
+        );
+      }
+      const rateMap = sc.event_map.local_rate_lookup[dep];
+      const rate = rateMap ? Object.values(rateMap)[0] : undefined;
       return (
-        `<button class="pp-chip${isPush ? " push" : ""}${isPull ? " pull" : ""}" data-pp="${encodeURIComponent(name)}::${letter}" ` +
-        `title="${letter}: ${rate !== undefined ? rate + "/s" : "rate unknown"}">` +
-        eventIconSvg(letter, 12) +
-        `<span class="pp-letter">${letter}</span>` +
-        `<span class="pp-rate">${rate !== undefined ? fmtRate(rate) + "/s" : ""}</span>` +
-        (role ? `<span class="pp-role">${role}</span>` : "") +
+        `<button class="pp-chip${isPush ? " push" : ""}${isPull ? " pull" : ""}" data-pp="${encodeURIComponent(name)}::${encodeURIComponent(dep)}" ` +
+        `title="${dep}: ${rate !== undefined ? rate + "/s" : "rate unknown"}">` +
+        eventIconSvg(dep, 12) +
+        `<span class="pp-letter">${dep}</span>` +
+        `<span class="pp-rate">${rate !== undefined ? fmtRate(rate) + "/s" : ""}</span>${roleHtml}` +
         `</button>`
       );
     })
     .join("");
-  return `<div class="pp-row"><span class="pp-label">push</span>${chips}</div>`;
+  return `<div class="pp-row${chosen ? "" : " needed"}"><span class="pp-label">push</span>${chips}</div>`;
 }
 
 export function renderTopologyBar(state: AppState): string {
@@ -114,11 +131,14 @@ export function renderTray(state: AppState): string {
     })
     .join("");
 
+  const pending = state.pendingPushChoices;
   const hint = state.activeSubquery
     ? `<span class="tray-hint">Selected <b>${escapeHtml(state.activeSubquery)}</b> — now tap a node.</span>`
-    : state.complete
-      ? `<span class="tray-hint ok">All operators placed.</span>`
-      : `<span class="tray-hint">Tap an operator, then tap a node.</span>`;
+    : !state.complete
+      ? `<span class="tray-hint">Tap an operator, then tap a node.</span>`
+      : pending.length > 0
+        ? `<span class="tray-hint err">Still need a push/pull call for <b>${pending.map(escapeHtml).join(", ")}</b>.</span>`
+        : `<span class="tray-hint ok">All operators placed.</span>`;
   const errorHint = state.placementError
     ? `<span class="tray-hint err">${escapeHtml(state.placementError)}</span>`
     : "";
@@ -135,13 +155,18 @@ export function renderScorecard(state: AppState): string {
   const bl = state.baselines;
   if (!sc || !bl) return "";
 
-  if (!state.complete || !state.official) {
+  if (!state.readyToScore || !state.official) {
+    const pending = state.pendingPushChoices;
     const pct = Math.round((state.placedCount / sc.processing_order.length) * 100);
+    const title =
+      state.complete && pending.length > 0
+        ? `Choose push or pull for ${pending.length} more operator${pending.length > 1 ? "s" : ""} to score your plan`
+        : `Place all ${sc.processing_order.length} operators to score your plan`;
     return (
       `<div class="sc-empty">` +
-      `<div class="sc-empty-title">Place all ${sc.processing_order.length} operators to score your plan</div>` +
+      `<div class="sc-empty-title">${title}</div>` +
       `<div class="progress"><div class="progress-fill" style="width:${pct}%"></div></div>` +
-      `<div class="sc-empty-sub">You choose <b>where</b> each operator runs. We compute the network cost and latency, then pit it against Kraken and four baselines.</div>` +
+      `<div class="sc-empty-sub">You choose <b>where</b> each operator runs, and — for push-pull scoring — <b>which stream</b> it pushes. We compute the network cost and latency, then pit it against Kraken and four baselines.</div>` +
       `</div>`
     );
   }

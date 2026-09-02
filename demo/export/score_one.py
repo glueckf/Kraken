@@ -103,6 +103,7 @@ def main():
 
     deps_levels = compute_dependencies(sim, sim.h_mycombi, getattr(sim, "h_criticalMSTypes", None))
     order = sorted(deps_levels.keys(), key=lambda x: deps_levels[x])
+    by_name = {str(p): p for p in order}
 
     missing = [str(p) for p in order if str(p) not in placement]
     if missing:
@@ -117,9 +118,19 @@ def main():
         for p in order:
             name = str(p)
             node = int(placement[name])
-            forced = push_choice.get(name)
+            # The player chooses over `deps` (one level — a raw primitive
+            # letter, or an already-placed sub-query dependency), but the
+            # engine costs push/pull over the fully flattened primitive set.
+            # A sub-query dependency means "push every primitive underlying
+            # it, together" (that's what "push the sub-query's result" means
+            # once you're back down at the primitive level PrePP works at).
+            chosen_dep = push_choice.get(name)
+            forced = None
+            if chosen_dep is not None:
+                dep_obj = by_name.get(chosen_dep)
+                forced = list(dep_obj.leafs()) if dep_obj is not None else [chosen_dep]
             strategy_results = problem.cost_calculator.calculate(
-                p, node, s_current, forced_push_primitive=forced
+                p, node, s_current, forced_push_group=forced
             )
             if forced is not None:
                 # The player made an explicit push/pull call — cost exactly
