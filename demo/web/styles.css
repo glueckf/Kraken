@@ -28,20 +28,9 @@
   --sea-deep: #12384a;
   --sun: #ffe6a8;
   --tower-stroke: #8a6a4e;
-  --tower-roof: #a13f31;
-  --tower-window: #ffd873;
   --tower-fill: #e4d3ab;
   --coral-petal: #e0728a;
   --coral-fill: #f5d3db;
-  --crown-fill: #e8b93c;
-  --crown-stroke: #a5771c;
-  --island-fill: #e8d9ad;
-  --castle-fill: #d7c5e0;
-  --castle-stroke: #8a6a9c;
-  --pool-water: #4fc6d8;
-  --pool-rim: #f3ede0;
-  --palm-trunk: #8a6a4e;
-  --palm-leaf: #2f9e5c;
   --scene-text: #f3fbfd; /* labels sit on the sea gradient, not the page bg — fixed for contrast in both themes */
   --scene-text-halo: rgba(8, 24, 32, 0.6);
 
@@ -77,13 +66,9 @@
     --sea-deep: #081b26;
     --sun: #ffd98a;
     --tower-stroke: #b89474;
-    --tower-roof: #c65c47;
-    --tower-window: #ffdf94;
     --tower-fill: #c9b78c;
     --coral-petal: #e0728a;
     --coral-fill: #e7b9c4;
-    --crown-fill: #f0c94c;
-    --crown-stroke: #8a5f14;
   }
 }
 
@@ -146,20 +131,9 @@ body {
 .node { cursor: pointer; }
 .node:focus { outline: none; }
 .node-dot { fill: var(--node-fill); stroke: var(--node-stroke); stroke-width: 1.5; }
-.node.cloud .cloud-shape { fill: var(--island-fill); stroke: var(--accent); stroke-width: 1.75; }
-.castle-body { fill: var(--castle-fill); stroke: var(--castle-stroke); stroke-width: 1.2; }
-.castle-door { fill: var(--castle-stroke); }
-.castle-notch { fill: var(--castle-fill); stroke: var(--castle-stroke); stroke-width: 1; }
-.pool-rim { fill: var(--pool-rim); }
-.pool-water { fill: var(--pool-water); }
-.palm-trunk { fill: none; stroke: var(--palm-trunk); stroke-width: 2; stroke-linecap: round; }
-.palm-leaf { fill: none; stroke: var(--palm-leaf); stroke-width: 2; stroke-linecap: round; }
 .node.fog .node-dot { fill: var(--tower-fill); stroke: var(--tower-stroke); opacity: 0.55; }
 .node.leaf .node-dot { fill: var(--coral-fill); stroke: var(--coral-petal); }
-.tower-img { pointer-events: none; }
 .coral-petal { fill: var(--coral-petal); opacity: 0.8; }
-.crown path { fill: var(--crown-fill); stroke: var(--crown-stroke); stroke-width: 0.8; }
-.crown circle { fill: var(--bad); }
 .node .node-lbl, .node .evt-lbl {
   fill: var(--scene-text); text-anchor: middle; font-weight: 600; pointer-events: none;
   paint-order: stroke fill; stroke: var(--scene-text-halo); stroke-width: 3px; stroke-linejoin: round;
@@ -169,7 +143,7 @@ body {
 .node .evt-lbl { font-size: 13.5px; }
 .node.source .node-dot { stroke: var(--accent); stroke-width: 3; }
 .node:hover .node-dot { stroke: var(--accent); }
-.node:focus-visible .node-dot, .node:focus-visible .cloud-shape { stroke: var(--accent); stroke-width: 3; }
+.node:focus-visible .node-dot { stroke: var(--accent); stroke-width: 3; }
 .ghost { fill: none; stroke: var(--warm); stroke-width: 2; stroke-dasharray: 3 4; }
 
 .chip { cursor: pointer; }

@@ -61,82 +61,26 @@ function edgePath(a: { x: number; y: number }, b: { x: number; y: number }): str
   return `M ${a.x} ${a.y} C ${a.x} ${my}, ${b.x} ${my}, ${b.x} ${b.y}`;
 }
 
-function islandPath(cx: number, cy: number, s: number): string {
-  // King Cloud's little island: a rounded silhouette in the same footprint the
-  // old cloud shape used, so the layout math around it doesn't have to change.
-  const x = cx - s;
-  const y = cy - s * 0.35;
-  return (
-    `M ${x} ${y} ` +
-    `a ${s * 0.45} ${s * 0.45} 0 0 1 ${s * 0.55} -${s * 0.5} ` +
-    `a ${s * 0.5} ${s * 0.5} 0 0 1 ${s * 0.95} 0 ` +
-    `a ${s * 0.42} ${s * 0.42} 0 0 1 ${s * 0.5} ${s * 0.55} ` +
-    `a ${s * 0.4} ${s * 0.4} 0 0 1 -${s * 0.2} ${s * 0.75} ` +
-    `l -${s * 2.05} 0 ` +
-    `a ${s * 0.42} ${s * 0.42} 0 0 1 -${s * 0.25} -${s * 0.75} Z`
-  );
+// Aspect ratio of assets/kingcloud.png (the reference island scene — cloud,
+// crown, castle, pool, palms, cliff and coral all in one), cropped to its
+// opaque bounds. Replaces the old hand-drawn island/castle/pool/palm SVG
+// group entirely, same reasoning as the tower image swap: the talk's own
+// reference art read better than iterating on SVG geometry.
+const CLOUD_IMG_ASPECT = 640 / 606;
+
+interface CloudBox {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
 }
 
-function crownGroup(cx: number, topY: number, s: number): string {
-  // A tiny crown resting just above the castle — the one thing King Cloud never delegates.
-  const w = s * 1.3;
-  const h = s * 0.56;
-  const y = topY - h - s * 0.12;
-  const x0 = cx - w / 2;
-  return (
-    `<g class="crown">` +
-    `<path d="M ${x0} ${y + h} L ${x0} ${y + h * 0.32} L ${x0 + w * 0.22} ${y + h * 0.72} L ${x0 + w * 0.5} ${y} L ${x0 + w * 0.78} ${y + h * 0.72} L ${x0 + w} ${y + h * 0.32} L ${x0 + w} ${y + h} Z"/>` +
-    `<circle cx="${x0 + w * 0.5}" cy="${y - 1}" r="${s * 0.09}"/>` +
-    `</g>`
-  );
-}
-
-function castleGroup(cx: number, cy: number, s: number): { markup: string; topY: number } {
-  // A small keep for King Cloud to actually live in, under the crown.
-  const w = s * 0.95;
-  const h = s * 0.8;
-  const x0 = cx - w / 2;
-  const y0 = cy - h;
-  const notchW = w * 0.2;
-  const notches = [0, 1, 2, 3]
-    .map((i) => {
-      const nx = x0 + i * (w / 3) - notchW / 2;
-      return `<rect class="castle-notch" x="${nx}" y="${y0 - notchW * 0.85}" width="${notchW}" height="${notchW}"/>`;
-    })
-    .join("");
-  const doorW = w * 0.26;
-  return {
-    markup:
-      `<g class="castle">` +
-      `<rect class="castle-body" x="${x0}" y="${y0}" width="${w}" height="${h}" rx="1.5"/>` +
-      `<rect class="castle-door" x="${cx - doorW / 2}" y="${y0 + h * 0.5}" width="${doorW}" height="${h * 0.5}" rx="1.5"/>` +
-      notches +
-      `</g>`,
-    topY: y0 - notchW * 0.85,
-  };
-}
-
-function poolAndPalm(cx: number, cy: number, s: number): string {
-  // The pool he moved to the island for, plus a palm for lounging in its shade.
-  // Both sit at the castle's own ground level (beside it, not below it) so the
-  // strip directly under the castle stays clear for the "König Cloud" label.
-  const px = cx + s * 0.9;
-  const py = cy - s * 0.1;
-  const tx = cx - s * 1.1;
-  const ty = cy + s * 0.02;
-  return (
-    `<g class="king-pool">` +
-    `<ellipse class="pool-rim" cx="${px}" cy="${py}" rx="${s * 0.24}" ry="${s * 0.13}"/>` +
-    `<ellipse class="pool-water" cx="${px}" cy="${py}" rx="${s * 0.19}" ry="${s * 0.095}"/>` +
-    `</g>` +
-    `<g class="palm" transform="translate(${tx} ${ty})">` +
-    `<path class="palm-trunk" d="M0 ${s * 0.38} Q ${s * 0.11} ${s * 0.04} 0 -${s * 0.1}"/>` +
-    `<path class="palm-leaf" d="M0 -${s * 0.1} q -${s * 0.32} -${s * 0.035} -${s * 0.44} ${s * 0.12}"/>` +
-    `<path class="palm-leaf" d="M0 -${s * 0.1} q ${s * 0.32} -${s * 0.035} ${s * 0.44} ${s * 0.12}"/>` +
-    `<path class="palm-leaf" d="M0 -${s * 0.1} q -${s * 0.08} -${s * 0.26} -${s * 0.22} -${s * 0.32}"/>` +
-    `<path class="palm-leaf" d="M0 -${s * 0.1} q ${s * 0.08} -${s * 0.26} ${s * 0.22} -${s * 0.32}"/>` +
-    `</g>`
-  );
+function cloudImageBox(cx: number, cy: number): CloudBox {
+  const h = 105;
+  const w = h * CLOUD_IMG_ASPECT;
+  const bottomY = cy + 30; // clears the row-1 fog towers even on the tightest (24-node) layout
+  const y = bottomY - h;
+  return { x: cx - w / 2, y, w, h };
 }
 
 // Aspect ratio of assets/tower.png (a hand-picked reef-watchtower illustration,
@@ -149,7 +93,7 @@ function towerShape(cx: number, cy: number, r: number): string {
   // which still read as too abstract next to the talk's own reference art.
   const h = r * 3.3;
   const w = h * TOWER_IMG_ASPECT;
-  const bottomY = cy + r * 0.55;
+  const bottomY = cy + r * 0.85; // nudged down toward the source-node row below, still clears row-to-row spacing
   const x = cx - w / 2;
   const y = bottomY - h;
   return (
@@ -234,14 +178,12 @@ export function renderReef(scenario: Scenario, layout: Layout, subMeta: Map<stri
     const aria = `${n.is_cloud ? "König Cloud, the sink" : n.is_leaf ? "Reef source node " + n.id : "Watchtower " + n.id}${ariaPlaced}`;
 
     let shape: string;
+    let cloudBox: CloudBox | null = null;
     if (n.is_cloud) {
-      const S = 44; // bigger island — enough room for the castle, pool, and palm to sit inside its coastline
-      const castle = castleGroup(x, y, S);
+      cloudBox = cloudImageBox(x, y);
       shape =
-        `<path class="cloud-shape" d="${islandPath(x, y, S)}"/>` +
-        poolAndPalm(x, y, S) +
-        castle.markup +
-        crownGroup(x, castle.topY, S * 0.88);
+        `<image class="cloud-img" href="assets/kingcloud.png" x="${cloudBox.x}" y="${cloudBox.y}" ` +
+        `width="${cloudBox.w}" height="${cloudBox.h}" preserveAspectRatio="xMidYMax meet"/>`;
     } else if (n.is_leaf) {
       shape = `<circle class="node-dot" cx="${x}" cy="${y}" r="${r}"/>` + coralPetals(x, y, r);
     } else {
@@ -292,7 +234,7 @@ export function renderReef(scenario: Scenario, layout: Layout, subMeta: Map<stri
       `<g class="${cls}" data-node="${n.id}" tabindex="0" role="button" aria-label="${aria}">` +
       ghost +
       shape +
-      `<text class="node-lbl${n.is_cloud ? " on-isle" : ""}" x="${x}" y="${y + (n.is_cloud ? 15 : 5)}">${label}</text>` +
+      `<text class="node-lbl${n.is_cloud ? " on-isle" : ""}" x="${x}" y="${cloudBox ? cloudBox.y + cloudBox.h + 13 : y + 5}">${label}</text>` +
       events +
       chips +
       `</g>`;

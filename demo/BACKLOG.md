@@ -119,21 +119,95 @@ in the demo now. Two concrete asks:
    `<image>` (`towerShape` in [reef.ts](web/src/reef.ts)), cropped to its
    opaque bounds and downsized to `demo/web/assets/tower.png` (431×480,
    alpha preserved — checked corner-pixel alpha is 0, not white-baked-in).
-   Node's own `.node-dot` circle stays underneath as a low-opacity click
-   affordance/foundation; the image has `pointer-events: none` so clicks
-   still land on the parent `<g class="node">`, and it's excluded from the
-   root `.gitignore`'s blanket `*.png` rule via `git add -f` (that rule is
-   meant for research-output plots, not shipped app assets). Verified no
-   vertical overlap between tower rows even on `large` (24-node, 5 layers,
-   the tightest row spacing) via direct DOM inspection of each `<image>`'s
-   y/height. `build.mjs` now copies `web/assets/` into `dist/`, and
-   `serve.mjs`'s MIME map got `.png`/`.jpg` entries (previously only
-   html/js/css/json/wasm/svg were mapped — png would've fallen through to
-   `application/octet-stream`, which some browsers still render fine as
-   `<img>`/`<image>` but isn't correct). The remaining reference images
-   (`kingcloud_2.png`, `correls.png`, `correls_2.png`, `kindcloud.png`) are
-   full multi-subject scenes, not pre-cropped icons — user is trying to
-   produce icon crops themselves; revisit if/when those materialize.
+   Node's own `.node-dot` circle stays underneath it. `build.mjs` now
+   copies `web/assets/` into `dist/`, and `serve.mjs`'s MIME map got
+   `.png`/`.jpg` entries (previously only html/js/css/json/wasm/svg were
+   mapped — png would've fallen through to `application/octet-stream`,
+   which some browsers still render fine as `<img>`/`<image>` but isn't
+   correct); the asset is excluded from the root `.gitignore`'s blanket
+   `*.png` rule via `git add -f` (that rule is meant for research-output
+   plots, not shipped app assets).
+9. **King Cloud island + tower placement, follow-up (2026-09-04)** — DONE:
+   the hand-drawn island/castle/pool/palm/crown SVG group (`islandPath`,
+   `castleGroup`, `poolAndPalm`, `crownGroup` — all removed) is replaced the
+   same way item 7 replaced the tower: the cloud node now renders
+   `kingcloud_2.png` (the transparent one of the two king-cloud renders,
+   cropped to opaque bounds → `demo/web/assets/kingcloud.png`, 640×606) as
+   an `<image>` (`cloudImageBox` in [reef.ts](web/src/reef.ts)); the
+   "König Cloud" label moved to just below the image instead of overlaid
+   on it (the full scene is too busy to write over legibly). Towers also
+   nudged down slightly (`bottomY` in `towerShape` moved from `cy + r*0.55`
+   to `cy + r*0.85`) per request to sit closer to the source-node row
+   below — re-verified no row-to-row overlap on `large` (24 nodes) after
+   the shift (still a 20px+ gap on both sides). Also fixed a regression
+   from item 7: the tower/cloud `<image>` elements had `pointer-events:
+   none` (so only the small foundation dot was actually clickable — before
+   the image swap, the *entire* hand-drawn SVG tower shape was part of the
+   clickable `<g>`, so this had shrunk the hit area without anyone asking
+   for that); removed the rule so the images themselves are click-targets
+   again, confirmed via `getScreenCTM`-based coordinate mapping +
+   `elementFromPoint` that a click on the tower artwork (not just the dot)
+   now resolves to the right `data-node`. The remaining reference images
+   (`correls.png`, `correls_2.png`) are still full multi-subject scenes,
+   not pre-cropped icons — revisit if a use for them comes up.
+
+## Push-pull feature, flagged — needs a decision (2026-09-04)
+
+10. **"All-push is valid right now — you have to force one push/pull [choice]."**
+    Ambiguous as given; investigated two readings, one ruled out, one is a
+    real design question rather than a bug:
+    - **Ruled out**: a forced push/pull choice silently reverting to an
+      all-push cost due to a computation bug. Reproduced directly via
+      `python demo/export/score_one.py medium seq_abcd '{"SEQ(A, B)": 0,
+      "SEQ(A, B, D)": 0, "SEQ(A, B, C, D)": 0}' '{"SEQ(A, B, C, D)": "C"}'`
+      (and the symmetric case pushing the other dependency instead) — both
+      report `"strategy": "push_pull"` with identical cost (405.0) to each
+      other *and* to the un-forced optimizer's own pick. Traced this to a
+      legitimate degenerate case, not a bug: all three operators in that
+      placement sit at node 0, and `SEQ(A, B, D)` is *also* placed at node
+      0 — so whichever way the third operator's push/pull is split, the
+      already-co-located dependency costs 0 regardless, collapsing both
+      choices to the same number. Testing a non-degenerate 2-dependency
+      operator (`SEQ(A, B, D)`, mixing a primitive + a sub-query dep, at a
+      placement where they're *not* co-located) showed real
+      differentiation: 1310.56 vs. 1827.0 depending on which side was
+      pushed. So `forced_push_group` (`cost_calculator.py`,
+      `score_one.py`) is doing its job; no fix applied here.
+    - **Open design question**: `state.ts`'s `rescore()` shows the client's
+      instant `Engine.score()` result (labeled `mode: "estimate"`,
+      genuinely an all-push number — see [engine.ts](web/src/engine.ts) /
+      the Rust `score_all_push`) as the **official** score immediately,
+      even though `readyToScore` already required an explicit push/pull
+      call on every multi-dependency operator to get this far. Only once
+      the backend's async `refine()` resolves does `official.mode` flip to
+      `"pushpull"` and the number update to reflect the player's actual
+      choices — and if the backend is down/unreachable, it silently stays
+      on the all-push estimate forever (`refine()`'s catch just clears
+      `pending`, keeps the old estimate). If this is what "all-push is
+      valid right now" meant, the fix is a product decision, not a bug
+      fix: e.g. don't show a score at all until the backend round-trip
+      lands (worse latency, always-correct number), or label the interim
+      number more emphatically as provisional (already says "estimate" in
+      the mode field — check whether that surfaces clearly enough in
+      [panel.ts](web/src/panel.ts)'s scorecard UI). Needs the user to
+      confirm which reading (or a third one) they meant before touching
+      code.
+11. **Kraken-plan reveal, improved toward push/pull edges.** Currently
+    `toggleReveal()`/`view.reveal` in [reef.ts](web/src/reef.ts) only draws
+    a ghost ring (`class="ghost"`) around whichever node Kraken placed each
+    subquery on — it shows *where*, not *how it communicates*. The ask
+    (as given) is to extend this toward showing push vs. pull on the
+    edges themselves — e.g. color or dash-style the edge between a
+    dependency and its consumer according to Kraken's own push/pull
+    strategy for that edge, mirroring the push/pull chip UI's push/pull
+    coloring. Not scoped: needs (a) the reveal payload to actually carry
+    per-edge push/pull info (right now `view.reveal` is just
+    `Record<string, number>` — subquery → node, no strategy attached; the
+    backend's `per_placement[name].strategy` from `score_one.py` has this
+    but it isn't currently threaded into the reveal path at all), and (b)
+    a design pass on how that reads visually next to the existing
+    push/pull chip colors without the reef getting busier than the
+    legibility work (item 6) just fixed.
 
 ## Engine (research code, not demo) — flagged, not scoped
 
