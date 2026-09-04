@@ -139,22 +139,37 @@ function poolAndPalm(cx: number, cy: number, s: number): string {
   );
 }
 
-function towerToppers(cx: number, cy: number, r: number): string {
-  // Crenellations + a small pennant, turning the plain fog circle into a watchtower.
-  const topY = cy - r;
-  const notchW = r * 0.3;
-  const notches = [-1.05, 0, 1.05]
-    .map(
-      (k) =>
-        `<rect class="tower-notch" x="${cx + k * notchW - notchW / 2.4}" y="${topY - notchW * 0.85}" width="${notchW / 1.2}" height="${notchW}" rx="1"/>`,
-    )
-    .join("");
-  const poleX = cx + r * 0.18;
-  const poleTopY = topY - r * 0.9;
+function towerShape(cx: number, cy: number, r: number): string {
+  // A proper narrow tower silhouette — tapered body, pointed roof, a lit
+  // window, a flag — standing on the node's round base. Replaces the old
+  // "circle with crenellation notches", which from a distance just read as
+  // a ball with a fuse sticking out, not a tower.
+  const baseY = cy + r * 0.5;
+  const shoulderY = cy - r * 0.55;
+  const roofTipY = cy - r * 1.55;
+  const bodyHalfW = r * 0.42;
+  const shoulderHalfW = r * 0.32;
+  const roofHalfW = r * 0.5;
+  const roofBaseY = shoulderY + r * 0.06;
+
+  const body =
+    `M ${cx - bodyHalfW} ${baseY} L ${cx - shoulderHalfW} ${shoulderY} ` +
+    `L ${cx + shoulderHalfW} ${shoulderY} L ${cx + bodyHalfW} ${baseY} Z`;
+  const roof = `M ${cx - roofHalfW} ${roofBaseY} L ${cx} ${roofTipY} L ${cx + roofHalfW} ${roofBaseY} Z`;
+
+  const winW = r * 0.22;
+  const winH = r * 0.32;
+  const winY = cy - r * 0.05;
+
+  const poleTopY = roofTipY - r * 0.4;
+  const flag = `M ${cx} ${roofTipY} l ${r * 0.4} ${r * 0.13} l -${r * 0.4} ${r * 0.13} Z`;
+
   return (
-    `<line class="tower-pole" x1="${poleX}" y1="${topY}" x2="${poleX}" y2="${poleTopY}"/>` +
-    `<path class="tower-flag" d="M ${poleX} ${poleTopY} l ${r * 0.5} ${r * 0.17} l -${r * 0.5} ${r * 0.17} Z"/>` +
-    notches
+    `<path class="tower-body" d="${body}"/>` +
+    `<path class="tower-roof" d="${roof}"/>` +
+    `<rect class="tower-window" x="${cx - winW / 2}" y="${winY - winH / 2}" width="${winW}" height="${winH}" rx="${winW * 0.3}"/>` +
+    `<line class="tower-pole" x1="${cx}" y1="${roofTipY}" x2="${cx}" y2="${poleTopY}"/>` +
+    `<path class="tower-flag" d="${flag}"/>`
   );
 }
 
@@ -245,7 +260,7 @@ export function renderReef(scenario: Scenario, layout: Layout, subMeta: Map<stri
     } else if (n.is_leaf) {
       shape = `<circle class="node-dot" cx="${x}" cy="${y}" r="${r}"/>` + coralPetals(x, y, r);
     } else {
-      shape = `<circle class="node-dot" cx="${x}" cy="${y}" r="${r}"/>` + towerToppers(x, y, r);
+      shape = `<circle class="node-dot" cx="${x}" cy="${y}" r="${r}"/>` + towerShape(x, y, r);
     }
 
     // event pods for leaves (which message types they emit)

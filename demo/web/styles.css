@@ -28,7 +28,8 @@
   --sea-deep: #12384a;
   --sun: #ffe6a8;
   --tower-stroke: #8a6a4e;
-  --tower-notch: #6f5236;
+  --tower-roof: #a13f31;
+  --tower-window: #ffd873;
   --tower-fill: #e4d3ab;
   --coral-petal: #e0728a;
   --coral-fill: #f5d3db;
@@ -76,7 +77,8 @@
     --sea-deep: #081b26;
     --sun: #ffd98a;
     --tower-stroke: #b89474;
-    --tower-notch: #9c7a58;
+    --tower-roof: #c65c47;
+    --tower-window: #ffdf94;
     --tower-fill: #c9b78c;
     --coral-petal: #e0728a;
     --coral-fill: #e7b9c4;
@@ -152,9 +154,11 @@ body {
 .pool-water { fill: var(--pool-water); }
 .palm-trunk { fill: none; stroke: var(--palm-trunk); stroke-width: 2; stroke-linecap: round; }
 .palm-leaf { fill: none; stroke: var(--palm-leaf); stroke-width: 2; stroke-linecap: round; }
-.node.fog .node-dot { fill: var(--tower-fill); stroke: var(--tower-stroke); }
+.node.fog .node-dot { fill: var(--tower-fill); stroke: var(--tower-stroke); opacity: 0.9; }
 .node.leaf .node-dot { fill: var(--coral-fill); stroke: var(--coral-petal); }
-.tower-notch { fill: var(--tower-notch); }
+.tower-body { fill: var(--tower-fill); stroke: var(--tower-stroke); stroke-width: 1.3; stroke-linejoin: round; }
+.tower-roof { fill: var(--tower-roof); stroke: color-mix(in srgb, var(--tower-roof) 70%, #000 20%); stroke-width: 1; stroke-linejoin: round; }
+.tower-window { fill: var(--tower-window); }
 .tower-pole { stroke: var(--tower-stroke); stroke-width: 1.4; }
 .tower-flag { fill: var(--warm); }
 .coral-petal { fill: var(--coral-petal); opacity: 0.8; }
