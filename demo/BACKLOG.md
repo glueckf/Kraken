@@ -87,3 +87,57 @@ does.
 - Open question: accessibility for a diverse audience — German vs English UI
   copy, colorblind-safe palette check, mobile usability for a slam/QR-code
   crowd.
+
+## Visual, from Science Slam audience feedback (2026-09-04)
+
+Talk audience reaction to the current look was lukewarm — reference art from
+the talk itself (Kraken-as-cartographer, King Cloud's island, watchtowers,
+seahorse messengers, icon badges per query) sets a clearer bar than what's
+in the demo now. Two concrete asks:
+
+6. **Text is often too small** (general CSS legibility pass — query titles,
+   tray operator names, chip labels) — and **replace the raw event letters
+   inside query expressions/operator names with icons** (e.g. `SEQ(A, B, C)`
+   → icon-for-A, icon-for-B, icon-for-C), not just the reef's leaf-node
+   labels, which already use `eventIconSvg`/`glyphFor` from
+   [icons.ts](web/src/icons.ts). Complexity: moderate — titles are always
+   `OP(letter, letter, ...)` shaped, so a regex splitting out single
+   `[A-F]` tokens (won't false-match "SEQ"/"AND") and swapping each for an
+   inline icon is enough; needs applying everywhere a title/operator name
+   renders (`renderQueryBar`, tray rows, tooltips) in
+   [panel.ts](web/src/panel.ts). Font-size bump is a pure CSS tweak, separate
+   and much smaller.
+   Free bonus noticed while checking: `ManifestEntry.emblem`
+   (crab/turtle/shark/seedling — the exact icon set in the reference art) is
+   already exported per query and typed in [types.ts](web/src/types.ts), but
+   never rendered anywhere — showing it as a badge on the query cards would
+   match the reference look with near-zero new plumbing.
+7. **Fog nodes read as "a bomb"** — the current watchtower (a plain circle
+   with 3 crenellation notches + a flag, see `towerToppers` in
+   [reef.ts](web/src/reef.ts)) doesn't read as a tower at all from a
+   distance, just a ball with a fuse. Reference art shows a proper narrow
+   vertical tower silhouette (tapered/rectangular body, pointed or domed
+   roof, a window/lantern glow, flag on top) and circular icon badges for
+   message types linked by distinctly colored dotted paths. Complexity:
+   moderate-to-substantial — needs new SVG path geometry (not just
+   decorating the existing circle), has to still read clearly at small
+   sizes across both topology sizes, and is inherently iterative/creative
+   (expect a few passes to land the actual "not a bomb" look), unlike the
+   icon-swap above which is mechanical once decided.
+
+## Engine (research code, not demo) — flagged, not scoped
+
+8. **Enable Kraken's multi-node ("MS") placement.** Currently explicitly
+   left out of the integrated search — per the TODOs in the algorithm:
+   `# ComputeMSPlacement` / `# TODO: Currently leave out MS placement for
+   integrated approach, as it is not yet implemented` /
+   `partType,_,_ = returnPartitioning(self, projection, unfolded[projection],
+   projrates, criticalMSTypes)` (commented out). INEv's separate placement
+   already uses this partitioning (`return_partitioning`/`get_savings` in
+   [combigen.py:290](../src/simulator/combigen.py:290)); Kraken's own joint
+   search doesn't yet consider it. This is a real algorithmic gap in the
+   core research contribution, not a demo-polish item — needs its own
+   scoping pass (where exactly in `kraken/problem.py`'s `expand()` /
+   `CostCalculator` this would plug in, what "multi-node" changes about a
+   `PlacementInfo`/`SolutionCandidate`) before estimating effort. Not
+   touched today.
