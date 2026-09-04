@@ -67,6 +67,10 @@ function renderPushPullRow(state: AppState, name: string, proj: Projection): str
   return `<div class="pp-row${chosen ? "" : " needed"}"><span class="pp-label">push</span>${chips}</div>`;
 }
 
+// Compact by design: once you've picked a size/query you mostly just need
+// to see (and occasionally switch) it, not re-read four full cards every
+// render — the freed vertical space goes to the tray/scorecard instead.
+
 export function renderTopologyBar(state: AppState): string {
   if (!state.manifest) return "";
   const cur = state.topologyId;
@@ -76,32 +80,35 @@ export function renderTopologyBar(state: AppState): string {
       return (
         `<button class="tcard ${on}" data-topology="${t.id}" title="${escapeHtml(t.label)} — ${t.network_size} nodes" aria-pressed="${t.id === cur}">` +
         `<span class="tname">${escapeHtml(t.label)}</span>` +
-        `<span class="tsize">${t.network_size} nodes</span>` +
+        `<span class="tsize">${t.network_size}n</span>` +
         `</button>`
       );
     })
     .join("");
-  return `<div class="query-label">Pick a reef size</div><div class="tlist">${items}</div>`;
+  return `<div class="tlist">${items}</div>`;
 }
 
 export function renderQueryBar(state: AppState): string {
   if (!state.topology) return "";
   const cur = state.scenario?.scenario_id;
-  const items = state.topology.scenarios
+  const active = state.topology.scenarios.find((s) => s.id === cur);
+  const pills = state.topology.scenarios
     .map((s, i) => {
       const on = s.id === cur ? "on" : "";
-      const emblem = EMBLEM_EMOJI[s.emblem];
+      const emblem = EMBLEM_EMOJI[s.emblem] ?? "";
       return (
-        `<button class="qcard ${on}" data-scenario="${s.id}" title="${escapeHtml(s.title)} — ${s.num_subqueries} operators" aria-pressed="${s.id === cur}">` +
-        `<span class="qbadge">Q${i + 1}</span>` +
-        (emblem ? `<span class="qemblem" aria-hidden="true">${emblem}</span>` : "") +
-        `<span class="qmeta"><span class="qexpr">${titleWithIcons(s.title)}</span>` +
-        `<span class="qcount">${s.num_subqueries} operators</span></span>` +
+        `<button class="qpill ${on}" data-scenario="${s.id}" title="${escapeHtml(s.title)} — ${s.num_subqueries} operators" aria-pressed="${s.id === cur}">` +
+        `<span class="qpill-badge">Q${i + 1}</span>` +
+        (emblem ? `<span class="qpill-emblem" aria-hidden="true">${emblem}</span>` : "") +
         `</button>`
       );
     })
     .join("");
-  return `<div class="query-label">Pick a query</div><div class="qlist">${items}</div>`;
+  const active_line = active
+    ? `<div class="qactive"><span class="qactive-expr">${titleWithIcons(active.title)}</span>` +
+      `<span class="qactive-count">${active.num_subqueries} operators</span></div>`
+    : "";
+  return `<div class="qpills">${pills}</div>${active_line}`;
 }
 
 export function renderTray(state: AppState): string {
