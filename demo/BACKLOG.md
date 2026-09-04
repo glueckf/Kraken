@@ -95,23 +95,21 @@ the talk itself (Kraken-as-cartographer, King Cloud's island, watchtowers,
 seahorse messengers, icon badges per query) sets a clearer bar than what's
 in the demo now. Two concrete asks:
 
-6. **Text is often too small** (general CSS legibility pass — query titles,
-   tray operator names, chip labels) — and **replace the raw event letters
-   inside query expressions/operator names with icons** (e.g. `SEQ(A, B, C)`
-   → icon-for-A, icon-for-B, icon-for-C), not just the reef's leaf-node
-   labels, which already use `eventIconSvg`/`glyphFor` from
-   [icons.ts](web/src/icons.ts). Complexity: moderate — titles are always
-   `OP(letter, letter, ...)` shaped, so a regex splitting out single
-   `[A-F]` tokens (won't false-match "SEQ"/"AND") and swapping each for an
-   inline icon is enough; needs applying everywhere a title/operator name
-   renders (`renderQueryBar`, tray rows, tooltips) in
-   [panel.ts](web/src/panel.ts). Font-size bump is a pure CSS tweak, separate
-   and much smaller.
-   Free bonus noticed while checking: `ManifestEntry.emblem`
-   (crab/turtle/shark/seedling — the exact icon set in the reference art) is
-   already exported per query and typed in [types.ts](web/src/types.ts), but
-   never rendered anywhere — showing it as a badge on the query cards would
-   match the reference look with near-zero new plumbing.
+6. **Text is often too small, and query expressions read as raw
+   programming syntax** — DONE: bumped font sizes across the reef labels,
+   query bar, tray, push/pull chips, and scorecard/leaderboard (smallest
+   text was 9-10.5px before); `titleWithIcons()` in
+   [panel.ts](web/src/panel.ts) swaps each standalone event letter (A-F) in
+   query titles/operator names for its icon via a `\b`-bounded regex (leaves
+   "SEQ"/"AND" untouched), reusing `eventIconSvg` from
+   [icons.ts](web/src/icons.ts) — the reef's leaf nodes already used these
+   same glyphs. Query cards now also show their `emblem`
+   (crab/turtle/shark/seedling, as emoji) — that field was already exported
+   and typed but never rendered anywhere. Had to trim padding/gaps in
+   several places afterward to offset the extra height from bigger text —
+   the panel scrolls internally when it doesn't fit, but the simplest query
+   started overflowing by >100px before the trim, which wasn't true before
+   the font bump.
 7. **Fog nodes read as "a bomb"** — the current watchtower (a plain circle
    with 3 crenellation notches + a flag, see `towerToppers` in
    [reef.ts](web/src/reef.ts)) doesn't read as a tower at all from a
