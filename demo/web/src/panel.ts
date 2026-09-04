@@ -90,10 +90,12 @@ export function renderQueryBar(state: AppState): string {
   const items = state.topology.scenarios
     .map((s, i) => {
       const on = s.id === cur ? "on" : "";
+      const emblem = EMBLEM_EMOJI[s.emblem];
       return (
         `<button class="qcard ${on}" data-scenario="${s.id}" title="${escapeHtml(s.title)} — ${s.num_subqueries} operators" aria-pressed="${s.id === cur}">` +
         `<span class="qbadge">Q${i + 1}</span>` +
-        `<span class="qmeta"><span class="qexpr">${escapeHtml(s.title)}</span>` +
+        (emblem ? `<span class="qemblem" aria-hidden="true">${emblem}</span>` : "") +
+        `<span class="qmeta"><span class="qexpr">${titleWithIcons(s.title)}</span>` +
         `<span class="qcount">${s.num_subqueries} operators</span></span>` +
         `</button>`
       );
@@ -123,7 +125,7 @@ export function renderTray(state: AppState): string {
       const row =
         `<div class="tray-row ${active ? "active" : ""} ${placed ? "placed" : ""}" data-sub="${encodeURIComponent(name)}" tabindex="0" role="button" aria-pressed="${active}">` +
         `<span class="tag" style="background:${m.color}">${m.tag}${m.isRoot ? "★" : ""}</span>` +
-        `<span class="tray-body"><span class="tray-name">${escapeHtml(name)}</span>` +
+        `<span class="tray-body"><span class="tray-name">${titleWithIcons(name)}</span>` +
         `<span class="tray-inputs">needs ${inputs}</span></span>` +
         `<span class="tray-loc">${placed ? (node === 0 ? "👑 König Cloud" : "n" + node) : "—"}</span>` +
         `</div>`;
@@ -256,3 +258,16 @@ export function verdictOf(state: AppState, bl: Baselines): boolean {
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 }
+
+/** "SEQ(A, B, C)" -> the same text with each standalone event letter (A-F)
+ * swapped for its icon — matches the reef's leaf-node icons instead of
+ * reading as bare programming syntax. \b keeps "SEQ"/"AND" untouched (no
+ * boundary between adjacent letters inside those words). */
+function titleWithIcons(title: string): string {
+  return escapeHtml(title).replace(
+    /\b([A-F])\b/g,
+    (_m, letter: string) => `<span class="op-evt">${eventIconSvg(letter, 12)}${letter}</span>`,
+  );
+}
+
+const EMBLEM_EMOJI: Record<string, string> = { crab: "🦀", turtle: "🐢", shark: "🦈", seedling: "🌱" };
