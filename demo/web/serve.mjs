@@ -16,6 +16,9 @@ const MIME = {
   ".wasm": "application/wasm",
   ".map": "application/json; charset=utf-8",
   ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
 };
 
 const server = createServer(async (req, res) => {

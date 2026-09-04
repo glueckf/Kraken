@@ -139,37 +139,22 @@ function poolAndPalm(cx: number, cy: number, s: number): string {
   );
 }
 
+// Aspect ratio of assets/tower.png (a hand-picked reef-watchtower illustration,
+// cropped to its opaque bounds) — needed to size the <image> without distortion.
+const TOWER_IMG_ASPECT = 431 / 480;
+
 function towerShape(cx: number, cy: number, r: number): string {
-  // A proper narrow tower silhouette — tapered body, pointed roof, a lit
-  // window, a flag — standing on the node's round base. Replaces the old
-  // "circle with crenellation notches", which from a distance just read as
-  // a ball with a fuse sticking out, not a tower.
-  const baseY = cy + r * 0.65;
-  const shoulderY = cy - r * 0.85;
-  const roofTipY = cy - r * 2.05;
-  const bodyHalfW = r * 0.38;
-  const shoulderHalfW = r * 0.29;
-  const roofHalfW = r * 0.48;
-  const roofBaseY = shoulderY + r * 0.06;
-
-  const body =
-    `M ${cx - bodyHalfW} ${baseY} L ${cx - shoulderHalfW} ${shoulderY} ` +
-    `L ${cx + shoulderHalfW} ${shoulderY} L ${cx + bodyHalfW} ${baseY} Z`;
-  const roof = `M ${cx - roofHalfW} ${roofBaseY} L ${cx} ${roofTipY} L ${cx + roofHalfW} ${roofBaseY} Z`;
-
-  const winW = r * 0.22;
-  const winH = r * 0.32;
-  const winY = cy - r * 0.05;
-
-  const poleTopY = roofTipY - r * 0.4;
-  const flag = `M ${cx} ${roofTipY} l ${r * 0.4} ${r * 0.13} l -${r * 0.4} ${r * 0.13} Z`;
-
+  // The reference tower illustration, standing on the node's round base.
+  // Replaces the old hand-drawn SVG silhouette (tapered body/roof/window/flag),
+  // which still read as too abstract next to the talk's own reference art.
+  const h = r * 3.3;
+  const w = h * TOWER_IMG_ASPECT;
+  const bottomY = cy + r * 0.55;
+  const x = cx - w / 2;
+  const y = bottomY - h;
   return (
-    `<path class="tower-body" d="${body}"/>` +
-    `<path class="tower-roof" d="${roof}"/>` +
-    `<rect class="tower-window" x="${cx - winW / 2}" y="${winY - winH / 2}" width="${winW}" height="${winH}" rx="${winW * 0.3}"/>` +
-    `<line class="tower-pole" x1="${cx}" y1="${roofTipY}" x2="${cx}" y2="${poleTopY}"/>` +
-    `<path class="tower-flag" d="${flag}"/>`
+    `<image class="tower-img" href="assets/tower.png" x="${x}" y="${y}" ` +
+    `width="${w}" height="${h}" preserveAspectRatio="xMidYMax meet"/>`
   );
 }
 

@@ -110,18 +110,30 @@ in the demo now. Two concrete asks:
    the panel scrolls internally when it doesn't fit, but the simplest query
    started overflowing by >100px before the trim, which wasn't true before
    the font bump.
-7. **Fog nodes read as "a bomb"** — the current watchtower (a plain circle
-   with 3 crenellation notches + a flag, see `towerToppers` in
-   [reef.ts](web/src/reef.ts)) doesn't read as a tower at all from a
-   distance, just a ball with a fuse. Reference art shows a proper narrow
-   vertical tower silhouette (tapered/rectangular body, pointed or domed
-   roof, a window/lantern glow, flag on top) and circular icon badges for
-   message types linked by distinctly colored dotted paths. Complexity:
-   moderate-to-substantial — needs new SVG path geometry (not just
-   decorating the existing circle), has to still read clearly at small
-   sizes across both topology sizes, and is inherently iterative/creative
-   (expect a few passes to land the actual "not a bomb" look), unlike the
-   icon-swap above which is mechanical once decided.
+7. **Fog nodes read as "a bomb"** — DONE: after 3 self-critiqued SVG-geometry
+   passes (tapered body/roof/window/flag, see git history on
+   [reef.ts](web/src/reef.ts)) still didn't feel close enough to the talk's
+   own reference art, fog nodes now render the actual reference illustration
+   (`/home/aziehn/Dokumente/PhD/ScienceSlam/Icons/tower_2.png`, the
+   already-transparent one of the two tower renders provided) as an SVG
+   `<image>` (`towerShape` in [reef.ts](web/src/reef.ts)), cropped to its
+   opaque bounds and downsized to `demo/web/assets/tower.png` (431×480,
+   alpha preserved — checked corner-pixel alpha is 0, not white-baked-in).
+   Node's own `.node-dot` circle stays underneath as a low-opacity click
+   affordance/foundation; the image has `pointer-events: none` so clicks
+   still land on the parent `<g class="node">`, and it's excluded from the
+   root `.gitignore`'s blanket `*.png` rule via `git add -f` (that rule is
+   meant for research-output plots, not shipped app assets). Verified no
+   vertical overlap between tower rows even on `large` (24-node, 5 layers,
+   the tightest row spacing) via direct DOM inspection of each `<image>`'s
+   y/height. `build.mjs` now copies `web/assets/` into `dist/`, and
+   `serve.mjs`'s MIME map got `.png`/`.jpg` entries (previously only
+   html/js/css/json/wasm/svg were mapped — png would've fallen through to
+   `application/octet-stream`, which some browsers still render fine as
+   `<img>`/`<image>` but isn't correct). The remaining reference images
+   (`kingcloud_2.png`, `correls.png`, `correls_2.png`, `kindcloud.png`) are
+   full multi-subject scenes, not pre-cropped icons — user is trying to
+   produce icon crops themselves; revisit if/when those materialize.
 
 ## Engine (research code, not demo) — flagged, not scoped
 

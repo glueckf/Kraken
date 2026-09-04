@@ -17,6 +17,7 @@ async function copyStatics() {
     await cp(path.join(root, f), path.join(dist, f));
   }
   await cp(path.join(root, "scenarios"), path.join(dist, "scenarios"), { recursive: true });
+  await cp(path.join(root, "assets"), path.join(dist, "assets"), { recursive: true });
   const engine = path.join(root, "vendor", "engine");
   if (!existsSync(path.join(engine, "kraken_engine.js"))) {
     console.error("\n[build] missing vendor/engine — run `npm run build:wasm` first.\n");
