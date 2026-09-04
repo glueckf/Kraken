@@ -144,12 +144,12 @@ function towerShape(cx: number, cy: number, r: number): string {
   // window, a flag — standing on the node's round base. Replaces the old
   // "circle with crenellation notches", which from a distance just read as
   // a ball with a fuse sticking out, not a tower.
-  const baseY = cy + r * 0.5;
-  const shoulderY = cy - r * 0.55;
-  const roofTipY = cy - r * 1.55;
-  const bodyHalfW = r * 0.42;
-  const shoulderHalfW = r * 0.32;
-  const roofHalfW = r * 0.5;
+  const baseY = cy + r * 0.65;
+  const shoulderY = cy - r * 0.85;
+  const roofTipY = cy - r * 2.05;
+  const bodyHalfW = r * 0.38;
+  const shoulderHalfW = r * 0.29;
+  const roofHalfW = r * 0.48;
   const roofBaseY = shoulderY + r * 0.06;
 
   const body =
@@ -260,7 +260,9 @@ export function renderReef(scenario: Scenario, layout: Layout, subMeta: Map<stri
     } else if (n.is_leaf) {
       shape = `<circle class="node-dot" cx="${x}" cy="${y}" r="${r}"/>` + coralPetals(x, y, r);
     } else {
-      shape = `<circle class="node-dot" cx="${x}" cy="${y}" r="${r}"/>` + towerShape(x, y, r);
+      // A small foundation, not the tower itself — the old full-size circle
+      // read as "the shape", with the tower as decoration on top of a ball.
+      shape = `<circle class="node-dot" cx="${x}" cy="${y}" r="${r * 0.62}"/>` + towerShape(x, y, r);
     }
 
     // event pods for leaves (which message types they emit)
