@@ -43,7 +43,11 @@ def optimistic_total_rate(self, projection):  # USE FILTERED RATE FOR ESTIMATION
                         get_maximal_filter(projFilterDict, myproj)
                     ][0] * get_num_etbs(myproj, IndexEventNodes)  # TODO change
     else:
-        return rates[projection.leafs()[0]] * len(nodes[projection.leafs()[0]])
+        # h_rates_data is already the summed rate across every producer of
+        # this event type -- multiplying by the producer count again
+        # overcounts it by that count (e.g. a 3-producer event type's true
+        # cost inflated 3x).
+        return rates[projection.leafs()[0]]
 
 
 def optimistic_total_rate_single(self, projection):  # USE FILTERED RATE FOR ESTIMATION
@@ -65,7 +69,9 @@ def optimistic_total_rate_single(self, projection):  # USE FILTERED RATE FOR EST
                 )  # TODO change
     else:
         # return 40
-        return rates[projection.leafs()[0]] * len(nodes[projection.leafs()[0]])
+        # h_rates_data is already the summed rate across every producer of
+        # this event type -- see optimistic_total_rate() above.
+        return rates[projection.leafs()[0]]
 
 
 def return_partitioning(self, proj, combi, projrates: dict, *args):
@@ -295,7 +301,9 @@ def new_is_partitioning(self, element, combi, proj, projrates: dict):
     mysum = 0
     for i in [x for x in combi if not x == element]:
         if i in rates.keys():
-            additional = rates[i] * len(nodes[i])
+            # h_rates_data is already the summed rate across every producer
+            # of this event type -- see optimistic_total_rate() above.
+            additional = rates[i]
             mysum += additional
         else:
             additional = projrates[i][1] * get_num_etbs(i, IndexEventNodes)
@@ -413,7 +421,12 @@ def total_rate(self, projection, projrates: dict):
         if proj_str not in nodes:
             # print(f"[ERROR] Projection '{proj_str}' not found in nodes. Available nodes: {list(nodes.keys())}")
             return 0  # or some default value
-        return rates[proj_str] * len(nodes[proj_str])
+        # h_rates_data is already the summed rate across every producer of
+        # this event type -- multiplying by len(nodes[...]) overcounts it
+        # by that producer count again. This is what new_is_partitioning()
+        # uses on the "cost of not partitioning" side of its decompose
+        # decision.
+        return rates[proj_str]
     else:
         outrate = projection.evaluate() * get_num_etbs(projection, IndexEventNodes)
         selectivity = return_selectivity(projection.leafs())
