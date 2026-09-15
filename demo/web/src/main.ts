@@ -19,7 +19,7 @@ function reefView(): ReefView {
     placement: state.placement,
     activeSubquery: state.activeSubquery,
     sourceNodes: state.activeSourceNodes,
-    reveal: state.reveal && state.scenario ? state.scenario.strategies.kraken.per_placement ?? null : null,
+    reveal: state.reveal ? state.currentStage?.per_placement ?? null : null,
   };
 }
 
@@ -102,11 +102,9 @@ function wire(): void {
     const action = closestAttr(e.target, "data-action");
     if (action === "reveal") state.toggleReveal();
     else if (action === "clear") state.clear();
-  });
-  $("scorecard").addEventListener("change", (e) => {
-    const target = e.target as HTMLInputElement;
-    if (target.dataset?.action === "alpha") {
-      state.setCostWeight(Number(target.value) / 100);
+    else if (action === "stage") {
+      const idx = closestAttr(e.target, "data-stage");
+      if (idx != null) state.setStage(Number(idx));
     }
   });
 

@@ -170,35 +170,34 @@ export function renderTray(state: AppState): string {
   );
 }
 
-/**
- * "Alpha" play control: cost_weight, 0-1, fed straight into the Rust
- * scorer's normalize_point (score = cw*cost_norm + (1-cw)*latency_norm).
- * Re-normalizing an already-known (cost, latency) is pure/instant — no
- * rescoring or backend round-trip needed — so this can update live.
- * Uses the "change" event (commits on release), not "input" (fires
- * continuously while dragging): the whole panel re-renders via innerHTML
- * replacement on every state change, which would destroy/recreate the
- * slider element (and its drag state) on every tick if wired to "input".
- */
-function renderAlphaSlider(state: AppState): string {
-  const cw = state.costWeight;
-  const pct = Math.round(cw * 100);
+/** Replaces the old raw 0-1 "alpha" slider (too abstract for a lay audience)
+ * with 5 named presets. Unlike a re-normalized score, Kraken has a genuinely
+ * different real placement at each stage (see KrakenStage / currentStage),
+ * computed once at export time — picking a stage is instant, no rescoring or
+ * backend round-trip needed. */
+function renderStagePicker(state: AppState): string {
+  const stages = state.stages;
+  const buttons = stages
+    .map((s, i) => {
+      const on = i === state.stageIndex;
+      return (
+        `<button class="stage-btn${on ? " on" : ""}" data-action="stage" data-stage="${i}" ` +
+        `title="Kraken optimised for ${escapeHtml(s.label.toLowerCase())}">${escapeHtml(s.label)}</button>`
+      );
+    })
+    .join("");
   return (
-    `<div class="alpha-row" title="Drag, then release to re-rank the leaderboard">` +
-    `<span class="alpha-label">Cost</span>` +
-    `<input type="range" class="alpha-slider" min="0" max="100" step="5" value="${pct}" ` +
-    `data-action="alpha" aria-label="Cost vs latency balance, currently ${cw.toFixed(2)} cost weight">` +
-    `<span class="alpha-label">Latency</span>` +
-    `<span class="alpha-value">${cw.toFixed(2)}</span>` +
+    `<div class="stage-row" title="How Kraken balances cost (fewer messages) vs. latency (speed)">` +
+    `<span class="stage-end">⚡ Fast</span>${buttons}<span class="stage-end">💰 Cheap</span>` +
     `</div>`
   );
 }
 
 export function renderScorecard(state: AppState): string {
   const sc = state.scenario;
-  const bl = state.baselines;
+  const bl = state.effectiveBaselines;
   if (!sc || !bl) return "";
-  const alphaSlider = renderAlphaSlider(state);
+  const stagePicker = renderStagePicker(state);
 
   if (!state.readyToScore) {
     const pending = state.pendingPushChoices;
@@ -212,7 +211,7 @@ export function renderScorecard(state: AppState): string {
       `<div class="sc-empty-title">${title}</div>` +
       `<div class="progress"><div class="progress-fill" style="width:${pct}%"></div></div>` +
       `<div class="sc-empty-sub">You choose <b>where</b> each operator runs, and — for push-pull scoring — <b>which stream</b> it pushes. We compute the network cost and latency, then pit it against Kraken and four baselines.</div>` +
-      alphaSlider +
+      stagePicker +
       `</div>`
     );
   }
@@ -228,7 +227,7 @@ export function renderScorecard(state: AppState): string {
       `<div class="sc-scoring-icon" aria-hidden="true">🐙</div>` +
       `<div class="sc-scoring-title">Kraken is crunching the numbers…</div>` +
       `<div class="sc-scoring-sub">Optimising push/pull for your placement.</div>` +
-      alphaSlider +
+      stagePicker +
       `</div>`
     );
   }
@@ -285,7 +284,7 @@ export function renderScorecard(state: AppState): string {
     `<div class="sc-head">${verdict}${modeTag}</div>` +
     tiles +
     `<div class="lb-title">Leaderboard <span class="lb-hint">lower is better — cost & latency, balanced</span></div>` +
-    alphaSlider +
+    stagePicker +
     `<div class="leaderboard">${board}</div>` +
     (state.reveal
       ? `<div class="plan-legend"><span class="plan-legend-hint">edge color = event type ·</span>` +

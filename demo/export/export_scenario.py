@@ -36,6 +36,7 @@ sys.path.insert(0, SRC)    # so `from core...`, `from kraken...`, `from prepp...
 import simulation_environment as se
 from core.query_workload import number_children
 from inev.process_combination import compute_dependencies
+from kraken.run import run_kraken_solver
 import scenarios_def
 from topologies import TOPOLOGIES
 
@@ -43,6 +44,20 @@ SINKS = (0,)
 XI = 0.0
 COST_WEIGHT = 0.5
 FLOAT_TOL = 1e-6
+
+# Player-facing "alpha" simplification: rather than exposing the raw 0-1
+# cost/latency balance as a number, the demo offers these five named stages.
+# Unlike the four other baselines (whose placement algorithms don't depend on
+# cost_weight at all -- see BACKLOG.md item #17), Kraken's own greedy search
+# genuinely chooses a different placement depending on this weight, so each
+# stage needs its own real Kraken run, not just a re-normalized score.
+KRAKEN_STAGES = [
+    (0.0, "Fastest"),
+    (0.25, "Fast"),
+    (0.5, "Balanced"),
+    (0.75, "Efficient"),
+    (1.0, "Cheapest"),
+]
 
 
 # ----------------------------------------------------------------------------
@@ -173,40 +188,77 @@ def build_scenario(spec, topology):
                 pl[nm] = int(inner.sinks[0])
         return pl
 
-    g = sim.kraken_results["strategies"]["greedy"]
-    kraken_place = {str(pi.projection): int(pi.node) for pi in g["solution"].placements.values()}
-    kraken_place = {name: kraken_place.get(name, 0) for name in order}
-    kraken_per = {}
-    kraken_comm = set()
-    for pi in g["solution"].placements.values():
-        # Per-dependency push/pull: each AcquisitionStep names which of this
-        # placement's deps it acquires (`events_to_pull`) and whether that
-        # happened via push or pull (`is_push_based`, false once a
-        # PullRequest with events is attached). Verified empirically against
-        # a real run: for SEQ(A,B) (strategy="push_pull"), step 0 acquires B
-        # with pull_request=None (pushed), step 1 acquires A with
-        # pull_request.events=['B'] (A is pulled, using already-received B as
-        # a semi-join filter) -- confirming the dep actually being acquired
-        # in a step is `events_to_pull`, not `pull_request.events` (that
-        # names the filter events sent along with the request, not the
-        # dep being fetched).
-        edges = {}
-        for step in pi.acquisition_steps.steps:
-            label = "push" if step.is_push_based else "pull"
-            for dep in step.events_to_pull:
-                edges[str(dep)] = label
-        kraken_per[str(pi.projection)] = {
-            "node": int(pi.node), "strategy": pi.strategy,
-            "cost": float(pi.individual_cost),
-            "lt": float(pi.individual_transmission_latency),
-            "lp": float(pi.individual_processing_latency),
-            "edges": edges,
-        }
-        kraken_comm.add(pi.strategy)
+    def summarize_kraken_run(g):
+        """Extract {placement, per_placement, comm} from one greedy-search result
+        (`sim.kraken_results["strategies"]["greedy"]`, or the same shape from a
+        fresh `run_kraken_solver` call at a different cost_weight)."""
+        placement = {str(pi.projection): int(pi.node) for pi in g["solution"].placements.values()}
+        placement = {name: placement.get(name, 0) for name in order}
+        per_placement = {}
+        comm = set()
+        for pi in g["solution"].placements.values():
+            # Per-dependency push/pull: each AcquisitionStep names which of this
+            # placement's deps it acquires (`events_to_pull`) and whether that
+            # happened via push or pull (`is_push_based`, false once a
+            # PullRequest with events is attached). Verified empirically against
+            # a real run: for SEQ(A,B) (strategy="push_pull"), step 0 acquires B
+            # with pull_request=None (pushed), step 1 acquires A with
+            # pull_request.events=['B'] (A is pulled, using already-received B as
+            # a semi-join filter) -- confirming the dep actually being acquired
+            # in a step is `events_to_pull`, not `pull_request.events` (that
+            # names the filter events sent along with the request, not the
+            # dep being fetched).
+            edges = {}
+            for step in pi.acquisition_steps.steps:
+                label = "push" if step.is_push_based else "pull"
+                for dep in step.events_to_pull:
+                    edges[str(dep)] = label
+            per_placement[str(pi.projection)] = {
+                "node": int(pi.node), "strategy": pi.strategy,
+                "cost": float(pi.individual_cost),
+                "lt": float(pi.individual_transmission_latency),
+                "lp": float(pi.individual_processing_latency),
+                "edges": edges,
+            }
+            comm.add(pi.strategy)
+        return placement, per_placement, comm
 
     def comm_of(strats):
         s = set(strats)
         return "mixed" if len(s) > 1 else next(iter(s))
+
+    g = sim.kraken_results["strategies"]["greedy"]
+    kraken_place, kraken_per, kraken_comm = summarize_kraken_run(g)
+
+    # --- per-alpha Kraken stages (see KRAKEN_STAGES) ---
+    # Unlike All-Push/INEv/Sequential/PrePP -- single deterministic algorithms
+    # whose placement never depends on cost_weight, only their displayed score
+    # does -- Kraken's greedy search genuinely picks a different placement per
+    # alpha, so each stage needs its own real run. The COST_WEIGHT stage reuses
+    # the run already done above instead of repeating it.
+    kraken_stages = []
+    for alpha, label in KRAKEN_STAGES:
+        if alpha == COST_WEIGHT:
+            stage_g = g
+        else:
+            sim.config.cost_weight = alpha
+            with contextlib.redirect_stdout(io.StringIO()):
+                stage_result = run_kraken_solver(
+                    sim, strategies_to_run=[{"name": "greedy"}], compare_within_kraken=False
+                )
+            stage_g = stage_result["strategies"]["greedy"]
+        stage_place, stage_per, stage_comm = summarize_kraken_run(stage_g)
+        kraken_stages.append({
+            "alpha": alpha,
+            "label": label,
+            "placement": stage_place,
+            "comm": comm_of(stage_comm),
+            "cost": float(stage_g["metrics"]["total_cost"]),
+            "latency": float(stage_g["metrics"]["max_latency"]),
+            "processing_latency": float(stage_g["metrics"]["cumulative_processing_latency"]),
+            "per_placement": stage_per,
+        })
+    sim.config.cost_weight = COST_WEIGHT
 
     strategies = {
         "all_push": {
@@ -242,8 +294,13 @@ def build_scenario(spec, topology):
         },
     }
 
-    costs = [s["cost"] for s in strategies.values()]
-    lats = [s["latency"] for s in strategies.values()]
+    # Anchors must span every Kraken stage too, not just the 5 baseline rows --
+    # a pure-latency (alpha=0) or pure-cost (alpha=1) stage can land outside the
+    # 0.5-stage's own cost/latency, and the Rust normalizer only clamps the low
+    # side (norm() floors at 0, never ceils), so an un-anchored high value would
+    # display as an out-of-range score instead of a merely-unsurprising one.
+    costs = [s["cost"] for s in strategies.values()] + [s["cost"] for s in kraken_stages]
+    lats = [s["latency"] for s in strategies.values()] + [s["latency"] for s in kraken_stages]
     norm_anchors = {"cost_min": min(costs), "cost_max": max(costs),
                     "latency_min": min(lats), "latency_max": max(lats)}
 
@@ -271,7 +328,7 @@ def build_scenario(spec, topology):
                         "all_push_cost": tc, "all_push_latency": ml})
 
     scenario = {
-        "schema_version": 1,
+        "schema_version": 2,
         "scenario_id": spec["id"],
         "title": spec["title"],
         "emblem": spec["emblem"],
@@ -293,6 +350,7 @@ def build_scenario(spec, topology):
         "projections": projections,
         "processing_order": order,
         "strategies": strategies,
+        "kraken_stages": kraken_stages,
         "norm_anchors": norm_anchors,
         "goldens": goldens,
     }

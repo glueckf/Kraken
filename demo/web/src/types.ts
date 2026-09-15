@@ -65,6 +65,15 @@ export interface Strategy {
   >;
 }
 
+/** One player-facing "alpha" preset. Unlike the other four strategies (whose
+ * placement never depends on cost_weight, only their displayed score does),
+ * Kraken's own greedy search genuinely chooses a different placement per
+ * alpha, so each stage carries its own real placement/per_placement, not
+ * just a re-normalized score of a single fixed run. */
+export interface KrakenStage extends Strategy {
+  alpha: number;
+}
+
 export interface Scenario {
   schema_version: number;
   scenario_id: string;
@@ -88,6 +97,9 @@ export interface Scenario {
   projections: Projection[];
   processing_order: string[];
   strategies: Record<StrategyId, Strategy>;
+  /** 5 named cost/latency-balance presets, each with Kraken's own real
+   * placement at that alpha — see KrakenStage. */
+  kraken_stages: KrakenStage[];
   norm_anchors: {
     cost_min: number;
     cost_max: number;

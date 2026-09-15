@@ -634,6 +634,70 @@ in the demo now. Two concrete asks:
     log), then re-verified `seq_abc`, `seq_abcd`, and `and_nested` all still
     score correctly (6.39k / 1.62k / 2.42k, all matching), plus reveal and
     try-again still work. No console errors, `tsc --noEmit` clean.
+17. **Alpha slider replaced with 5 named Kraken stages — DONE.** The raw 0-1
+    "cost/latency balance" slider was too abstract for a lay audience.
+    Replaced with 5 buttons — Fastest / Fast / Balanced / Efficient /
+    Cheapest — at alpha 0.0/0.25/0.5/0.75/1.0.
+
+    The subtlety this surfaced: of the 5 strategies, only Kraken's own
+    placement actually depends on cost_weight. Checked each of the other
+    four directly rather than assuming — `compute_all_push`
+    (`simulation_environment.py`) takes no weight parameter at all;
+    `compute_single_sink_placement` (INEv, `src/inev/placement_aug.py:827`)
+    picks a node by a single scalar `mycosts < costs` comparison, no latency
+    term or weight anywhere nearby; `generate_prePP`
+    (`src/prepp/prepp.py:928`)'s signature has no such parameter either. So
+    for those four, only the *displayed score* needed to react to the chosen
+    stage (already true today — `engine.baselines()` re-normalizes their
+    fixed (cost, latency) live for whatever `cost_weight` is set). Kraken's
+    greedy search, though, explicitly reads `cost_weight`/`latency_weight`
+    out of the placement problem's context and uses it to rank candidates
+    during `expand()` — so its chosen node per operator, not just its score,
+    genuinely changes with alpha.
+
+    Confirmed this before writing any UI: swept Kraken's own greedy search
+    in 0.05 steps (21 values, 0.00-1.00) across all 8 scenarios via a
+    throwaway script calling `run_kraken_solver` directly (reusing the
+    already-set-up `Simulation` object, not re-running the whole pipeline
+    each time) — cost/latency step cleanly between a small number of
+    plateaus per scenario (e.g. medium `seq_abcd`: 7736/3h for alpha<0.45,
+    1622/9h for alpha in [0.45,0.60], 1281/9h for alpha>=0.65), confirming
+    5 evenly-spaced stages give real, distinguishable placements without
+    needing per-scenario-tuned breakpoints.
+
+    `demo/export/export_scenario.py` now runs Kraken's greedy search once
+    more per stage (4 extra runs per scenario — the 0.5/"Balanced" stage
+    reuses the already-computed default run) and exports a new
+    `kraken_stages` array, each entry the same shape as `strategies.kraken`
+    (own `placement`/`per_placement`/`cost`/`latency`) plus `alpha`/`label`.
+    `norm_anchors` now spans every stage's cost/latency too, not just the 5
+    baseline rows — the Rust normalizer's `norm()` only clamps the low side,
+    so an un-anchored high value from a pure-cost or pure-latency stage
+    would've displayed as an out-of-range score instead of a merely-good one
+    (caught by inspecting the exported anchors before wiring up the
+    frontend, not discovered live).
+
+    Frontend: `state.ts` replaced `costWeight: number` with `stageIndex`
+    (default 2 = Balanced) and added `effectiveBaselines` — `state.baselines`
+    with just the `kraken` entry swapped for the selected stage's own
+    (cost, latency) re-normalized via the existing `engine.normalizePoint()`;
+    the other four rows pass through untouched. No Rust/WASM changes needed
+    at all — `normalizePoint` was already generic over any (cost, latency)
+    pair. `panel.ts`'s slider became `renderStagePicker()` (5 buttons);
+    `main.ts`'s reveal payload now reads `state.currentStage.per_placement`
+    instead of the scenario's single fixed `strategies.kraken.per_placement`.
+
+    Verified live end-to-end, re-export included: re-ran the full exporter
+    (all defaults byte-identical to before — 6.39k/1.62k/3.51k/2.42k medium
+    Kraken costs unchanged), then drove the real UI for `seq_abc` — default
+    (Balanced) shows 6.39k matching the export; switching to Cheapest shows
+    258 (matching that stage's export exactly) and correctly re-ranks every
+    other baseline's score for alpha=1.0 (All-Push jumps to the worst score,
+    as expected for a pure-cost weighting); the reveal overlay's ghost ring
+    moves from node 1 (Fastest) to node 0 (Cheapest) — Kraken's real,
+    different placement at each stage, not just a re-colored number. Also
+    re-checked `and_nested` at its default stage (2.42k, matching). No
+    console errors, `tsc --noEmit` clean.
 
 ## Engine (research code, not demo) — flagged, not scoped
 

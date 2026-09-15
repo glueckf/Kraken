@@ -9,7 +9,7 @@
 
 import { Engine } from "./engine";
 import { refinePushPull, backendConfigured, type PushPullResult } from "./backend";
-import type { Baselines, Manifest, Placement, Scenario, ScoreResult, NormPoint, TopologyEntry } from "./types";
+import type { Baselines, KrakenStage, Manifest, Placement, Scenario, ScoreResult, NormPoint, TopologyEntry } from "./types";
 import type { SubMeta } from "./reef";
 
 const PALETTE = ["#e8613c", "#2f9e8f", "#6f5bd1", "#d99a1e", "#c0497e", "#3b7dd8"];
@@ -35,15 +35,13 @@ export class AppState {
   engine: Engine | null = null;
   baselines: Baselines | null = null;
   subMeta: Map<string, SubMeta> = new Map();
-  /** cost/latency balance ("alpha") the player controls — 1.0 = cost-only,
-   * 0.0 = latency-only. Defaults to 0.6, the paper's own reported best
-   * cost/latency balance (not 0.5 — at that weight Kraken's own score
-   * doesn't clearly beat every baseline on the medium topology, see
-   * demo/BACKLOG.md item #11's "0.5 vs 0.6" note). Persists across
-   * topology/query switches (each freshly-created Engine resets to the
-   * scenario's own exported weight, so this is explicitly reapplied in
-   * loadScenario). */
-  costWeight = 0.6;
+  /** Index into scenario.kraken_stages — the player's choice of cost/latency
+   * balance, simplified from a raw 0-1 "alpha" number (too abstract for a lay
+   * audience) into 5 named presets ("Fastest" .. "Cheapest"). Persists across
+   * topology/query switches, same as the old continuous weight did (each
+   * freshly-created Engine gets this stage's alpha explicitly reapplied in
+   * loadScenario). Default 2 = "Balanced" (alpha 0.5). */
+  stageIndex = 2;
 
   placement: Placement = {};
   activeSubquery: string | null = null;
@@ -119,7 +117,8 @@ export class AppState {
       const scenario = await fetchJson<Scenario>(`${this.base}${entry.file}`);
       this.engine?.dispose();
       this.engine = await Engine.create(scenario);
-      this.engine.setCostWeight(this.costWeight);
+      const stageAlpha = scenario.kraken_stages[this.stageIndex]?.alpha ?? 0.5;
+      this.engine.setCostWeight(stageAlpha);
       this.scenario = scenario;
       this.baselines = this.engine.baselines();
       this.descendants = computeDescendants(scenario);
@@ -182,6 +181,27 @@ export class AppState {
    * this, not `complete`, gates scoring. */
   get readyToScore(): boolean {
     return this.complete && this.pendingPushChoices.length === 0;
+  }
+
+  get stages(): KrakenStage[] {
+    return this.scenario?.kraken_stages ?? [];
+  }
+
+  get currentStage(): KrakenStage | null {
+    return this.stages[this.stageIndex] ?? null;
+  }
+
+  /** state.baselines, but with the "kraken" entry replaced by the currently
+   * selected stage's own (real, re-searched) placement instead of the
+   * scenario's single default (alpha 0.5) export — the other four strategies
+   * don't need this since their placement never depends on alpha, only the
+   * score does (already handled by `engine.baselines()` re-normalizing live). */
+  get effectiveBaselines(): Baselines | null {
+    const bl = this.baselines;
+    const stage = this.currentStage;
+    if (!bl || !stage || !this.engine) return bl;
+    const norm = this.engine.normalizePoint(stage.cost, stage.latency);
+    return { ...bl, kraken: { cost: stage.cost, latency: stage.latency, ...norm } };
   }
 
   selectSubquery(name: string): void {
@@ -360,16 +380,17 @@ export class AppState {
   }
 
   /** Re-normalize every already-known cost/latency (baselines + the
-   * player's own official score) under a new weight — no rescoring or
+   * player's own official score) under a new stage's alpha — no rescoring or
    * backend round-trip needed, since normalize_point is a pure function of
    * (cost, latency, anchors, weight) and both are already known. */
-  setCostWeight(cw: number): void {
-    this.costWeight = Math.min(1, Math.max(0, cw));
+  setStage(index: number): void {
+    if (index < 0 || index >= this.stages.length) return;
+    this.stageIndex = index;
     if (!this.engine) {
       this.emit();
       return;
     }
-    this.engine.setCostWeight(this.costWeight);
+    this.engine.setCostWeight(this.stages[index].alpha);
     this.baselines = this.engine.baselines();
     if (this.official) {
       const norm = this.engine.normalizePoint(this.official.cost, this.official.latency);

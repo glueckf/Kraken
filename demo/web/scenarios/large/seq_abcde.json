@@ -1,5 +1,5 @@
 {
- "schema_version": 1,
+ "schema_version": 2,
  "scenario_id": "seq_abcde",
  "title": "SEQ(A, B, C, D, E)",
  "emblem": "shark",
@@ -1297,6 +1297,143 @@
    }
   }
  },
+ "kraken_stages": [
+  {
+   "alpha": 0.0,
+   "label": "Fastest",
+   "placement": {
+    "SEQ(A, B, C, D, E)": 0
+   },
+   "comm": "all_push",
+   "cost": 94040.0,
+   "latency": 4.0,
+   "processing_latency": 220341690.53533268,
+   "per_placement": {
+    "SEQ(A, B, C, D, E)": {
+     "node": 0,
+     "strategy": "all_push",
+     "cost": 94040.0,
+     "lt": 4.0,
+     "lp": 220341690.53533268,
+     "edges": {
+      "A": "push",
+      "B": "push",
+      "C": "push",
+      "D": "push",
+      "E": "push"
+     }
+    }
+   }
+  },
+  {
+   "alpha": 0.25,
+   "label": "Fast",
+   "placement": {
+    "SEQ(A, B, C, D, E)": 0
+   },
+   "comm": "all_push",
+   "cost": 94040.0,
+   "latency": 4.0,
+   "processing_latency": 220341690.53533268,
+   "per_placement": {
+    "SEQ(A, B, C, D, E)": {
+     "node": 0,
+     "strategy": "all_push",
+     "cost": 94040.0,
+     "lt": 4.0,
+     "lp": 220341690.53533268,
+     "edges": {
+      "A": "push",
+      "B": "push",
+      "C": "push",
+      "D": "push",
+      "E": "push"
+     }
+    }
+   }
+  },
+  {
+   "alpha": 0.5,
+   "label": "Balanced",
+   "placement": {
+    "SEQ(A, B, C, D, E)": 0
+   },
+   "comm": "all_push",
+   "cost": 94040.0,
+   "latency": 4.0,
+   "processing_latency": 220341690.53533268,
+   "per_placement": {
+    "SEQ(A, B, C, D, E)": {
+     "node": 0,
+     "strategy": "all_push",
+     "cost": 94040.0,
+     "lt": 4.0,
+     "lp": 220341690.53533268,
+     "edges": {
+      "A": "push",
+      "B": "push",
+      "C": "push",
+      "D": "push",
+      "E": "push"
+     }
+    }
+   }
+  },
+  {
+   "alpha": 0.75,
+   "label": "Efficient",
+   "placement": {
+    "SEQ(A, B, C, D, E)": 0
+   },
+   "comm": "push_pull",
+   "cost": 44186.84421884526,
+   "latency": 28.0,
+   "processing_latency": 410148157.93262637,
+   "per_placement": {
+    "SEQ(A, B, C, D, E)": {
+     "node": 0,
+     "strategy": "push_pull",
+     "cost": 44186.84421884526,
+     "lt": 28.0,
+     "lp": 410148157.93262637,
+     "edges": {
+      "A": "push",
+      "B": "push",
+      "E": "pull",
+      "C": "pull",
+      "D": "pull"
+     }
+    }
+   }
+  },
+  {
+   "alpha": 1.0,
+   "label": "Cheapest",
+   "placement": {
+    "SEQ(A, B, C, D, E)": 0
+   },
+   "comm": "push_pull",
+   "cost": 52092.46715285961,
+   "latency": 28.0,
+   "processing_latency": 482972309.52110523,
+   "per_placement": {
+    "SEQ(A, B, C, D, E)": {
+     "node": 0,
+     "strategy": "push_pull",
+     "cost": 52092.46715285961,
+     "lt": 28.0,
+     "lp": 482972309.52110523,
+     "edges": {
+      "A": "push",
+      "B": "push",
+      "E": "pull",
+      "D": "pull",
+      "C": "pull"
+     }
+    }
+   }
+  }
+ ],
  "norm_anchors": {
   "cost_min": 42272.96752384558,
   "cost_max": 94040.0,
