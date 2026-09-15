@@ -139,6 +139,41 @@ does.
    correctness issue in the shared algorithm, not something the demo layer
    can work around), not something to fix casually inside a demo session.
 
+   **Merged and re-exported (2026-09-15).** The fix landed as
+   [glueckf/Kraken#7](https://github.com/glueckf/Kraken/pull/7), merged into
+   `master`. Merged `master` into `feat/demo` (clean, no conflicts — this
+   branch had never touched `projections.py`/`combigen.py` itself) and
+   re-ran `demo/export/export_scenario.py` for all 8 scenarios; the
+   exporter's own all-push cross-check against the engine passed with zero
+   mismatches. The medium topology's decomposition changed exactly as
+   predicted above:
+
+   | query | before | after |
+   |---|---|---|
+   | `seq_abc` | `SEQ(A, B)`, `SEQ(A, B, C)` (2 ops) | `SEQ(A, B, C)` (1 op) |
+   | `seq_abcd` | `SEQ(A, B)`, `SEQ(A, B, D)`, `SEQ(A, B, C, D)` (3 ops) | `SEQ(B, D)`, `SEQ(A, B, C)`, `SEQ(A, B, C, D)` (3 ops) |
+   | `seq_abcde` | `SEQ(A, B)`, `SEQ(A, B, D)`, `SEQ(A, B, E)`, `SEQ(A, B, C, D, E)` (4 ops) | `SEQ(B, D)`, `SEQ(A, B, C)`, `SEQ(A, B, C, D, E)` (3 ops) |
+   | `and_nested` | `AND(SEQ(A, B), F)`, `AND(SEQ(A, B, C), F)`, `AND(SEQ(A, B), D, F)`, `AND(SEQ(A, B), SEQ(E, F))`, `AND(SEQ(A, B, C), D, SEQ(E, F))` (5 ops) | `AND(SEQ(A, B), F)`, `AND(SEQ(A, B), SEQ(E, F))`, `AND(SEQ(A, B, C), F)`, `AND(SEQ(A, B, C), D, F)`, `AND(SEQ(A, B, C), D, SEQ(E, F))` (5 ops, different set) |
+
+   Large topology's scenarios were untouched by the re-export (byte-for-byte,
+   `git status` shows nothing changed there), confirming the earlier "large
+   is unaffected" finding held after the real merge, not just the local
+   patch test.
+
+   Caught (and fixed) a self-inflicted verification gap along the way: after
+   re-exporting, an initial live-UI check against the dev server still
+   showed the *old* 2-operator `seq_abc` — turned out `demo/web/serve.mjs`
+   serves from `dist/`, and `demo/web/build.mjs` copies `scenarios/` into
+   `dist/` at build time, so a re-export alone doesn't reach the running
+   server until `npm run build` runs again. Re-built and re-verified: fresh
+   `fetch(..., {cache: "no-store"})` confirmed the new JSON was being
+   served, then drove the real UI end-to-end for `seq_abc` (1 op, placed,
+   scored — Kraken cost 6.39k, matching the export log exactly) and
+   `and_nested` (5 ops, all auto-cascaded to König Cloud correctly with the
+   new dependency graph, Kraken cost 2.42k matching the export log, reveal
+   overlay still rendered 26 edges with the legend intact). No console
+   errors either time.
+
 ## Gamification (later — once the above works)
 
 - Weave the "Hai-Alarm" fairy-tale framing into the actual UI copy (query

@@ -11,7 +11,7 @@
      "emblem": "crab",
      "difficulty": 1,
      "blurb": "A short sequence over three streams. Warm-up.",
-     "num_subqueries": 2,
+     "num_subqueries": 1,
      "file": "medium/seq_abc.json"
     },
     {
@@ -29,7 +29,7 @@
      "emblem": "shark",
      "difficulty": 3,
      "blurb": "Branches that share a common sub-result.",
-     "num_subqueries": 4,
+     "num_subqueries": 3,
      "file": "medium/seq_abcde.json"
     },
     {
