@@ -264,11 +264,24 @@ export class AppState {
     while (changed) {
       changed = false;
       // undo anything auto-placed that no longer needs to be (its forcing
-      // dependency was picked up or moved elsewhere)
+      // dependency was picked up or moved elsewhere). Must re-check the same
+      // *forcing* predicate used to place it below, not the fuller
+      // placementIssue() — that also demands every OTHER subquery dependency
+      // already be placed somewhere, which isn't this operator's concern and
+      // isn't guaranteed yet (a still-unplaced, never-auto-forceable sibling
+      // dependency, e.g. one with only primitive deps, would otherwise make
+      // this check permanently disagree with the forcing check below and
+      // force/undo the same operator forever).
       for (const name of Object.keys(this.autoPlacedReason)) {
         if (!(name in this.placement)) {
           delete this.autoPlacedReason[name];
-        } else if (this.placementIssue(name, 0)) {
+          continue;
+        }
+        const proj = sc.projections.find((p) => p.name === name);
+        const stillForced = !!proj?.deps.some(
+          (dep) => !sc.event_map.producers[dep] && this.placement[dep] === 0
+        );
+        if (!stillForced) {
           delete this.placement[name];
           delete this.autoPlacedReason[name];
           changed = true;

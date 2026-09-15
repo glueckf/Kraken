@@ -588,6 +588,52 @@ in the demo now. Two concrete asks:
     plain place-all → Try again keeps `Reef 12n` selected, and (b)
     place-all → Reveal → Try again jumps to `Grand Reef 24n`. No console
     errors, `tsc --noEmit` clean.
+16. **Regression from the combigen merge (item #5): placing the first
+    operator of `seq_abcde` froze the tab — DONE, fixed.** Found while
+    confirming "the use cases have updated results" after merging PR #7 —
+    every case scored correctly *except* medium `seq_abcde`, where placing
+    `SEQ(B, D)` (the query's first leaf operator) at König Cloud hung the
+    page completely: no console error, no exception, page unresponsive to
+    any further input, reproduced identically across two different browser
+    tools (one reported a dead renderer, the other a bare CDP
+    "Internal error" with nothing catchable by `try/catch` — consistent
+    with the JS main thread never yielding back to the event loop, not a
+    normal thrown error).
+
+    Bisected with temporary `console.log` instrumentation in
+    `placeActiveAt()` (`state.ts`) rather than guessing — logs showed
+    execution reaching `reconcileForcedCloudPlacements()` and never
+    returning, an infinite loop, not a slow WASM call (confirmed separately
+    that `engine.score()` isn't even invoked yet at this point — the query
+    isn't `complete` until all 3 operators are placed). Root cause: the
+    "undo" half of `reconcileForcedCloudPlacements()`'s fixed-point loop
+    used the full `placementIssue()` check, which requires *every* subquery
+    dependency to already be placed somewhere — but the "force" half only
+    ever required *one* forcing dependency to be at node 0. For
+    `SEQ(A, B, C, D, E)` (deps `[E, SEQ(B, D), SEQ(A, B, C)]`), placing
+    `SEQ(B, D)` at the cloud force-placed it (one forcing dep present) —
+    then the undo check immediately reversed that, because its *other*
+    subquery dependency (`SEQ(A, B, C)`, which has no subquery dependency of
+    its own and can therefore never auto-force) wasn't placed yet and never
+    would be until the player did it manually — then the force check
+    immediately re-triggered, forever. `and_nested` has the same
+    two-subquery-dependency join shape (e.g. `s5` needs `s2, s4`) but never
+    hit this, because by the time its forcing check runs, a single earlier
+    pass has already force-cascaded *both* of its subquery deps — the
+    oscillation only shows up when one side of a join can never
+    auto-resolve. This shape didn't exist in any scenario before today's
+    re-export; the combigen fix's revised decomposition is what introduced
+    it for `seq_abcde` specifically.
+
+    Fix: the undo check in `state.ts` now re-evaluates the *same* forcing
+    predicate used to place it (does this operator still have at least one
+    subquery dependency sitting at node 0?), instead of demanding full
+    validity of every dependency. Verified: re-tested the exact failing
+    click (now cascades `SEQ(B, D)` + `SEQ(A, B, C, D, E)` correctly,
+    leaves `SEQ(A, B, C)` for the player, scores 3.51k matching the export
+    log), then re-verified `seq_abc`, `seq_abcd`, and `and_nested` all still
+    score correctly (6.39k / 1.62k / 2.42k, all matching), plus reveal and
+    try-again still work. No console errors, `tsc --noEmit` clean.
 
 ## Engine (research code, not demo) — flagged, not scoped
 
