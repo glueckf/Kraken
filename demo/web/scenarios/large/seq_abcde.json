@@ -1299,34 +1299,7 @@
  },
  "kraken_stages": [
   {
-   "alpha": 0.0,
-   "label": "Fastest",
-   "placement": {
-    "SEQ(A, B, C, D, E)": 0
-   },
-   "comm": "all_push",
-   "cost": 94040.0,
-   "latency": 4.0,
-   "processing_latency": 220341690.53533268,
-   "per_placement": {
-    "SEQ(A, B, C, D, E)": {
-     "node": 0,
-     "strategy": "all_push",
-     "cost": 94040.0,
-     "lt": 4.0,
-     "lp": 220341690.53533268,
-     "edges": {
-      "A": "push",
-      "B": "push",
-      "C": "push",
-      "D": "push",
-      "E": "push"
-     }
-    }
-   }
-  },
-  {
-   "alpha": 0.25,
+   "alpha": 0.2,
    "label": "Fast",
    "placement": {
     "SEQ(A, B, C, D, E)": 0
@@ -1353,35 +1326,35 @@
    }
   },
   {
-   "alpha": 0.5,
+   "alpha": 0.6,
    "label": "Balanced",
    "placement": {
     "SEQ(A, B, C, D, E)": 0
    },
-   "comm": "all_push",
-   "cost": 94040.0,
-   "latency": 4.0,
-   "processing_latency": 220341690.53533268,
+   "comm": "push_pull",
+   "cost": 66516.869961704,
+   "latency": 28.0,
+   "processing_latency": 619632211.8237182,
    "per_placement": {
     "SEQ(A, B, C, D, E)": {
      "node": 0,
-     "strategy": "all_push",
-     "cost": 94040.0,
-     "lt": 4.0,
-     "lp": 220341690.53533268,
+     "strategy": "push_pull",
+     "cost": 66516.869961704,
+     "lt": 28.0,
+     "lp": 619632211.8237182,
      "edges": {
       "A": "push",
       "B": "push",
-      "C": "push",
-      "D": "push",
-      "E": "push"
+      "C": "pull",
+      "E": "pull",
+      "D": "pull"
      }
     }
    }
   },
   {
-   "alpha": 0.75,
-   "label": "Efficient",
+   "alpha": 0.9,
+   "label": "Cheap",
    "placement": {
     "SEQ(A, B, C, D, E)": 0
    },
@@ -1402,33 +1375,6 @@
       "E": "pull",
       "C": "pull",
       "D": "pull"
-     }
-    }
-   }
-  },
-  {
-   "alpha": 1.0,
-   "label": "Cheapest",
-   "placement": {
-    "SEQ(A, B, C, D, E)": 0
-   },
-   "comm": "push_pull",
-   "cost": 52092.46715285961,
-   "latency": 28.0,
-   "processing_latency": 482972309.52110523,
-   "per_placement": {
-    "SEQ(A, B, C, D, E)": {
-     "node": 0,
-     "strategy": "push_pull",
-     "cost": 52092.46715285961,
-     "lt": 28.0,
-     "lp": 482972309.52110523,
-     "edges": {
-      "A": "push",
-      "B": "push",
-      "E": "pull",
-      "D": "pull",
-      "C": "pull"
      }
     }
    }

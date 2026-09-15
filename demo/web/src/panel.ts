@@ -171,7 +171,7 @@ export function renderTray(state: AppState): string {
 }
 
 /** Replaces the old raw 0-1 "alpha" slider (too abstract for a lay audience)
- * with 5 named presets. Unlike a re-normalized score, Kraken has a genuinely
+ * with a small set of named presets. Unlike a re-normalized score, Kraken has a genuinely
  * different real placement at each stage (see KrakenStage / currentStage),
  * computed once at export time — picking a stage is instant, no rescoring or
  * backend round-trip needed. */

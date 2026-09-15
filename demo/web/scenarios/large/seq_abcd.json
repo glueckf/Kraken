@@ -1296,33 +1296,7 @@
  },
  "kraken_stages": [
   {
-   "alpha": 0.0,
-   "label": "Fastest",
-   "placement": {
-    "SEQ(A, B, C, D)": 0
-   },
-   "comm": "all_push",
-   "cost": 76832.0,
-   "latency": 4.0,
-   "processing_latency": 100315311.62450294,
-   "per_placement": {
-    "SEQ(A, B, C, D)": {
-     "node": 0,
-     "strategy": "all_push",
-     "cost": 76832.0,
-     "lt": 4.0,
-     "lp": 100315311.62450294,
-     "edges": {
-      "A": "push",
-      "B": "push",
-      "C": "push",
-      "D": "push"
-     }
-    }
-   }
-  },
-  {
-   "alpha": 0.25,
+   "alpha": 0.2,
    "label": "Fast",
    "placement": {
     "SEQ(A, B, C, D)": 0
@@ -1348,34 +1322,34 @@
    }
   },
   {
-   "alpha": 0.5,
+   "alpha": 0.6,
    "label": "Balanced",
    "placement": {
     "SEQ(A, B, C, D)": 0
    },
-   "comm": "all_push",
-   "cost": 76832.0,
-   "latency": 4.0,
-   "processing_latency": 100315311.62450294,
+   "comm": "push_pull",
+   "cost": 59434.0792334333,
+   "latency": 20.0,
+   "processing_latency": 308434546.53585523,
    "per_placement": {
     "SEQ(A, B, C, D)": {
      "node": 0,
-     "strategy": "all_push",
-     "cost": 76832.0,
-     "lt": 4.0,
-     "lp": 100315311.62450294,
+     "strategy": "push_pull",
+     "cost": 59434.0792334333,
+     "lt": 20.0,
+     "lp": 308434546.53585523,
      "edges": {
       "A": "push",
       "B": "push",
-      "C": "push",
-      "D": "push"
+      "D": "pull",
+      "C": "pull"
      }
     }
    }
   },
   {
-   "alpha": 0.75,
-   "label": "Efficient",
+   "alpha": 0.9,
+   "label": "Cheap",
    "placement": {
     "SEQ(A, B, C, D)": 0
    },
@@ -1390,32 +1364,6 @@
      "cost": 49412.27224125729,
      "lt": 20.0,
      "lp": 255502057.86367622,
-     "edges": {
-      "A": "push",
-      "B": "push",
-      "D": "pull",
-      "C": "pull"
-     }
-    }
-   }
-  },
-  {
-   "alpha": 1.0,
-   "label": "Cheapest",
-   "placement": {
-    "SEQ(A, B, C, D)": 0
-   },
-   "comm": "push_pull",
-   "cost": 47198.85489386439,
-   "latency": 20.0,
-   "processing_latency": 245863325.0905211,
-   "per_placement": {
-    "SEQ(A, B, C, D)": {
-     "node": 0,
-     "strategy": "push_pull",
-     "cost": 47198.85489386439,
-     "lt": 20.0,
-     "lp": 245863325.0905211,
      "edges": {
       "A": "push",
       "B": "push",

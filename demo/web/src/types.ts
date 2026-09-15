@@ -97,7 +97,7 @@ export interface Scenario {
   projections: Projection[];
   processing_order: string[];
   strategies: Record<StrategyId, Strategy>;
-  /** 5 named cost/latency-balance presets, each with Kraken's own real
+  /** Named cost/latency-balance presets, each with Kraken's own real
    * placement at that alpha — see KrakenStage. */
   kraken_stages: KrakenStage[];
   norm_anchors: {

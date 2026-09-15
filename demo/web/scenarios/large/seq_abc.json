@@ -1293,32 +1293,7 @@
  },
  "kraken_stages": [
   {
-   "alpha": 0.0,
-   "label": "Fastest",
-   "placement": {
-    "SEQ(A, B, C)": 0
-   },
-   "comm": "all_push",
-   "cost": 55608.0,
-   "latency": 4.0,
-   "processing_latency": 5490505.322287955,
-   "per_placement": {
-    "SEQ(A, B, C)": {
-     "node": 0,
-     "strategy": "all_push",
-     "cost": 55608.0,
-     "lt": 4.0,
-     "lp": 5490505.322287955,
-     "edges": {
-      "A": "push",
-      "B": "push",
-      "C": "push"
-     }
-    }
-   }
-  },
-  {
-   "alpha": 0.25,
+   "alpha": 0.2,
    "label": "Fast",
    "placement": {
     "SEQ(A, B, C)": 0
@@ -1343,33 +1318,33 @@
    }
   },
   {
-   "alpha": 0.5,
+   "alpha": 0.6,
    "label": "Balanced",
    "placement": {
     "SEQ(A, B, C)": 0
    },
-   "comm": "all_push",
-   "cost": 55608.0,
-   "latency": 4.0,
-   "processing_latency": 5490505.322287955,
+   "comm": "push_pull",
+   "cost": 42925.017523796996,
+   "latency": 12.0,
+   "processing_latency": 16719767.429986017,
    "per_placement": {
     "SEQ(A, B, C)": {
      "node": 0,
-     "strategy": "all_push",
-     "cost": 55608.0,
-     "lt": 4.0,
-     "lp": 5490505.322287955,
+     "strategy": "push_pull",
+     "cost": 42925.017523796996,
+     "lt": 12.0,
+     "lp": 16719767.429986017,
      "edges": {
       "A": "push",
       "B": "push",
-      "C": "push"
+      "C": "pull"
      }
     }
    }
   },
   {
-   "alpha": 0.75,
-   "label": "Efficient",
+   "alpha": 0.9,
+   "label": "Cheap",
    "placement": {
     "SEQ(A, B, C)": 0
    },
@@ -1391,35 +1366,10 @@
      }
     }
    }
-  },
-  {
-   "alpha": 1.0,
-   "label": "Cheapest",
-   "placement": {
-    "SEQ(A, B, C)": 0
-   },
-   "comm": "push_pull",
-   "cost": 41247.56624036641,
-   "latency": 12.0,
-   "processing_latency": 16026017.744816592,
-   "per_placement": {
-    "SEQ(A, B, C)": {
-     "node": 0,
-     "strategy": "push_pull",
-     "cost": 41247.56624036641,
-     "lt": 12.0,
-     "lp": 16026017.744816592,
-     "edges": {
-      "A": "push",
-      "B": "push",
-      "C": "pull"
-     }
-    }
-   }
   }
  ],
  "norm_anchors": {
-  "cost_min": 41247.56624036641,
+  "cost_min": 42925.017523796996,
   "cost_max": 55608.0,
   "latency_min": 4.0,
   "latency_max": 12.0

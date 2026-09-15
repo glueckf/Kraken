@@ -37,11 +37,12 @@ export class AppState {
   subMeta: Map<string, SubMeta> = new Map();
   /** Index into scenario.kraken_stages — the player's choice of cost/latency
    * balance, simplified from a raw 0-1 "alpha" number (too abstract for a lay
-   * audience) into 5 named presets ("Fastest" .. "Cheapest"). Persists across
+   * audience) into 3 named presets ("Fast" / "Balanced" / "Cheap", at alpha
+   * 0.2/0.6/0.9 — see KRAKEN_STAGES in export_scenario.py). Persists across
    * topology/query switches, same as the old continuous weight did (each
    * freshly-created Engine gets this stage's alpha explicitly reapplied in
-   * loadScenario). Default 2 = "Balanced" (alpha 0.5). */
-  stageIndex = 2;
+   * loadScenario). Default 1 = "Balanced" (alpha 0.6). */
+  stageIndex = 1;
 
   placement: Placement = {};
   activeSubquery: string | null = null;
@@ -117,7 +118,7 @@ export class AppState {
       const scenario = await fetchJson<Scenario>(`${this.base}${entry.file}`);
       this.engine?.dispose();
       this.engine = await Engine.create(scenario);
-      const stageAlpha = scenario.kraken_stages[this.stageIndex]?.alpha ?? 0.5;
+      const stageAlpha = scenario.kraken_stages[this.stageIndex]?.alpha ?? 0.6;
       this.engine.setCostWeight(stageAlpha);
       this.scenario = scenario;
       this.baselines = this.engine.baselines();

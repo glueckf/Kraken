@@ -46,17 +46,15 @@ COST_WEIGHT = 0.5
 FLOAT_TOL = 1e-6
 
 # Player-facing "alpha" simplification: rather than exposing the raw 0-1
-# cost/latency balance as a number, the demo offers these five named stages.
+# cost/latency balance as a number, the demo offers these three named stages.
 # Unlike the four other baselines (whose placement algorithms don't depend on
 # cost_weight at all -- see BACKLOG.md item #17), Kraken's own greedy search
 # genuinely chooses a different placement depending on this weight, so each
 # stage needs its own real Kraken run, not just a re-normalized score.
 KRAKEN_STAGES = [
-    (0.0, "Fastest"),
-    (0.25, "Fast"),
-    (0.5, "Balanced"),
-    (0.75, "Efficient"),
-    (1.0, "Cheapest"),
+    (0.2, "Fast"),
+    (0.6, "Balanced"),
+    (0.9, "Cheap"),
 ]
 
 

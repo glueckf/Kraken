@@ -634,10 +634,24 @@ in the demo now. Two concrete asks:
     log), then re-verified `seq_abc`, `seq_abcd`, and `and_nested` all still
     score correctly (6.39k / 1.62k / 2.42k, all matching), plus reveal and
     try-again still work. No console errors, `tsc --noEmit` clean.
-17. **Alpha slider replaced with 5 named Kraken stages — DONE.** The raw 0-1
+17. **Alpha slider replaced with named Kraken stages — DONE.** The raw 0-1
     "cost/latency balance" slider was too abstract for a lay audience.
-    Replaced with 5 buttons — Fastest / Fast / Balanced / Efficient /
-    Cheapest — at alpha 0.0/0.25/0.5/0.75/1.0.
+    Replaced with named buttons.
+
+    **Revised down to 3 stages, non-evenly-spaced (same day).** First pass
+    shipped 5 evenly-spaced stages (Fastest/Fast/Balanced/Efficient/Cheapest
+    at 0.0/0.25/0.5/0.75/1.0) — simplified further to 3: **Fast** (0.2),
+    **Balanced** (0.6 — the paper's own reported best cost/latency balance,
+    same value the old continuous slider defaulted to, see item #14),
+    **Cheap** (0.9). `KRAKEN_STAGES` in `export_scenario.py` and
+    `state.ts`'s default `stageIndex` (now 1, the middle of 3) updated
+    accordingly; re-exported all 8 scenarios (2.8s vs. 5.8s for 5 stages —
+    3 fresh Kraken runs per scenario instead of 4). Re-verified live for
+    medium `seq_abc`: Balanced (0.6) shows Kraken at cost 283 — matching
+    exactly what the original 0.05-step sweep recorded at alpha=0.60 — and
+    correctly re-ranks the other four baselines for that alpha (Sequential
+    ties Kraken at 0.268, both beating All-Push's 0.600). No console errors,
+    `tsc --noEmit` clean.
 
     The subtlety this surfaced: of the 5 strategies, only Kraken's own
     placement actually depends on cost_weight. Checked each of the other
