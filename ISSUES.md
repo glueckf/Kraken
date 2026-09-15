@@ -5,12 +5,13 @@ Issues is disabled on this repo). One entry per issue, newest first.
 
 ---
 
-## Kraken's own reported push-pull cost is sometimes higher than the identical plan actually costs — confirmed via direct reproduction, not yet fixed
+## Kraken's own reported push-pull cost is sometimes higher than the identical plan actually costs — fixed
 
-**Status:** confirmed and precisely isolated 2026-09-16, root cause narrowed
-to a specific function, not yet fixed (needs careful reconciliation of two
-cost formulas across a non-trivial combinatorial search — bigger than a
-one-line patch, see "Why this is deeper than a quick fix" below).
+**Status:** fixed 2026-09-15 in `src/prepp/prepp.py`
+(`determine_randomized_distribution_push_pull_costs`). The root cause was
+narrower than first suspected — see "Root cause, corrected" below, which
+supersedes the "two cost formulas disagree" hypothesis this entry originally
+described.
 
 ### Summary
 
@@ -51,7 +52,60 @@ path — so the player's "copy" of Kraken's plan legitimately outscores
 Kraken's own reported number, even though nothing about the actual
 placement or communication strategy differs.
 
-### Root cause, as far as traced
+### Root cause, corrected
+
+The initial trace (below, kept for the record) suspected a fundamental
+disagreement between two independent cost formulas. Further isolation
+disproved that: `determine_costs_for_projection_on_node` (the function that
+actually produces the reported number, via
+`determine_costs_for_pull_request`/`determine_costs_for_pull_response`) is
+internally *consistent* — given the same plan shape, it costs it the same
+way regardless of whether that plan came from the forced or free branch.
+Traced with a monkeypatch on `determine_costs_for_projection_on_node`
+itself: for the reproduction above, it returns 330.06 for the forced
+branch's 2-step joint plan `[["B"], ["A","C"]]` and 168.17 for a 3-step
+progressive plan `[["B"], ["A"], ["C"]]` — correctly ranking the joint
+shape as worse, using one single formula throughout.
+
+So the actual bug was structural, not a formula disagreement:
+`src/prepp/prepp.py`'s `determine_randomized_distribution_push_pull_costs`,
+in the **forced** branch (`forced_push_group` given), built the plan
+directly as `[forced_group, rest]` — lumping every remaining dependency
+into *one* joint pull step. The **free** branch
+(`forced_push_group=None`) never produces that shape: it calls
+`push_pull_plan_generator.determine_exact_push_pull_plan`
+(`src/prepp/push_pull_plan_generator.py:1104`), which enumerates candidate
+plans via `weak_ordered_plans_generator` and ranks them with
+`determine_costs_of_push_pull_plan` — and that ranking formula already
+recognizes the joint-group shape as worse than pulling the rest
+progressively (one event at a time, each filtered by everything received
+so far), so the free search never picks it. The forced branch's naive
+`[forced_group, rest]` construction was the *only* place in the whole
+push-pull engine that ever produced this cheaper-but-wrong-shaped plan —
+confirmed via a repo-wide grep that `demo/export/score_one.py` is the only
+caller anywhere that ever sets `forced_push_group` to a non-`None` value,
+so Kraken's own real search (`GreedySearch`/`PlacementProblem.expand()`)
+was never affected by this, only the demo's "cost the player's exact
+choice" path.
+
+**Fix** (`src/prepp/prepp.py`, in the `forced_group is not None` branch):
+instead of building `[forced_group, rest]` directly, decompose `rest` into
+individual singleton steps and search permutations of their order (bounded
+to `len(rest) <= 6`, falling back to the old naive shape above that
+ceiling — 6! = 720 is still cheap, and no demo query comes close to that
+many remaining deps), ranking each ordering with the same
+`determine_costs_of_push_pull_plan` formula the free search uses,
+restricted to plans starting with `forced_group`. This exactly reproduces
+what the free search would find if forced to start with that specific push
+choice. Verified to give an exact match (to full floating-point precision)
+between forcing Kraken's own discovered choice and Kraken's own reported
+number, across multiple scenarios (a single operator in isolation, and a
+full multi-operator plan replication). Also re-exported all 8 demo
+scenarios (2 topologies × 4 queries) and confirmed byte-identical output —
+this fix only touches the forced/demo-only path, so Kraken's own numbers
+are unaffected, as expected.
+
+### Root cause, as first traced (superseded by the corrected section above)
 
 `src/prepp/prepp.py`'s `determine_randomized_distribution_push_pull_costs`
 has two distinct branches for algorithm `"e"`:
@@ -84,36 +138,21 @@ exact split directly gives a strictly lower number — i.e. the "exact"
 search is missing (or mis-costing) a plan that's demonstrably better under
 the formula that actually matters.
 
-Not yet traced: which of the two formulas is "correct" (matches the
-system's intended cost semantics), or whether `determine_exact_push_pull_plan`
-also fails to *enumerate* the winning plan at all (a completeness gap) vs.
-enumerating it but mis-costing it during search (a formula gap only).
-
-### Why this is deeper than a quick fix
-
-Two non-trivial, independent cost functions
-(`determine_costs_of_push_pull_plan` vs.
-`determine_costs_for_pull_request`/`determine_costs_for_pull_response`)
-would need to be reconciled — either by making the search rank candidates
-using the same formula that reports the final number, or by understanding
-why they were built to differ in the first place (there may be a reason
-that isn't obvious from a first read, e.g. one accounts for something the
-other deliberately omits during search for performance). This needs
-careful, dedicated attention, not a rushed patch — and touches the same
-exact-plan search several other call sites rely on
-(`operator_placement.py`'s INEv path, PrePP's own baseline), so a fix here
-should be re-verified against those too, not just the demo's Kraken path.
+This part of the trace was accurate as far as it went (the two functions
+really are different formulas), but the conclusion — that they disagree on
+ranking and that's the bug — was wrong. Both formulas agree the joint
+shape is worse; the bug was that the forced branch was the only code path
+that ever constructed the joint shape in the first place.
 
 ### Impact
 
-- Every "Reveal Kraken's plan" comparison in the demo where the player
-  replicates Kraken's plan by hand is potentially affected — the player's
-  identical replication can legitimately show a better score than Kraken's
-  own row, which reads (incorrectly) like the player outsmarted the
-  algorithm, when actually it's the same decision costed two different
-  ways.
-- This is upstream of the demo entirely — it's a correctness question
-  about the shared push-pull cost model itself, so it also affects
-  Kraken's own *placement choices* (its search ranks candidate
-  placements using these same reported costs) and INEv's baseline, not
-  just what the demo displays.
+- Was: every "Reveal Kraken's plan" comparison in the demo where the
+  player replicates Kraken's plan by hand could show a better score than
+  Kraken's own row, which read (incorrectly) like the player outsmarted
+  the algorithm, when actually it was the same decision costed via a
+  worse-shaped (but not worse-formula) plan. Fixed — replicating Kraken's
+  plan now reproduces Kraken's own number exactly.
+- Confirmed demo-only: `forced_push_group` is never set to a non-`None`
+  value anywhere except `demo/export/score_one.py`, so this never affected
+  Kraken's own placement search, INEv's baseline, or PrePP's own baseline —
+  even though the defective code lived in the shared `src/prepp/prepp.py`.

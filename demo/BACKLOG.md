@@ -809,38 +809,36 @@ in the demo now. Two concrete asks:
     push-all/pull-all quick buttons all scored and re-scored correctly, no
     console errors. `tsc --noEmit` clean.
 19. **"I have exactly Kraken's plan but get a better ranking, we have to
-    verify" — verified, and it's real.** Not user error, not just "the
-    search heuristic is imperfect" (which would be expected and fine) —
-    for the identical node placement *and* identical push/pull split (same
-    events pushed, same pulled), explicitly costing that exact split gives
-    a different, lower number than what Kraken's own free search reported
-    when it found that split itself. Reproduced directly against
-    `cost_calculator.calculate()`, isolated from the demo entirely: medium
-    `seq_abcde`'s `SEQ(A, B, C)` at node 1, same `s_current`, same "push B,
-    pull A and C" — Kraken's own unforced search reports 164.17, forcing
-    that exact split explicitly reports 48.43.
+    verify" — verified, and fixed (2026-09-15).** Not user error, not just
+    "the search heuristic is imperfect" (which would be expected and
+    fine) — for the identical node placement *and* identical push/pull
+    split (same events pushed, same pulled), explicitly costing that exact
+    split gave a different, lower number than what Kraken's own free
+    search reported when it found that split itself. Reproduced directly
+    against `cost_calculator.calculate()`, isolated from the demo
+    entirely: medium `seq_abcde`'s `SEQ(A, B, C)` at node 1, same
+    `s_current`, same "push B, pull A and C" — Kraken's own unforced
+    search reported 164.17, forcing that exact split explicitly reported
+    48.43.
 
-    Root cause narrowed (not yet fixed — this is an engine-level cost-model
-    inconsistency, not a demo bug, and needs care rather than a rushed
-    patch): `determine_exact_push_pull_plan`
-    (`src/prepp/push_pull_plan_generator.py`) ranks candidate plans during
-    search using `determine_costs_of_push_pull_plan`, but the *reported*
-    number (for both the free search and the demo's forced-choice path) is
-    computed afterward by a *different* function,
-    `determine_costs_for_pull_request`/`determine_costs_for_pull_response`.
-    The two formulas don't agree on which plan is cheapest, so the "exact"
-    search can settle on a plan that isn't actually cheapest under the
-    formula that produces the number everyone sees.
-
-    Full root-cause writeup, the exact repro, and why this needs a careful
-    dedicated pass rather than a quick patch (it touches the same
-    exact-plan search INEv and PrePP's own baseline rely on, not just
-    Kraken) is in `ISSUES.md` (this repo) — no GitHub Issues here either.
-    Practical implication for the demo right now: treat "Reveal Kraken's
-    plan" comparisons where the player hand-replicates Kraken's exact
-    choices as **not fully trustworthy** until this is fixed — a player
-    "beating" Kraken while reproducing its own plan is this bug, not a
-    genuine outsmarting.
+    Root cause, once fully isolated, was narrower than first suspected: not
+    a disagreement between two cost formulas, but the demo's
+    forced-choice path in `src/prepp/prepp.py`
+    (`determine_randomized_distribution_push_pull_costs`) building the
+    "pull the rest" side of the plan as one lumped joint step
+    (`[forced_group, rest]`), a plan *shape* the free search's own ranking
+    (`determine_costs_of_push_pull_plan`) already recognizes as worse than
+    pulling the rest progressively — the free search simply never
+    constructs that shape, so it was never exercised outside the demo's
+    forced path. Fixed by searching orderings of "rest" as individual
+    singleton pull steps (bounded to 6 remaining deps, falling back to the
+    old shape above that) and ranking them with the same formula the free
+    search uses. Verified to reproduce Kraken's own reported number to full
+    floating-point precision when a player replicates its exact choice; all
+    8 exported demo scenarios re-checked byte-identical (this only touched
+    the forced/demo-only path, never Kraken's own search). Full writeup —
+    including the superseded "two formulas disagree" hypothesis this entry
+    originally pointed to — is in `ISSUES.md` (this repo).
 
 ## Engine (research code, not demo) — flagged, not scoped
 

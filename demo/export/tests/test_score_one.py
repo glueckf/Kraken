@@ -22,6 +22,16 @@ push/pull choice gets turned into forced_push_group:
 These run score_one.py as a real subprocess, the same way server.py
 invokes it -- the RNG-isolation subprocess boundary is part of what's being
 tested, not just the cost formula.
+
+The medium/seq_abcd decomposition (and its operator names) changed after the
+combigen rate-overcounting fix; this file's PLACEMENT and expected values
+were recomputed on 2026-09-15 to match. The decomposition is now:
+SEQ(B, D) (deps B, D), SEQ(A, B, C) (deps A, B, C), and the root
+SEQ(A, B, C, D) (deps SEQ(B, D), SEQ(A, B, C)). PLACEMENT puts the two
+non-root projections at node 1 and the root at node 0 (the cloud) rather
+than colocating everything at node 0 -- colocated dependencies cost 0
+either way, which would make the sub-query-forcing test pass even if
+forcing were silently ignored.
 """
 import json
 import os
@@ -33,7 +43,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 EXPORT_DIR = os.path.abspath(os.path.join(HERE, ".."))
 SCORE_ONE = os.path.join(EXPORT_DIR, "score_one.py")
 
-PLACEMENT = {"SEQ(A, B)": 0, "SEQ(A, B, D)": 0, "SEQ(A, B, C, D)": 0}
+PLACEMENT = {"SEQ(B, D)": 1, "SEQ(A, B, C)": 1, "SEQ(A, B, C, D)": 0}
 
 
 def run_score_one(push_choice):
@@ -48,35 +58,37 @@ def run_score_one(push_choice):
 class TestScoreOnePushChoice(unittest.TestCase):
     def test_no_choice_uses_optimizer_pick(self):
         out = run_score_one({})
-        pp = out["per_placement"]["SEQ(A, B, D)"]
+        pp = out["per_placement"]["SEQ(B, D)"]
         self.assertEqual(pp["strategy"], "push_pull")
-        self.assertAlmostEqual(pp["cost"], 1310.5563484412162)
+        self.assertAlmostEqual(pp["cost"], 884.5999999999999)
 
     def test_forcing_primitive_dependency_is_honored(self):
         # 'D' is a bad choice here (pushing the higher-rate side) -- forcing
         # it should cost more than the optimizer's own pick, not silently
         # revert to it.
-        out = run_score_one({"SEQ(A, B, D)": "D"})
-        pp = out["per_placement"]["SEQ(A, B, D)"]
-        self.assertAlmostEqual(pp["cost"], 1827.0)
+        out = run_score_one({"SEQ(B, D)": "D"})
+        pp = out["per_placement"]["SEQ(B, D)"]
+        self.assertAlmostEqual(pp["cost"], 1226.0)
 
     def test_forcing_sub_query_dependency_is_honored(self):
         # This is exactly the case that was silently ignored before the
-        # fix: 'SEQ(A, B)' is a sub-query dependency, not a raw primitive.
-        # It happens to be the cheap/optimal choice here, so this alone
-        # wouldn't have caught the bug (a no-op fallback to the optimizer's
-        # own pick gives the same number) -- see
-        # test_forcing_primitive_dependency_is_honored above for the case
-        # that actually distinguishes "forced" from "silently ignored".
-        out = run_score_one({"SEQ(A, B, D)": "SEQ(A, B)"})
-        pp = out["per_placement"]["SEQ(A, B, D)"]
-        self.assertAlmostEqual(pp["cost"], 1310.5563484412162)
+        # fix: 'SEQ(A, B, C)' is a sub-query dependency, not a raw
+        # primitive. The optimizer's own natural pick for the root is
+        # all_push (cost 323.6436174148544, see
+        # test_all_push_reproduces_true_all_push_cost below) -- forcing
+        # this sub-query dependency pushed should cost *more* than that and
+        # switch the reported strategy to push_pull, not silently fall back
+        # to the optimizer's all_push pick.
+        out = run_score_one({"SEQ(A, B, C, D)": "SEQ(A, B, C)"})
+        pp = out["per_placement"]["SEQ(A, B, C, D)"]
+        self.assertEqual(pp["strategy"], "push_pull")
+        self.assertAlmostEqual(pp["cost"], 326.04081493818165)
 
     def test_all_push_reproduces_true_all_push_cost(self):
-        out = run_score_one({"SEQ(A, B, D)": "__all_push__"})
-        pp = out["per_placement"]["SEQ(A, B, D)"]
+        out = run_score_one({"SEQ(B, D)": "__all_push__"})
+        pp = out["per_placement"]["SEQ(B, D)"]
         self.assertEqual(pp["strategy"], "all_push")
-        self.assertAlmostEqual(pp["cost"], 1827.0)
+        self.assertAlmostEqual(pp["cost"], 1226.0)
 
 
 if __name__ == "__main__":

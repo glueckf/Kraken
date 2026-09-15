@@ -4,7 +4,7 @@ import random
 import copy
 import prepp.push_pull_plan_generator as push_pull_plan_generator
 import time
-from itertools import chain, combinations
+from itertools import chain, combinations, permutations
 import logging
 
 from kraken.data.acquisition_step import (
@@ -563,12 +563,57 @@ def determine_randomized_distribution_push_pull_costs(
                         # Player-forced choice: push exactly this group of
                         # primitives (a single raw event, or every primitive
                         # underlying an already-placed sub-query dependency the
-                        # player chose to push), pull the rest — skip the
-                        # optimizer's own search entirely.
+                        # player chose to push) -- skip the optimizer's own
+                        # search for *whether* to push it, but still search
+                        # for the cheapest way to acquire the rest, instead of
+                        # lumping every remaining dep into one joint "pull the
+                        # rest together" step. That naive shape costs a joint
+                        # multi-event pull as if it were one further-
+                        # filterable stream, which the exact search's own
+                        # ranking (determine_costs_of_push_pull_plan) already
+                        # recognizes as worse than pulling the rest
+                        # progressively, one event at a time, each filtered by
+                        # everything received so far -- confirmed empirically
+                        # for a concrete 3-event case: the joint-group shape
+                        # ranked at 334 under that same formula, the best
+                        # progressive ordering at 172, and it's the
+                        # progressive shape (never the joint one) that
+                        # Kraken's own free search actually finds and reports
+                        # when it discovers this same push/pull split on its
+                        # own. So: search the (typically tiny -- 1-3
+                        # remaining deps for these demo queries) orderings of
+                        # "rest" for the cheapest one, using the exact same
+                        # ranking formula the free search uses below,
+                        # restricted to plans that start with the forced
+                        # group. Falls back to the old single joint-group
+                        # shape only if "rest" is implausibly large for an
+                        # exhaustive ordering search (6! = 720, still cheap;
+                        # kept as a ceiling, not a realistic case here).
                         rest = [e for e in old_copy if e not in forced_group]
-                        exact_push_pull_plan_for_a_projection = [forced_group] + (
-                            [rest] if rest else []
-                        )
+                        if rest and len(rest) <= 6:
+                            old_source_sent_map = copy.deepcopy(
+                                push_pull_plan_generator_exact.source_sent_this_type_to_node
+                            )
+                            best_rest_order = rest
+                            best_rest_cost = float("inf")
+                            for perm in permutations(rest):
+                                candidate_plan = [forced_group] + [[r] for r in perm]
+                                candidate_cost = push_pull_plan_generator_exact.determine_costs_of_push_pull_plan(
+                                    candidate_plan, query, allPairs, current_node
+                                )
+                                push_pull_plan_generator_exact.source_sent_this_type_to_node = copy.deepcopy(
+                                    old_source_sent_map
+                                )
+                                if candidate_cost < best_rest_cost:
+                                    best_rest_cost = candidate_cost
+                                    best_rest_order = perm
+                            exact_push_pull_plan_for_a_projection = [
+                                forced_group
+                            ] + [[r] for r in best_rest_order]
+                        else:
+                            exact_push_pull_plan_for_a_projection = [forced_group] + (
+                                [rest] if rest else []
+                            )
                         exact_costs = 0.0
                     else:
                         exact_push_pull_plan_for_a_projection, exact_costs = (
