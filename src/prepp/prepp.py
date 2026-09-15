@@ -33,7 +33,7 @@ SECTION_HEADERS = {
 def generate_hardcoded_single_selectivities():
     """
     Generate hardcoded single selectivities for deterministic results.
-    These values match the ones used in INES.py to ensure consistency.
+    These values match the ones used in the simulation environment to ensure consistency.
     """
     return {
         "A": 1.0,  # Single event A always has selectivity 1.0

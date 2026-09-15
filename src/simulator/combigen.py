@@ -6,7 +6,7 @@ from inev.filter import (
 )
 from core.structures import get_num_etbs
 from core.tree import PrimEvent
-from ines.projections import total_rate, return_partitioning
+from simulator.projections import total_rate, return_partitioning
 import numpy as np
 
 
@@ -55,7 +55,10 @@ def optimistic_total_rate(
                         get_maximal_filter(projFilterDict, myproj, noFilter)
                     ][0] * get_num_etbs(myproj, IndexEventNodes)  # TODO change
     else:
-        return rates[projection.leafs()[0]] * len(nodes[projection.leafs()[0]])
+        # h_rates_data is already the summed rate across every producer of
+        # this event type -- see projections.py's sibling
+        # optimistic_total_rate() for the full writeup.
+        return rates[projection.leafs()[0]]
 
 
 def remove_filters(self):

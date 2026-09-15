@@ -8,7 +8,7 @@ The repository ships with a full simulation environment for evaluating Kraken ag
 
 - **All-Push** -- All operators placed at the cloud; all events pushed upstream.
 - **INEv** -- Distributes operators across fog nodes to reduce transmission cost.
-- **INES** -- Applies PrePP push-pull optimization on top of INEv's operator placement.
+- **Sequential** -- Applies PrePP push-pull optimization on top of INEv's operator placement.
 - **PrePP** -- Push-pull optimization only, with all operators at the cloud.
 
 All strategies are evaluated on randomly generated hierarchical fog-cloud network topologies with configurable depth, connectivity, event distributions, and query workloads.
@@ -22,7 +22,7 @@ All strategies are evaluated on randomly generated hierarchical fog-cloud networ
 ```bash
 # Clone and set up a virtual environment
 git clone <repository-url>
-cd INES
+cd kraken-placement-engine
 python3 -m venv .venv
 source .venv/bin/activate
 
@@ -92,7 +92,7 @@ kraken/
 |--------------|-------------|
 | **All-Push** | Baseline: all operators at the cloud (node 0). Every primitive event is pushed to the cloud for processing. Establishes the upper bound on transmission cost. |
 | **INEv**     | Operator placement algorithm that distributes operators across fog nodes to minimize transmission cost, using a centralized cost model and multi-sink filtering. |
-| **INES**     | Two-phase approach: first applies INEv operator placement, then runs PrePP push-pull optimization on the resulting placement. |
+| **Sequential** | Two-phase approach: first applies INEv operator placement, then runs PrePP push-pull optimization on the resulting placement. |
 | **PrePP**    | Push-pull optimization with all operators remaining at the cloud. Selects between push and pull for each event acquisition step, but does not move operators. |
 | **Kraken**   | Joint optimization of operator placement and communication strategy in a single incremental pass. Supports greedy and k-beam search strategies. |
 
@@ -101,7 +101,7 @@ kraken/
 ## Project Structure
 
 ```
-INES/
+kraken-placement-engine/
 |-- README.md                          # This file
 |-- requirements.txt                   # Python dependencies
 |-- .gitignore
@@ -117,7 +117,7 @@ INES/
 |   |   |-- structures.py            # Event node matrices and utility structures
 |   |   |-- write_config.py          # Configuration buffer generation for PrePP
 |   |   `-- ...
-|   |-- ines/                          # INES-specific logic (projections, selectivities)
+|   |-- simulator/                     # Simulator-specific logic (projections, selectivities)
 |   |   |-- operator_placement.py     # INEv-based operator placement
 |   |   |-- projections.py           # Projection generation from query workload
 |   |   |-- selectivity.py           # Pairwise selectivity initialization
@@ -159,19 +159,19 @@ This executes the experiment defined in the `main()` function of `start_simulati
 
 ### Simulation Parameters
 
-| Parameter              | Type           | Default  | Description |
-|------------------------|----------------|----------|-------------|
-| `network_sizes`        | `List[int]`    | `[12]`   | Number of nodes in the network topology. |
-| `workload_sizes`       | `List[int]`    | `[5]`    | Number of queries in each workload. |
-| `query_lengths`        | `List[int]`    | `[5]`    | Average number of primitive events per query. |
-| `parent_factors`       | `List[float]`  | `[1.8]`  | Controls maximum parents per node: `max_parents = parent_factor * ceil(log2(network_size))`. |
-| `node_event_ratios`    | `List[float]`  | `[0.5]`  | Probability that a leaf node generates a given event type. |
-| `num_event_types`      | `List[int]`    | `[6]`    | Number of distinct primitive event types (A, B, C, ...). |
-| `event_skews`          | `List[float]`  | `[2.0]`  | Zipf exponent controlling event rate distribution skewness. |
-| `runs_per_combination` | `int`          | `5`      | Number of independent simulation runs per parameter combination. |
-| `xi`                   | `float`        | `0.0`    | Weighting factor for processing latency in the objective function. |
-| `latency_threshold`    | `float`        | `None`   | If set, multiplied by All-Push latency to constrain placement latency. |
-| `cost_weight`          | `float`        | `0.5`    | Weight for cost in the cost-latency trade-off (latency weight = 1 - cost_weight). |
+| Parameter              | Type           | Default | Description |
+|------------------------|----------------|---------|-------------|
+| `network_sizes`        | `List[int]`    | `[100]` | Number of nodes in the network topology. |
+| `workload_sizes`       | `List[int]`    | `[5]`   | Number of queries in each workload. |
+| `query_lengths`        | `List[int]`    | `[5]`   | Average number of primitive events per query. |
+| `parent_factors`       | `List[float]`  | `[1.8]` | Controls maximum parents per node: `max_parents = parent_factor * ceil(log2(network_size))`. |
+| `node_event_ratios`    | `List[float]`  | `[0.7]` | Probability that a leaf node generates a given event type. |
+| `num_event_types`      | `List[int]`    | `[6]`   | Number of distinct primitive event types (A, B, C, ...). |
+| `event_skews`          | `List[float]`  | `[2.0]` | Zipf exponent controlling event rate distribution skewness. |
+| `runs_per_combination` | `int`          | `50`    | Number of independent simulation runs per parameter combination. |
+| `xi`                   | `float`        | `0.0`   | Weighting factor for processing latency in the objective function. |
+| `latency_threshold`    | `float`        | `None`  | If set, multiplied by All-Push latency to constrain placement latency. |
+| `cost_weight`          | `float`        | `1`     | Weight for cost in the cost-latency trade-off (latency weight = 1 - cost_weight). |
 
 ### Simulation Modes
 
@@ -237,7 +237,7 @@ Each simulation run executes the following pipeline automatically:
 1. **Setup** -- Network topology generation, query workload creation, selectivity initialization, projection computation, and dependency analysis.
 2. **All-Push Baseline** -- Computes the cost of placing all operators at the cloud, establishing the baseline transmission cost and latency.
 3. **INEv** -- Runs the INEv operator placement algorithm to distribute operators across fog nodes.
-4. **INES** -- Applies PrePP push-pull optimization on top of INEv's operator placement.
+4. **Sequential** -- Applies PrePP push-pull optimization on top of INEv's operator placement.
 5. **PrePP from Cloud** -- Runs PrePP with all operators placed at the cloud.
 6. **Kraken** -- Runs the Kraken solver, jointly optimizing placement and communication strategy.
 7. **Result Writing** -- All strategy results are written to a single Parquet row.
@@ -264,7 +264,7 @@ The dataset name can be customized via the `output_dataset_name` parameter.
 
 Each row in the unified results dataset represents one complete simulation run.
 
-**Per-strategy metrics** (prefixed with `all_push_`, `inev_`, `ines_`, `prepp_`, `kraken_greedy_`):
+**Per-strategy metrics** (prefixed with `all_push_`, `inev_`, `sequential_`, `prepp_`, `kraken_greedy_`):
 
 | Column                          | Type    | Description |
 |---------------------------------|---------|-------------|

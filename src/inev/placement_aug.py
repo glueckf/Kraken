@@ -8,9 +8,9 @@ Created on Tue Aug 10 13:16:11 2021
 
 from inev.filter import get_maximal_filter, get_decomposed_total
 from core.structures import get_nodes, num_etbs_by_key, set_event_nodes, sis_manage_etbs
-from ines.projections import return_partitioning
+from simulator.projections import return_partitioning
 from core.all_pairs import find_shortest_path_or_ancestor
-from ines.evaluation_plan import Instance, Projection
+from simulator.evaluation_plan import Instance, Projection
 import numpy as np
 from inev.filter import get_key_single_select
 import networkx as nx
@@ -808,7 +808,7 @@ def compute_single_sink_placement(
             """
             NOTE: Finn Glück on 02.12.2025
             
-            Adjusting the placement mismatch for INEv and INES with the fanouts, by including the output rate for 
+            Adjusting the placement mismatch for INEv and Sequential Approach with the fanouts, by including the output rate for
             final projections in the workload into the cost calculation.
             """
             # Add costs for sending to cloud if projection is a final query in workload
