@@ -201,22 +201,25 @@ export function renderTray(state: AppState): string {
  * different real placement at each stage (see KrakenStage / currentStage),
  * computed once at export time — picking a stage is instant, no rescoring or
  * backend round-trip needed. */
+// Reef-themed, one per stage rather than a separate legend flanking the
+// row — a fitting icon on the button itself reads more directly than an
+// icon-plus-word pair sitting outside it. Falls back to no icon for a
+// label this map doesn't recognize (e.g. a future 4th/5th stage).
+const STAGE_ICON: Record<string, string> = { fast: "🐟", balanced: "🪸", cheap: "🐚" };
+
 function renderStagePicker(state: AppState): string {
   const stages = state.stages;
   const buttons = stages
     .map((s, i) => {
       const on = i === state.stageIndex;
+      const icon = STAGE_ICON[s.label.toLowerCase()];
       return (
         `<button class="stage-btn${on ? " on" : ""}" data-action="stage" data-stage="${i}" ` +
-        `title="Kraken optimised for ${escapeHtml(s.label.toLowerCase())}">${escapeHtml(s.label)}</button>`
+        `title="Kraken optimised for ${escapeHtml(s.label.toLowerCase())}">${icon ? icon + " " : ""}${escapeHtml(s.label)}</button>`
       );
     })
     .join("");
-  return (
-    `<div class="stage-row" title="How Kraken balances cost (fewer messages) vs. latency (speed)">` +
-    `<span class="stage-end">🐟 Fast</span>${buttons}<span class="stage-end">🐚 Cheap</span>` +
-    `</div>`
-  );
+  return `<div class="stage-row" title="How Kraken balances cost (fewer messages) vs. latency (speed)">${buttons}</div>`;
 }
 
 export function renderScorecard(state: AppState): string {

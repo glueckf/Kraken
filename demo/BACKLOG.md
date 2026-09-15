@@ -808,6 +808,39 @@ in the demo now. Two concrete asks:
     browser via the real local backend: multi-push, colocated skip, and
     push-all/pull-all quick buttons all scored and re-scored correctly, no
     console errors. `tsc --noEmit` clean.
+19. **"I have exactly Kraken's plan but get a better ranking, we have to
+    verify" — verified, and it's real.** Not user error, not just "the
+    search heuristic is imperfect" (which would be expected and fine) —
+    for the identical node placement *and* identical push/pull split (same
+    events pushed, same pulled), explicitly costing that exact split gives
+    a different, lower number than what Kraken's own free search reported
+    when it found that split itself. Reproduced directly against
+    `cost_calculator.calculate()`, isolated from the demo entirely: medium
+    `seq_abcde`'s `SEQ(A, B, C)` at node 1, same `s_current`, same "push B,
+    pull A and C" — Kraken's own unforced search reports 164.17, forcing
+    that exact split explicitly reports 48.43.
+
+    Root cause narrowed (not yet fixed — this is an engine-level cost-model
+    inconsistency, not a demo bug, and needs care rather than a rushed
+    patch): `determine_exact_push_pull_plan`
+    (`src/prepp/push_pull_plan_generator.py`) ranks candidate plans during
+    search using `determine_costs_of_push_pull_plan`, but the *reported*
+    number (for both the free search and the demo's forced-choice path) is
+    computed afterward by a *different* function,
+    `determine_costs_for_pull_request`/`determine_costs_for_pull_response`.
+    The two formulas don't agree on which plan is cheapest, so the "exact"
+    search can settle on a plan that isn't actually cheapest under the
+    formula that produces the number everyone sees.
+
+    Full root-cause writeup, the exact repro, and why this needs a careful
+    dedicated pass rather than a quick patch (it touches the same
+    exact-plan search INEv and PrePP's own baseline rely on, not just
+    Kraken) is in `ISSUES.md` (this repo) — no GitHub Issues here either.
+    Practical implication for the demo right now: treat "Reveal Kraken's
+    plan" comparisons where the player hand-replicates Kraken's exact
+    choices as **not fully trustworthy** until this is fixed — a player
+    "beating" Kraken while reproducing its own plan is this bug, not a
+    genuine outsmarting.
 
 ## Engine (research code, not demo) — flagged, not scoped
 
