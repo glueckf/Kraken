@@ -119,6 +119,17 @@ function wire(): void {
 }
 
 function trayActivate(target: EventTarget | null): void {
+  if (closestAttr(target, "data-pp-inert") != null) return; // "already here" badge, nothing to do
+  const pushAll = closestAttr(target, "data-pushall");
+  if (pushAll != null) {
+    state.setAllPushChoice(decodeURIComponent(pushAll), true);
+    return;
+  }
+  const pullAll = closestAttr(target, "data-pullall");
+  if (pullAll != null) {
+    state.setAllPushChoice(decodeURIComponent(pullAll), false);
+    return;
+  }
   const pp = closestAttr(target, "data-pp");
   if (pp) {
     const [subEnc, depEnc] = pp.split("::");

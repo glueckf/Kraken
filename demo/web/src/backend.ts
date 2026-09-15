@@ -25,7 +25,7 @@ export function backendConfigured(): boolean {
 export async function refinePushPull(
   scenarioId: string,
   placement: Placement,
-  pushChoice: Record<string, string> = {},
+  pushChoice: Record<string, string | string[]> = {},
   timeoutMs = 4000,
 ): Promise<PushPullResult | null> {
   const base = backendBase();

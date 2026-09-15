@@ -7,27 +7,32 @@ For a projection with no push choice given, this picks the cheapest
 available communication strategy (push vs push-pull) at whatever node the
 caller placed it — the same thing the "Sequential" baseline already does for
 INEv's placement, generalized to any placement. For a projection where the
-player DID choose a dependency to push (a raw primitive letter, or an
-already-placed sub-query dependency by its own name), that exact choice is
-costed instead via `forced_push_group` (prepp.py / cost_calculator.py) — so
-a good push/pull call is rewarded and a bad one costs what it actually
-costs, rather than always silently falling back to the optimizer's own pick.
-The chosen dependency name is passed through as-is (not flattened to leaf
-primitives) — PrePP's own forced-group matching is one-level, so a
-flattened sub-query name would silently never match and fall through
-unnoticed.
+player DID make a push/pull call — pushing any subset of its dependencies,
+not just one (a raw primitive letter, or an already-placed sub-query
+dependency by its own name) — that exact choice is costed instead via
+`forced_push_group` (prepp.py / cost_calculator.py, which already accepted
+an arbitrary group, not just a single dep) — so a good push/pull call is
+rewarded and a bad one costs what it actually costs, rather than always
+silently falling back to the optimizer's own pick. Dependency names are
+passed through as-is (not flattened to leaf primitives) — PrePP's own
+forced-group matching is one-level, so a flattened sub-query name would
+silently never match and fall through unnoticed.
 
 Runs as its own process (see server.py) so RNG state from scoring one
 topology can never leak into another's reconstruction — the same reason
 export_scenario.py isolates each topology into its own subprocess.
 
 Usage: python score_one.py <topology_id> <scenario_id> '<placement-json>' ['<push-choice-json>']
-push-choice-json (optional, default "{}"): {projection_name: primitive_letter}
+push-choice-json (optional, default "{}"): {projection_name: [primitive_letter, ...]}
 — only for projections the player has made an explicit push/pull call on;
-any projection missing from it falls back to the optimizer's own choice. The
-value can also be ALL_PUSH ("__all_push__", mirrors state.ts) for an explicit
-"push everything, pull nothing" choice — its own selectable option in the UI,
-not just what happens when nothing was chosen.
+any projection missing from it falls back to the optimizer's own choice.
+The array can be any subset of that projection's own deps (including empty
+— an explicit "pull everything"). The value can also be the string
+ALL_PUSH ("__all_push__", mirrors state.ts) for an explicit "push
+everything, pull nothing" choice, sent instead of the literal full list —
+forcing a single group covering every dependency hits a separate PrePP bug
+(cost off by a division-like factor), so that case is costed directly via
+the plain all-push strategy instead of forced_push_group.
 Prints one JSON line to stdout: {"cost", "latency", "per_placement"} or
 {"error": "..."} on failure (exit code 1).
 """
@@ -145,8 +150,8 @@ def main():
             # result exactly, while forcing a raw primitive letter (which
             # already matches one-level) correctly diverged from it. Fixed
             # by passing `chosen_dep` itself, unflattened.
-            chosen_dep = push_choice.get(name)
-            if chosen_dep == ALL_PUSH:
+            chosen = push_choice.get(name)
+            if chosen == ALL_PUSH:
                 # Not routed through forced_push_group at all: forcing a
                 # *single* group covering every dependency (i.e. nothing
                 # left to pull) hits a separate bug in PrePP's plan-to-
@@ -158,9 +163,16 @@ def main():
                 # use that directly for an explicit "push everything" call.
                 strategy_results = problem.cost_calculator.calculate(p, node, s_current, forced_push_group=None)
                 best = strategy_results[0]
-            elif chosen_dep is not None:
+            elif chosen is not None:
+                # Any subset of this projection's deps is a valid forced
+                # group, including a single dep (backward-compat: a bare
+                # string from an older/manual caller is wrapped) and an
+                # explicit empty list ("pull everything" — prepp.py forces
+                # this correctly as of the `is not None` fix, not silently
+                # falling back to the optimizer's own pick).
+                forced_group = [chosen] if isinstance(chosen, str) else list(chosen)
                 strategy_results = problem.cost_calculator.calculate(
-                    p, node, s_current, forced_push_group=[chosen_dep]
+                    p, node, s_current, forced_push_group=forced_group
                 )
                 # The player made an explicit push/pull call — cost exactly
                 # that choice (last entry = the forced attempt, or the sole

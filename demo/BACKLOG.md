@@ -712,6 +712,102 @@ in the demo now. Two concrete asks:
     different placement at each stage, not just a re-colored number. Also
     re-checked `and_nested` at its default stage (2.42k, matching). No
     console errors, `tsc --noEmit` clean.
+18. **Stage icons, push/pull as a real multi-select, colocated deps skip
+    the choice, and an investigation into "I keep beating Kraken" — DONE.**
+    Three asks in one session:
+
+    **Icons.** ⚡/💰 didn't fit the reef/underwater theme — swapped for
+    🐟 (Fast) / 🐚 (Cheap), picked to avoid the emblem/glyph emoji already
+    in use elsewhere (🦀🐢🦈🌱 for query emblems).
+
+    **Push/pull was artificially single-select.** The player could push
+    exactly one dependency (the rest pulled) or "push all" — pushing 2 of 3
+    streams, a perfectly valid strategy, wasn't offered at all. Checked
+    first whether this was a UI-only restriction or a real engine limit:
+    `CostCalculator.calculate()`'s `forced_push_group` parameter already
+    accepted an arbitrary list, and `prepp.py`'s own docstring already
+    documented "push exactly this **group**" — the multi-push capability
+    already existed, only `state.ts`'s `pushChoice: Record<string, string>`
+    (one dep or the `ALL_PUSH` sentinel) capped it at one. Changed to
+    `Record<string, string[]>` — `setPushChoice` now toggles one dep's
+    membership in the pushed set independently of the others;
+    `setAllPushChoice` gives the two extremes their own quick buttons.
+    `panel.ts`'s `renderPushPullRow` became a real multi-select: every
+    decidable dep gets an independent toggle chip. Wire format to the
+    backend (`score_one.py`) unchanged in spirit — an operator whose entire
+    decidable set is pushed still goes over as `ALL_PUSH` rather than the
+    literal full list, since forcing one group covering every dependency
+    still hits the same known PrePP bug documented in item history above;
+    every other decided operator (including an explicit, deliberate "push
+    nothing") goes over as its literal array.
+
+    **Colocated dependencies shouldn't ask at all.** If a sub-query
+    dependency is placed at the exact same node as its consumer, push vs.
+    pull costs the same — literally zero, `dist[n][n] = 0` in
+    `_compute_all_push_costs` (`cost_calculator.py`) — so forcing a choice
+    there is pointless. Added `state.decidableDeps(name)`, excluding any dep
+    whose current placement already makes it free (a colocated sub-query,
+    or — checked for completeness — a primitive whose only producer(s)
+    already sit at that node). `pendingPushChoices` and the mandatory-call
+    gate now key off the *decidable* count, not the raw dependency count; a
+    non-decidable dep still renders as a chip (so the row doesn't look
+    incomplete) but as an inert, non-interactive "already here" badge
+    (`data-pp-inert`, guarded in `main.ts`'s `trayActivate` so a click on it
+    doesn't fall through to the enclosing tray-row's pick-up handler). This
+    is genuinely dynamic, not a one-time check: re-placing an operator so
+    its dependency becomes newly colocated (verified live — `and_nested`'s
+    `SEQ(A,B,C,D,E)` had 2 decidable subquery deps until the second one also
+    landed at König Cloud, at which point its row correctly collapsed to
+    just the one remaining primitive dep, no longer requiring a call).
+
+    **"I outperform Kraken almost all the time" — investigated, not a
+    scoring bug, but found two real (adjacent) engine bugs anyway.** Traced
+    the actual mechanism with a standalone script calling
+    `cost_calculator.calculate()` directly at various `forced_push_group`
+    values for the same operator/node: forcing the objectively better split
+    (push the cheap stream, pull the expensive one under its filter) gives
+    a real, substantially lower cost than push-all (1326.9 vs. 1839 for one
+    concrete case); forcing the worse split gives no improvement at all
+    (1839, same as push-all). This is the *actual* explanation — a human
+    who reads the displayed per-stream rates and reasons "push the cheap
+    one, let the expensive one ride the filter" can systematically find a
+    better split than Kraken's own greedy search settles for at whatever
+    node *it* picked. That's a real gap in the search heuristic, not a
+    scoring inconsistency between the player's number and Kraken's — worth
+    knowing as a limitation of the current greedy strategy, but out of
+    scope to fix here.
+
+    Two genuine bugs surfaced *while* verifying this, both in the shared
+    engine (`src/prepp/`), both now fixed:
+    - `prepp.py`'s exact-plan branch checked `if forced_group:` (truthiness)
+      instead of `if forced_group is not None:` — an explicitly empty
+      forced group (the player's deliberate "pull everything" choice) is
+      falsy in Python, so it silently fell through to the *unforced*
+      optimizer search instead of actually forcing "pull all" — the
+      player's stated choice wasn't being honored.
+    - Once forcing actually reached the empty-group case, it crashed
+      (`UnboundLocalError: step_latency`) in
+      `push_pull_plan_generator.py`'s per-step cost search — the
+      permutation loop that assigns `step_latency` never runs when there's
+      nothing to permute (an empty acquisition step), unlike its two
+      sibling variables (`lowest_costs_for_step`, `best_step`) which already
+      had safe defaults. Added the same default (`step_latency = 0`). The
+      crash was being silently swallowed upstream (falls back to the
+      all-push cost, itself a safe, non-broken number) — never visible to
+      a player, but meant "pull all" wasn't actually being forced either.
+
+    Verified both fixes together via the same standalone script: forcing
+    an empty group no longer crashes, returns a real, distinctly-computed
+    cost via the exact-plan path (not the pre-fix silent fallback — same
+    numeric value in this particular case, 1839, but now for the *right*
+    reason: a genuinely computed "cold pull of both, no filter benefit"
+    result, confirmed by cross-checking that forcing just the *expensive*
+    stream pushed, a different scenario where a filter benefit does apply,
+    correctly differs from push-all). Re-ran through `score_one.py` (the
+    actual code path the demo calls) for confirmation, then live in the
+    browser via the real local backend: multi-push, colocated skip, and
+    push-all/pull-all quick buttons all scored and re-scored correctly, no
+    console errors. `tsc --noEmit` clean.
 
 ## Engine (research code, not demo) — flagged, not scoped
 

@@ -603,6 +603,13 @@ class Initiate:
         )
         lowest_costs_for_step = float("inf")
         best_step = ""
+        # Same safe default as the two lines above: an empty acquisition step
+        # (e.g. the deliberately-empty push group of an explicit "pull
+        # everything" forced choice) makes `all_permutations` empty too, so
+        # the loop below never runs and never assigns step_latency --
+        # without this it raised UnboundLocalError instead of just costing
+        # a (correctly) zero-latency empty step.
+        step_latency = 0
 
         old_source_sent_this_type_to_node_map = copy.deepcopy(
             self.source_sent_this_type_to_node

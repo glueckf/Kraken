@@ -1,7 +1,7 @@
 // Renders the side panel: query selector, subquery tray, and the scorecard /
 // leaderboard. Pure HTML-string builders; main.ts owns the DOM + delegated events.
 
-import { ALL_PUSH, type AppState } from "./state";
+import type { AppState } from "./state";
 import type { Baselines, Projection, StrategyId } from "./types";
 import { eventIconSvg, glyphFor } from "./icons";
 
@@ -20,60 +20,86 @@ function fmtRate(n: number): string {
 }
 
 /**
- * For an operator with 2+ dependencies, let the player pick which one gets
- * pushed (fully transmitted) — the rest are pulled (only matches
- * requested). A dependency is either a raw primitive (rate shown, so the
- * choice is informed — pushing the low-rate stream and pulling the
- * high-rate one is usually cheaper) or an already-placed sub-query (shown
- * with its own sN tag, since its role here was already decided one level
- * down — this operator only chooses between that combined result and its
- * other input(s), not the raw primitives underneath it again). A trailing
- * "push all" chip is a separate, explicit choice (not just an artifact of
- * clicking nothing) — all-push is a legitimate strategy in its own right,
- * not merely the absence of a push/pull split.
- * Mandatory: state.readyToScore requires one of these per multi-dep operator.
+ * For an operator with 2+ *decidable* dependencies (see state.decidableDeps
+ * — excludes ones the current placement already makes free either way, e.g.
+ * a sub-query dependency sitting at the very same node), let the player
+ * toggle each one independently between push and pull — pushing 2 of 3
+ * streams is just as valid a choice as pushing exactly 1, so this is a
+ * multi-select, not a single pick. A dependency is either a raw primitive
+ * (rate shown, so the choice is informed — pushing the low-rate stream and
+ * pulling the high-rate one is usually cheaper) or an already-placed
+ * sub-query (shown with its own sN tag, since its role here was already
+ * decided one level down). A non-decidable dep still gets a chip so the row
+ * doesn't look incomplete, but it's inert — "already here" says why there's
+ * nothing to choose. Trailing "push all"/"pull all" chips are quick-set
+ * shortcuts for the two extremes, not the only two options.
+ * Mandatory: state.readyToScore requires a call on any operator with 2+
+ * decidable deps (state.pendingPushChoices).
  */
 function renderPushPullRow(state: AppState, name: string, proj: Projection): string {
-  if (proj.deps.length < 2) return "";
   const sc = state.scenario!;
+  const decidable = new Set(state.decidableDeps(name));
+  if (decidable.size === 0) return ""; // nothing to choose at all -- e.g. a single dep, or every dep already free
   const chosen = state.pushChoice[name];
-  const isAllPush = chosen === ALL_PUSH;
   const chips = proj.deps
     .map((dep) => {
       const sub = state.subMeta.get(dep);
-      const isPush = isAllPush || chosen === dep;
-      const isPull = !isAllPush && !!chosen && !isPush;
-      const role = isPush ? "PUSH" : isPull ? "pull" : "";
+      const isFree = !decidable.has(dep);
+      const isPush = !isFree && (!!chosen ? chosen.includes(dep) : false);
+      const isPull = !isFree && !isPush && !!chosen;
+      const role = isFree ? "here" : isPush ? "PUSH" : isPull ? "pull" : "";
       const roleHtml = role ? `<span class="pp-role">${role}</span>` : "";
+      const cls = isFree ? " free" : isPush ? " push" : isPull ? " pull" : "";
+      // Free chips get their own inert marker rather than data-pp: a plain
+      // <span> would otherwise let its click bubble past this row to the
+      // enclosing tray-row's data-sub (pick-up/select), since it carries no
+      // stoppable attribute of its own.
+      const tag = isFree
+        ? ` data-pp-inert="1"`
+        : ` data-pp="${encodeURIComponent(name)}::${encodeURIComponent(dep)}"`;
+      const el = isFree ? "span" : "button";
       if (sub) {
         const depProj = sc.projections.find((p) => p.name === dep);
         const rate = depProj ? fmtRate(depProj.output_rate) + "/s" : "";
         return (
-          `<button class="pp-chip${isPush ? " push" : ""}${isPull ? " pull" : ""}" data-pp="${encodeURIComponent(name)}::${encodeURIComponent(dep)}" ` +
-          `title="${escapeHtml(dep)}: ${rate || "rate unknown"}">` +
+          `<${el} class="pp-chip${cls}"${tag} ` +
+          `title="${escapeHtml(dep)}${isFree ? " is already at this node" : `: ${rate || "rate unknown"}`}">` +
           `<span class="pp-sub-tag" style="background:${sub.color}">${sub.tag}</span>` +
           `<span class="pp-rate">${rate}</span>${roleHtml}` +
-          `</button>`
+          `</${el}>`
         );
       }
       const rateMap = sc.event_map.local_rate_lookup[dep];
       const rate = rateMap ? Object.values(rateMap)[0] : undefined;
       return (
-        `<button class="pp-chip${isPush ? " push" : ""}${isPull ? " pull" : ""}" data-pp="${encodeURIComponent(name)}::${encodeURIComponent(dep)}" ` +
-        `title="${dep}: ${rate !== undefined ? rate + "/s" : "rate unknown"}">` +
+        `<${el} class="pp-chip${cls}"${tag} ` +
+        `title="${dep}${isFree ? " is already at this node" : `: ${rate !== undefined ? rate + "/s" : "rate unknown"}`}">` +
         eventIconSvg(dep, 12) +
         `<span class="pp-letter">${dep}</span>` +
         `<span class="pp-rate">${rate !== undefined ? fmtRate(rate) + "/s" : ""}</span>${roleHtml}` +
-        `</button>`
+        `</${el}>`
       );
     })
     .join("");
-  const allChip =
-    `<button class="pp-chip pp-chip-all${isAllPush ? " push" : ""}" data-pp="${encodeURIComponent(name)}::${encodeURIComponent(ALL_PUSH)}" ` +
+  if (decidable.size < 2) {
+    // A lone decidable dep (or none) has no real combinatorial choice —
+    // show the chips (including any "already here" ones) but no mandatory
+    // call, no quick-set buttons.
+    return `<div class="pp-row done"><span class="pp-label">push</span>${chips}</div>`;
+  }
+  const allPushed = !!chosen && chosen.length === decidable.size;
+  const allPulled = !!chosen && chosen.length === 0;
+  const pushAllChip =
+    `<button class="pp-chip pp-chip-all${allPushed ? " push" : ""}" data-pushall="${encodeURIComponent(name)}" ` +
     `title="Push every input, pull nothing">` +
-    `<span class="pp-all-label">push all</span>${isAllPush ? `<span class="pp-role">PUSH</span>` : ""}` +
+    `<span class="pp-all-label">push all</span>${allPushed ? `<span class="pp-role">PUSH</span>` : ""}` +
     `</button>`;
-  return `<div class="pp-row${chosen ? "" : " needed"}"><span class="pp-label">push</span>${chips}${allChip}</div>`;
+  const pullAllChip =
+    `<button class="pp-chip pp-chip-all${allPulled ? " pull" : ""}" data-pullall="${encodeURIComponent(name)}" ` +
+    `title="Pull every input, push nothing">` +
+    `<span class="pp-all-label">pull all</span>${allPulled ? `<span class="pp-role">pull</span>` : ""}` +
+    `</button>`;
+  return `<div class="pp-row${chosen ? "" : " needed"}"><span class="pp-label">push</span>${chips}${pushAllChip}${pullAllChip}</div>`;
 }
 
 // Compact by design: once you've picked a size/query you mostly just need
@@ -188,7 +214,7 @@ function renderStagePicker(state: AppState): string {
     .join("");
   return (
     `<div class="stage-row" title="How Kraken balances cost (fewer messages) vs. latency (speed)">` +
-    `<span class="stage-end">⚡ Fast</span>${buttons}<span class="stage-end">💰 Cheap</span>` +
+    `<span class="stage-end">🐟 Fast</span>${buttons}<span class="stage-end">🐚 Cheap</span>` +
     `</div>`
   );
 }

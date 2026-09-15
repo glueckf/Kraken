@@ -551,7 +551,15 @@ def determine_randomized_distribution_push_pull_costs(
                         if forced_push_group is not None
                         else None
                     )
-                    if forced_group:
+                    # `is not None`, not plain truthiness: an explicit empty
+                    # group (the player deliberately chose "pull everything")
+                    # is a real forced choice too, distinct from "no forcing
+                    # at all" (forced_push_group=None) -- a bare `if
+                    # forced_group:` treated an empty list the same as None
+                    # and silently fell through to the unforced search below,
+                    # scoring whatever the optimizer picked instead of the
+                    # player's actual choice.
+                    if forced_group is not None:
                         # Player-forced choice: push exactly this group of
                         # primitives (a single raw event, or every primitive
                         # underlying an already-placed sub-query dependency the

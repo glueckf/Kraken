@@ -47,9 +47,16 @@ export class AppState {
   placement: Placement = {};
   activeSubquery: string | null = null;
   placementError: string | null = null;
-  /** subquery name -> the dep the player chose to push (rest pulled), or
-   * `ALL_PUSH` for an explicit "push everything" choice. */
-  pushChoice: Record<string, string> = {};
+  /** subquery name -> the set of its *decidable* deps (see decidableDeps())
+   * the player chose to push; any decidable dep not in the array is pulled.
+   * An operator only appears here once the player has made at least one
+   * push/pull call on it — absence means "let the optimizer decide" (only
+   * offered when there's at most one decidable dep, so there's no real
+   * combinatorial choice to make anyway). Pushing *every* decidable dep is
+   * sent to the backend as `ALL_PUSH` rather than the literal full list —
+   * see refine() — since forcing a single group covering every dependency
+   * hits a separate PrePP bug (cost off by a division-like factor). */
+  pushChoice: Record<string, string[]> = {};
   /** subquery name -> why it was placed for the player instead of by
    * clicking a node — see reconcileForcedCloudPlacements(). */
   autoPlacedReason: Record<string, string> = {};
@@ -166,16 +173,36 @@ export class AppState {
     return this.subqueries.filter((s) => s in this.placement).length;
   }
 
-  /** Subqueries with 2+ dependencies where the player hasn't made a push/pull
-   * call yet — that choice is required, not just an optional extra, so a
-   * placement isn't "done" while one of these is still unset. */
+  /** `name`'s dependencies for which push vs. pull genuinely changes cost —
+   * excludes ones the current placement already makes free either way: a
+   * sub-query dependency placed at the very same node as `name` (distance
+   * 0, so push and pull cost the same — literally already there), or a
+   * primitive whose only producer(s) already sit at that node. Undefined
+   * until `name` itself is placed (no node to compare against yet). */
+  decidableDeps(name: string): string[] {
+    const sc = this.scenario;
+    const proj = sc?.projections.find((p) => p.name === name);
+    const here = this.placement[name];
+    if (!sc || !proj || here === undefined) return proj?.deps ?? [];
+    return proj.deps.filter((dep) => {
+      const producers = sc.event_map.producers[dep];
+      if (producers) return !producers.every((p) => p === here);
+      return this.placement[dep] !== here;
+    });
+  }
+
+  /** Subqueries with 2+ *decidable* dependencies where the player hasn't
+   * made a push/pull call yet — that choice is required, not just an
+   * optional extra, so a placement isn't "done" while one of these is still
+   * unset. At most one decidable dep (or none — e.g. every dependency
+   * happens to already be free) has no real combinatorial choice to make,
+   * so the optimizer is left to decide instead of forcing a pointless call. */
   get pendingPushChoices(): string[] {
     const sc = this.scenario;
     if (!sc) return [];
-    return this.subqueries.filter((name) => {
-      const proj = sc.projections.find((p) => p.name === name);
-      return !!proj && proj.deps.length > 1 && !(name in this.pushChoice);
-    });
+    return this.subqueries.filter(
+      (name) => this.decidableDeps(name).length > 1 && !(name in this.pushChoice)
+    );
   }
 
   /** True once every operator is placed AND every push/pull call is made —
@@ -361,16 +388,27 @@ export class AppState {
     }
   }
 
-  /** Toggle whether `dep` (one of subqueryName's own `deps` — a primitive
-   * letter or an already-placed sub-query) is the one the player pushes
-   * (the rest are pulled) — clicking the already-chosen one clears back to
-   * "let the optimizer decide". */
+  /** Toggle whether `dep` (one of subqueryName's own *decidable* deps — see
+   * decidableDeps()) is pushed — independent per dep, so any subset can be
+   * pushed at once (pushing 2 of 3 streams is just as valid as pushing 1).
+   * First click on an undecided operator starts from "push nothing" and
+   * pushes just that dep; toggling off the last pushed dep clears the whole
+   * entry back to "let the optimizer decide" instead of leaving an empty
+   * array around (an operator with 0 or 1 decidable deps was never asking
+   * for a call in the first place — see pendingPushChoices). */
   setPushChoice(subqueryName: string, dep: string): void {
-    if (this.pushChoice[subqueryName] === dep) {
-      delete this.pushChoice[subqueryName];
-    } else {
-      this.pushChoice[subqueryName] = dep;
-    }
+    const current = this.pushChoice[subqueryName] ?? [];
+    const next = current.includes(dep) ? current.filter((d) => d !== dep) : [...current, dep];
+    if (next.length === 0) delete this.pushChoice[subqueryName];
+    else this.pushChoice[subqueryName] = next;
+    this.reveal = false;
+    this.rescore();
+  }
+
+  /** Quick-set every decidable dep of `subqueryName` to push (or, if
+   * `push` is false, to pull) in one call, instead of clicking each chip. */
+  setAllPushChoice(subqueryName: string, push: boolean): void {
+    this.pushChoice[subqueryName] = push ? this.decidableDeps(subqueryName) : [];
     this.reveal = false;
     this.rescore();
   }
@@ -453,10 +491,26 @@ export class AppState {
     };
   }
 
+  /** Wire format for the backend: an operator whose *entire* decidable set
+   * is pushed goes over as `ALL_PUSH` rather than the literal full array —
+   * forcing a single PrePP group covering every dependency hits a separate,
+   * documented bug (cost off by a division-like factor); the explicit
+   * all-push strategy is costed directly instead. Every other decided
+   * operator (including an explicit, deliberate "push nothing") goes over
+   * as its literal array. */
+  private buildPushSnapshot(): Record<string, string | string[]> {
+    const out: Record<string, string | string[]> = {};
+    for (const [name, pushed] of Object.entries(this.pushChoice)) {
+      const decidable = this.decidableDeps(name);
+      out[name] = pushed.length > 0 && pushed.length === decidable.length ? ALL_PUSH : pushed;
+    }
+    return out;
+  }
+
   private async refine(): Promise<void> {
     const token = ++this.refineToken;
     const snapshot: Placement = { ...this.placement };
-    const pushSnapshot = { ...this.pushChoice };
+    const pushSnapshot = this.buildPushSnapshot();
     let result: PushPullResult | null = null;
     try {
       // "<topology>/<query>" — query ids alone aren't unique across topologies,
