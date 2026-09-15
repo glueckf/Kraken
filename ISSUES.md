@@ -8,10 +8,13 @@ to enable it). One entry per issue, newest first.
 
 ## Query decomposition (`combigen`) overcounts primitive rates by producer count — affects all 5 placement strategies, not just INEv
 
-**Status:** PR open, awaiting review. Found and scoped 2026-09-10; fix applied
-on branch `az1_fix_combigen_rate_overcounting` (based on `master`), opened as
-[glueckf/Kraken#7](https://github.com/glueckf/Kraken/pull/7) with @glueckf
-requested as reviewer.
+**Status:** Fixed and merged. Found and scoped 2026-09-10; fix opened as
+[glueckf/Kraken#7](https://github.com/glueckf/Kraken/pull/7), merged into
+`master` 2026-09-15 (`a6e0415`). The demo's `feat/demo` branch has since
+merged `master` and re-exported all 8 scenarios — the predicted medium-topology
+decomposition changes (see "Empirical verification" below) landed exactly as
+predicted; see `demo/BACKLOG.md` item #5's follow-up for the after-merge
+confirmation.
 
 ### Summary
 
