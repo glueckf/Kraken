@@ -140,8 +140,11 @@ export function renderQueryBar(state: AppState): string {
     })
     .join("");
   const active_line = active
-    ? `<div class="qactive"><span class="qactive-expr">${titleWithIcons(active.title)}</span>` +
-      `<span class="qactive-count">${active.num_subqueries} operators</span></div>`
+    ? `<div class="qactive">` +
+      `<div class="qactive-headline">${EMBLEM_EMOJI[active.emblem] ?? ""} ${escapeHtml(QUERY_HEADLINE[active.id] ?? active.title)}</div>` +
+      `<div class="qactive-sub"><span class="qactive-expr">${titleWithIcons(active.title)}</span>` +
+      `<span class="qactive-count">${active.num_subqueries} operators</span></div>` +
+      `</div>`
     : "";
   return `<div class="qpills">${pills}</div>${active_line}`;
 }
@@ -375,3 +378,16 @@ function titleWithIcons(title: string): string {
 }
 
 const EMBLEM_EMOJI: Record<string, string> = { crab: "🦀", turtle: "🐢", shark: "🦈", seedling: "🌱" };
+
+// Short, story-flavored stand-in for the raw SEQ(...)/AND(...) expression as
+// the primary headline — reads as "spot the alarm," not programming syntax.
+// The expression itself isn't hidden, just demoted to secondary text below
+// (see renderQueryBar) — it still carries real information (operator count,
+// which streams feed in) a returning player may want. Keyed by scenario_id
+// rather than emblem since that's the stable per-query identity.
+const QUERY_HEADLINE: Record<string, string> = {
+  seq_abc: "Crab signal",
+  seq_abcd: "Turtle trail",
+  seq_abcde: "Shark alarm",
+  and_nested: "Reef bloom",
+};

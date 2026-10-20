@@ -39,9 +39,29 @@ does.
    dependency was silently a no-op (always scored as the optimizer's own
    pick, regardless of the player's actual choice) from when this shipped
    until it was found and fixed today.
-2. **Simplify the query representation** for a non-technical audience.
-   Currently queries are shown as raw expressions (`SEQ(A, B, C)`), which
-   reads as programming syntax rather than "spot the shark alarm."
+2. **Simplify the query representation** for a non-technical audience —
+   DONE (2026-10-20). Queries were shown as raw expressions (`SEQ(A, B, C)`),
+   reading as programming syntax rather than "spot the shark alarm." The
+   active-query header (`renderQueryBar` in [panel.ts](web/src/panel.ts))
+   now leads with a short story headline per query — `QUERY_HEADLINE`, keyed
+   by `scenario_id` — with the raw `SEQ(...)`/`AND(...)` expression and
+   operator count demoted to smaller secondary text underneath rather than
+   removed (a returning player may still want it). Scoped deliberately: the
+   per-operator tray rows (`SEQ(B, D)` etc. — what the player actually
+   places) were left as-is, since those are structurally meaningful (which
+   streams group into which sub-result) and already show icon chips, not
+   raw letters, for their dependencies.
+
+   | query | emblem | headline |
+   |---|---|---|
+   | `SEQ(A, B, C)` | 🦀 | Crab signal |
+   | `SEQ(A, B, C, D)` | 🐢 | Turtle trail |
+   | `SEQ(A, B, C, D, E)` | 🦈 | Shark alarm |
+   | `AND(SEQ(A,B,C), D, SEQ(E,F))` | 🌱 | Reef bloom |
+
+   Verified live across all 4 queries on both topologies — headline +
+   demoted expression render correctly, no layout overflow, no console
+   errors. `tsc --noEmit` clean.
 3. **Let the user choose the network size** — DONE: 2 topologies export
    (`medium`=12 — the original hand-built reef, unchanged — `large`=24
    nodes), same 4 story queries on each, via `SimulationMode.SIZED_TOPOLOGY`
