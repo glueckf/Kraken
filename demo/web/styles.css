@@ -151,6 +151,15 @@ body {
 .node:focus-visible .node-dot { stroke: var(--accent); stroke-width: 3; }
 .ghost { fill: none; stroke: var(--warm); stroke-width: 2; stroke-dasharray: 3 4; }
 
+/* Static key for the per-event petal colors (one dot per letter, once for
+ * the whole figure) — same text treatment as node labels so it reads
+ * against the sea gradient at any scroll position. */
+.event-legend .legend-dot { stroke: var(--surface); stroke-width: 1.5; }
+.event-legend .legend-lbl {
+  fill: var(--scene-text); font-weight: 600; font-size: 13px; text-anchor: start; dominant-baseline: middle;
+  paint-order: stroke fill; stroke: var(--scene-text-halo); stroke-width: 3px; stroke-linejoin: round;
+}
+
 /* Kraken plan overlay: highlights the *existing* topology edges a dependency
    actually travels over. Color identifies the event type/subquery (its own
    icon/chip color, set inline per path -- see reef.ts); line style carries

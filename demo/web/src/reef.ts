@@ -28,7 +28,7 @@ export interface ReefView {
 const VB_W = 1000;
 const VB_H = 640;
 const TOP_Y = 86; // leaves room for König Cloud's crown above the topmost row
-const BOTTOM_MARGIN = 60;
+const BOTTOM_MARGIN = 92; // leaf-row petals (up to r*0.95+petalR below center) + the event legend strip
 
 export type Layout = Map<number, { x: number; y: number; r: number }>;
 
@@ -127,6 +127,28 @@ function eventPetals(cx: number, cy: number, r: number, letters: string[]): stri
       eventIconGroup(L, px, py, petalR * 1.5, "#fff");
   });
   return out;
+}
+
+function eventLegend(letters: string[]): string {
+  // One static key for the whole figure — same colored-dot-plus-white-icon
+  // language as eventPetals, just once instead of repeated on every node —
+  // so the petals' colors stay readable without crowding a letter onto each
+  // small petal individually (tight already at up to 5 petals per node).
+  const sorted = [...letters].sort();
+  const dot = 11;
+  const gap = 58;
+  const totalW = (sorted.length - 1) * gap;
+  const startX = VB_W / 2 - totalW / 2;
+  const cy = VB_H - 24;
+  let out = "";
+  sorted.forEach((L, i) => {
+    const cx = startX + i * gap;
+    out +=
+      `<circle class="legend-dot" cx="${cx}" cy="${cy}" r="${dot}" fill="${glyphFor(L).color}"/>` +
+      eventIconGroup(L, cx, cy, dot * 1.5, "#fff") +
+      `<text class="legend-lbl" x="${cx + dot + 6}" y="${cy + 5}">${L}</text>`;
+  });
+  return `<g class="event-legend" aria-hidden="true">${out}</g>`;
 }
 
 function background(): string {
@@ -340,6 +362,7 @@ export function renderReef(scenario: Scenario, layout: Layout, subMeta: Map<stri
     `<g class="edges">${edges}</g>` +
     `<g class="plan-edges">${planEdges}</g>` +
     `<g class="nodes">${g}</g>` +
+    eventLegend(Object.keys(scenario.event_map.producers)) +
     `</svg>`
   );
 }

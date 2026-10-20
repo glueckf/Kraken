@@ -926,6 +926,30 @@ in the demo now. Two concrete asks:
     still readable at center. `tsc --noEmit` clean, `npm run build`
     succeeded, no new console errors.
 
+    **Follow-up — DONE (same day).** User's own request: with the letters
+    gone from each node (the ring is icon+color only now), add them back
+    either per-node or as a legend. Picked a legend (`eventLegend()` in
+    [reef.ts](web/src/reef.ts)): a static row of dot+icon+letter once at the
+    bottom of the figure, rather than squeezing text onto individual petals
+    — already tight at up to 5 per node (see the density check above), and
+    the project already has precedent for a figure-level legend (the
+    push/pull reveal overlay's own). Shows all 6 letters, not just the
+    active query's — deliberately, since a node's petals were never scoped
+    to the active query either (a leaf's full event set is topology-level
+    data, shared across all 4 queries on that topology size; e.g. node 6
+    shows both its `A` and `E` petals even while playing `SEQ(A, B, C)`,
+    which doesn't use `E`), so the legend needs to cover everything a petal
+    can ever show, not just what the current task happens to need. Bumped
+    `BOTTOM_MARGIN` 60→92 to make clean room below the leaf row's petals
+    (which already reach to roughly that offset) rather than cramming the
+    legend into space that didn't exist — confirmed no clipping or overlap
+    by zooming the SVG viewBox on both topologies. `aria-hidden` on the
+    legend group since the same information already reached screen readers
+    through each node's own aria-label (`, produces A, E`) from the base
+    petal work above — the legend is a sighted-only convenience, not a new
+    source of truth. `tsc --noEmit` clean, `npm run build` succeeded, no new
+    console errors.
+
 ## Engine (research code, not demo) — flagged, not scoped
 
 8. **Enable Kraken's multi-node ("MS") placement.** Currently explicitly
