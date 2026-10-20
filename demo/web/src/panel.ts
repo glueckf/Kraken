@@ -123,6 +123,10 @@ export function renderTopologyBar(state: AppState): string {
   return `<div class="tlist">${items}</div>`;
 }
 
+function pluralSubqueries(n: number): string {
+  return `${n} subquer${n === 1 ? "y" : "ies"}`;
+}
+
 export function renderQueryBar(state: AppState): string {
   if (!state.topology) return "";
   const cur = state.scenario?.scenario_id;
@@ -132,7 +136,7 @@ export function renderQueryBar(state: AppState): string {
       const on = s.id === cur ? "on" : "";
       const emblem = EMBLEM_EMOJI[s.emblem] ?? "";
       return (
-        `<button class="qpill ${on}" data-scenario="${s.id}" title="${escapeHtml(s.title)} — ${s.num_subqueries} operators" aria-pressed="${s.id === cur}">` +
+        `<button class="qpill ${on}" data-scenario="${s.id}" title="${escapeHtml(s.title)} — ${pluralSubqueries(s.num_subqueries)}" aria-pressed="${s.id === cur}">` +
         `<span class="qpill-badge">Q${i + 1}</span>` +
         (emblem ? `<span class="qpill-emblem" aria-hidden="true">${emblem}</span>` : "") +
         `</button>`
@@ -143,7 +147,7 @@ export function renderQueryBar(state: AppState): string {
     ? `<div class="qactive">` +
       `<div class="qactive-headline">${EMBLEM_EMOJI[active.emblem] ?? ""} ${escapeHtml(QUERY_HEADLINE[active.id] ?? active.title)}</div>` +
       `<div class="qactive-sub"><span class="qactive-expr">${titleWithIcons(active.title)}</span>` +
-      `<span class="qactive-count">${active.num_subqueries} operators</span></div>` +
+      `<span class="qactive-count">${pluralSubqueries(active.num_subqueries)}</span></div>` +
       `</div>`
     : "";
   return `<div class="qpills">${pills}</div>${active_line}`;
@@ -184,16 +188,16 @@ export function renderTray(state: AppState): string {
   const hint = state.activeSubquery
     ? `<span class="tray-hint">Selected <b>${escapeHtml(state.activeSubquery)}</b> — now tap a node.</span>`
     : !state.complete
-      ? `<span class="tray-hint">Tap an operator, then tap a node.</span>`
+      ? `<span class="tray-hint">Tap a subquery, then tap a node.</span>`
       : pending.length > 0
         ? `<span class="tray-hint err">Still need a push/pull call for <b>${pending.map(escapeHtml).join(", ")}</b>.</span>`
-        : `<span class="tray-hint ok">All operators placed.</span>`;
+        : `<span class="tray-hint ok">All subqueries placed.</span>`;
   const errorHint = state.placementError
     ? `<span class="tray-hint err">${escapeHtml(state.placementError)}</span>`
     : "";
 
   return (
-    `<div class="tray-head"><span>Operators to place</span>` +
+    `<div class="tray-head"><span>Subqueries to place</span>` +
     `<span class="progress-txt">${state.placedCount}/${sc.processing_order.length}</span></div>` +
     `<div class="tray-rows">${rows}</div>${errorHint}${hint}`
   );
@@ -247,13 +251,13 @@ export function renderScorecard(state: AppState): string {
     const pct = Math.round((state.placedCount / sc.processing_order.length) * 100);
     const title =
       state.complete && pending.length > 0
-        ? `Choose push or pull for ${pending.length} more operator${pending.length > 1 ? "s" : ""} to score your plan`
-        : `Place all ${sc.processing_order.length} operators to score your plan`;
+        ? `Choose push or pull for ${pending.length} more subquer${pending.length > 1 ? "ies" : "y"} to score your plan`
+        : `Place all ${pluralSubqueries(sc.processing_order.length)} to score your plan`;
     return (
       `<div class="sc-empty">` +
       `<div class="sc-empty-title">${title}</div>` +
       `<div class="progress"><div class="progress-fill" style="width:${pct}%"></div></div>` +
-      `<div class="sc-empty-sub">You choose <b>where</b> each operator runs, and — for push-pull scoring — <b>which stream</b> it pushes. We compute the network cost and latency, then pit it against Kraken and four baselines.</div>` +
+      `<div class="sc-empty-sub">You choose <b>where</b> each subquery runs, and — for push-pull scoring — <b>which stream</b> it pushes. We compute the network cost and latency, then pit it against Kraken and four baselines.</div>` +
       stagePicker +
       `</div>`
     );
