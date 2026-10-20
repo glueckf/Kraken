@@ -107,16 +107,25 @@ function towerShape(cx: number, cy: number, r: number): string {
   );
 }
 
-function coralPetals(cx: number, cy: number, r: number): string {
-  // A ring of little petals around the source pods, standing in for coral/anemones.
+function eventPetals(cx: number, cy: number, r: number, letters: string[]): string {
+  // One petal per event type the source actually produces — each a small
+  // disc in that event's own color with its glyph in white on top (same
+  // "colored chip, white icon" language as the dependency pills elsewhere),
+  // arranged in a ring around the node so a source producing several event
+  // types (the common case — most leaves emit 2-4, not 1) shows all of them
+  // at a glance instead of one average/arbitrary color. Replaces the old
+  // fixed-count, uncolored decorative "coral" ring.
   let out = "";
-  const n = 5;
-  for (let i = 0; i < n; i++) {
+  const n = letters.length;
+  const petalR = r * 0.34;
+  letters.forEach((L, i) => {
     const a = (i / n) * Math.PI * 2 - Math.PI / 2;
-    const px = cx + Math.cos(a) * r * 0.94;
-    const py = cy + Math.sin(a) * r * 0.94;
-    out += `<circle class="coral-petal" cx="${px}" cy="${py}" r="${r * 0.32}"/>`;
-  }
+    const px = cx + Math.cos(a) * r * 0.95;
+    const py = cy + Math.sin(a) * r * 0.95;
+    out +=
+      `<circle class="evt-petal" cx="${px}" cy="${py}" r="${petalR}" fill="${glyphFor(L).color}"/>` +
+      eventIconGroup(L, px, py, petalR * 1.5, "#fff");
+  });
   return out;
 }
 
@@ -273,7 +282,9 @@ export function renderReef(scenario: Scenario, layout: Layout, subMeta: Map<stri
     const ariaPlaced = (atNode.get(n.id) || []).length
       ? `, holds ${(atNode.get(n.id) || []).length} operator(s)`
       : "";
-    const aria = `${n.is_cloud ? "König Cloud, the sink" : n.is_leaf ? "Reef source node " + n.id : "Watchtower " + n.id}${ariaPlaced}`;
+    const leafLetters = n.is_leaf ? Object.keys(n.events) : [];
+    const ariaEvents = leafLetters.length ? `, produces ${leafLetters.join(", ")}` : "";
+    const aria = `${n.is_cloud ? "König Cloud, the sink" : n.is_leaf ? "Reef source node " + n.id : "Watchtower " + n.id}${ariaPlaced}${ariaEvents}`;
 
     let shape: string;
     let cloudBox: CloudBox | null = null;
@@ -283,25 +294,11 @@ export function renderReef(scenario: Scenario, layout: Layout, subMeta: Map<stri
         `<image class="cloud-img" href="assets/kingcloud.png" x="${cloudBox.x}" y="${cloudBox.y}" ` +
         `width="${cloudBox.w}" height="${cloudBox.h}" preserveAspectRatio="xMidYMax meet"/>`;
     } else if (n.is_leaf) {
-      shape = `<circle class="node-dot" cx="${x}" cy="${y}" r="${r}"/>` + coralPetals(x, y, r);
+      shape = `<circle class="node-dot" cx="${x}" cy="${y}" r="${r}"/>` + eventPetals(x, y, r, leafLetters);
     } else {
       // A small foundation, not the tower itself — the old full-size circle
       // read as "the shape", with the tower as decoration on top of a ball.
       shape = `<circle class="node-dot" cx="${x}" cy="${y}" r="${r * 0.62}"/>` + towerShape(x, y, r);
-    }
-
-    // event pods for leaves (which message types they emit)
-    let events = "";
-    if (n.is_leaf) {
-      const letters = Object.keys(n.events);
-      const step = 20;
-      letters.forEach((L, i) => {
-        const ex = x + (i - (letters.length - 1) / 2) * step;
-        const ey = y + r + 14;
-        events +=
-          eventIconGroup(L, ex, ey, 15) +
-          `<text class="evt-lbl" x="${ex}" y="${ey + 15}">${L}</text>`;
-      });
     }
 
     // placed-subquery chips near the node
@@ -333,7 +330,6 @@ export function renderReef(scenario: Scenario, layout: Layout, subMeta: Map<stri
       ghost +
       shape +
       `<text class="node-lbl${n.is_cloud ? " on-isle" : ""}" x="${x}" y="${cloudBox ? cloudBox.y + cloudBox.h + 13 : y + 5}">${label}</text>` +
-      events +
       chips +
       `</g>`;
   }

@@ -29,8 +29,6 @@
   --sun: #ffe6a8;
   --tower-stroke: #8a6a4e;
   --tower-fill: #e4d3ab;
-  --coral-petal: #e0728a;
-  --coral-fill: #f5d3db;
   --scene-text: #f3fbfd; /* labels sit on the sea gradient, not the page bg — fixed for contrast in both themes */
   --scene-text-halo: rgba(8, 24, 32, 0.6);
 
@@ -67,8 +65,6 @@
     --sun: #ffd98a;
     --tower-stroke: #b89474;
     --tower-fill: #c9b78c;
-    --coral-petal: #e0728a;
-    --coral-fill: #e7b9c4;
   }
 }
 
@@ -139,15 +135,17 @@ body {
 .node:focus { outline: none; }
 .node-dot { fill: var(--node-fill); stroke: var(--node-stroke); stroke-width: 1.5; }
 .node.fog .node-dot { fill: var(--tower-fill); stroke: var(--tower-stroke); opacity: 0.55; }
-.node.leaf .node-dot { fill: var(--coral-fill); stroke: var(--coral-petal); }
-.coral-petal { fill: var(--coral-petal); opacity: 0.8; }
-.node .node-lbl, .node .evt-lbl {
+/* Neutral seabed base — color now comes entirely from the per-event petals
+ * (.evt-petal below), not a fixed node tint, since a source almost always
+ * produces several event types at once (rarely just one uniform color). */
+.node.leaf .node-dot { fill: var(--tower-fill); stroke: var(--tower-stroke); }
+.evt-petal { stroke: var(--surface); stroke-width: 1.5; }
+.node .node-lbl {
   fill: var(--scene-text); text-anchor: middle; font-weight: 600; pointer-events: none;
   paint-order: stroke fill; stroke: var(--scene-text-halo); stroke-width: 3px; stroke-linejoin: round;
 }
 .node .node-lbl { font-size: 15px; }
 .node .node-lbl.on-isle { font-size: 12.5px; }
-.node .evt-lbl { font-size: 13.5px; }
 .node.source .node-dot { stroke: var(--accent); stroke-width: 3; }
 .node:hover .node-dot { stroke: var(--accent); }
 .node:focus-visible .node-dot { stroke: var(--accent); stroke-width: 3; }

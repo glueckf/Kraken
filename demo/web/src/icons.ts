@@ -63,9 +63,12 @@ export function eventIconSvg(letter: string, size = 13): string {
   return `<svg class="evt-icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${g.shape}</svg>`;
 }
 
-/** A <g> fragment for use directly inside the reef's master <svg> (no nested <svg>). */
-export function eventIconGroup(letter: string, cx: number, cy: number, size: number): string {
+/** A <g> fragment for use directly inside the reef's master <svg> (no nested <svg>).
+ * `fill` defaults to the glyph's own color (for use directly against the open
+ * scene background); pass an override (e.g. white) when drawing on top of a
+ * same-colored chip/petal, where the glyph's own color would vanish. */
+export function eventIconGroup(letter: string, cx: number, cy: number, size: number, fill?: string): string {
   const g = glyphFor(letter);
   const s = size / 24;
-  return `<g class="evt-icon" transform="translate(${cx - size / 2} ${cy - size / 2}) scale(${s})" fill="${g.color}">${g.shape}</g>`;
+  return `<g class="evt-icon" transform="translate(${cx - size / 2} ${cy - size / 2}) scale(${s})" fill="${fill ?? g.color}">${g.shape}</g>`;
 }

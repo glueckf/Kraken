@@ -890,6 +890,41 @@ in the demo now. Two concrete asks:
     the forced/demo-only path, never Kraken's own search). Full writeup —
     including the superseded "two formulas disagree" hypothesis this entry
     originally pointed to — is in `ISSUES.md` (this repo).
+20. **Source nodes showed a uniform rose/pink circle regardless of which
+    event types they produce — DONE (2026-10-20).** User's own design idea:
+    replace the flat color with the symbol and color of the streams
+    themselves (e.g. yellow + star for E). Most leaves produce 2-4 event
+    types at once (confirmed by checking the exported topology: only 1 of 6
+    medium-reef leaves produces just one), so a single node-wide color never
+    fit the common case anyway. `eventPetals()` (was `coralPetals()`, a
+    fixed-5, uncolored decorative ring) in [reef.ts](web/src/reef.ts) now
+    draws one petal per event type the node *actually* produces — a small
+    disc filled with that event's own glyph color
+    (`glyphFor(letter).color`, the same palette already used for chips
+    elsewhere), with the glyph's icon in white on top (`eventIconGroup` in
+    [icons.ts](web/src/icons.ts) gained an optional `fill` override for
+    this — defaults to the glyph's own color for on-background use, white
+    when drawn on a same-colored chip/petal where that would vanish). The
+    node's own base circle (`.node-dot`) is now a neutral sand tone
+    (reusing the fog tower's `--tower-fill`/`--tower-stroke`, since color
+    now lives entirely in the petals) instead of the old fixed
+    `--coral-fill`/`--coral-petal` rose tones, which are removed (nothing
+    references them anymore). Also removed the now-redundant separate
+    icon+letter row that used to render below each leaf node — the ring
+    carries the same information directly on the node, so showing it twice
+    just added vertical space without adding information. Event info that
+    used to be visual-only now also reaches screen readers: node aria-labels
+    gained `, produces A, E` etc.
+
+    Verified live, not just visually: read the actual rendered `.evt-petal`
+    `fill` attributes via the DOM and cross-checked them against
+    `icons.ts`'s own `GLYPHS` palette (exact match, e.g. `#d9a41e` for E).
+    Spot-checked both density extremes by temporarily zooming the SVG
+    viewBox — the 1-event case (node 9, medium reef, `D` only) and the
+    5-event case (node 21, large/24-node reef, the densest node in any
+    scenario) both render legibly, petals evenly spaced, node id label
+    still readable at center. `tsc --noEmit` clean, `npm run build`
+    succeeded, no new console errors.
 
 ## Engine (research code, not demo) — flagged, not scoped
 
