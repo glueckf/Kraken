@@ -222,6 +222,17 @@ function renderStagePicker(state: AppState): string {
   return `<div class="stage-row" title="How Kraken balances cost (fewer messages) vs. latency (speed)">${buttons}</div>`;
 }
 
+/** Shared with main.ts, which watches for the moment this flips to true on a
+ * freshly-arrived official score to fire the win celebration (bubble burst)
+ * exactly once per win, not on every unrelated re-render (e.g. toggling
+ * reveal) while a win is already showing. */
+export function playerBeatsKraken(state: AppState): boolean {
+  const bl = state.effectiveBaselines;
+  const o = state.official;
+  if (!bl || !o) return false;
+  return o.norm.score <= bl.kraken.score + 1e-9;
+}
+
 export function renderScorecard(state: AppState): string {
   const sc = state.scenario;
   const bl = state.effectiveBaselines;
@@ -263,7 +274,7 @@ export function renderScorecard(state: AppState): string {
 
   const o = state.official;
   const krakenScore = bl.kraken.score;
-  const beatKraken = o.norm.score <= krakenScore + 1e-9;
+  const beatKraken = playerBeatsKraken(state);
   const beaten = STRAT_ORDER.filter((id) => id !== "kraken" && o.norm.score <= bl[id].score + 1e-9).length;
 
   const verdict = beatKraken
@@ -283,7 +294,7 @@ export function renderScorecard(state: AppState): string {
     `<div class="tiles">` +
     tile("Tuples moved", fmtCost(o.cost), deltaLabel(dCost, true), dCost <= 0) +
     tile("Latency (hops)", fmtLat(o.latency), deltaLabel(dLat, false), dLat <= 0) +
-    tile("Kraken score", o.norm.score.toFixed(3), `Kraken ${krakenScore.toFixed(3)}`, beatKraken) +
+    tile("Kraken score", o.norm.score.toFixed(3), `Kraken ${krakenScore.toFixed(3)}`, beatKraken, "krakenScoreTile") +
     `</div>`;
 
   // leaderboard: baselines + You, sorted by score asc
@@ -327,9 +338,9 @@ export function renderScorecard(state: AppState): string {
   );
 }
 
-function tile(label: string, value: string, sub: string, good: boolean): string {
+function tile(label: string, value: string, sub: string, good: boolean, id?: string): string {
   return (
-    `<div class="tile ${good ? "good" : "bad"}">` +
+    `<div class="tile ${good ? "good" : "bad"}"${id ? ` id="${id}"` : ""}>` +
     `<div class="tile-v">${value}</div>` +
     `<div class="tile-l">${label}</div>` +
     `<div class="tile-s">${sub}</div>` +

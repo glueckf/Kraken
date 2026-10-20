@@ -179,13 +179,44 @@ does.
 - Weave the "Hai-Alarm" fairy-tale framing into the actual UI copy (query
   picker, task description, info modal), not just the spoken talk — e.g.
   frame query selection as "which alarm are you hunting" rather than an
-  abstract `SEQ(...)` expression.
+  abstract `SEQ(...)` expression. **Deprioritized (2026-10-20)**: for a
+  staffed booth with a poster already carrying the story, this is lower
+  value than it looked in isolation — revisit only if the demo needs to run
+  unstaffed.
 - Add a tangible reward moment (short animation/sound) for beating Kraken —
   a bare score delta (0.342 vs 0.298) doesn't land emotionally for a lay
-  audience.
+  audience. **DONE (2026-10-20), visual only.** A short bubble-burst
+  animation rises from the "Kraken score" tile the moment a freshly-scored
+  placement beats (or ties) Kraken — `playerBeatsKraken()` in
+  [panel.ts](web/src/panel.ts) is the shared win check; `main.ts` tracks the
+  identity of the last-rendered `state.official` and fires `burstBubbles()`
+  only when a *new* result arrives and wins, not on every unrelated
+  re-render (e.g. toggling "Reveal Kraken's plan") while the same win is
+  still on screen — `rescore()` always constructs a fresh `official` object
+  per resolved result, so object identity alone is a reliable "this is new"
+  signal. Kept sound out of scope per the original open question (booth
+  audio is unpredictable) rather than building a toggle nobody asked for
+  yet. Self-cleaning (the overlay removes itself after 1.5s) and skipped
+  outright under `prefers-reduced-motion` rather than just disabling the
+  keyframes.
+
+  Verified with a `MutationObserver` probe against the real backend (not
+  just typecheck): the burst element is added the instant a winning score
+  lands and removed exactly 1.5s later; a second probe confirmed it does
+  **not** re-fire when toggling the reveal overlay on the same already-won
+  result. Also produced a real, not staged, win while testing: placing
+  `SEQ(B, D)` at Watchtower 1 and pushing only `B` (pulling the pricier `D`)
+  scores 1.28k vs. Kraken's own 1.62k for that exact placement — the
+  search-heuristic gap documented in item #18 ("I outperform Kraken") is a
+  genuine, repeatable way to trigger this for a booth visitor, not just a
+  contrived tie. `tsc --noEmit` clean, `npm run build` succeeded, no new
+  console errors.
 - Open question: accessibility for a diverse audience — German vs English UI
   copy, colorblind-safe palette check, mobile usability for a slam/QR-code
-  crowd.
+  crowd. **Deprioritized (2026-10-20)**: the booth is staffed and the
+  presenter is bilingual (DE/EN), so full i18n isn't worth the engineering
+  time for this pass — revisit only if visitors need to self-serve while
+  unattended.
 
 ## Visual, from Science Slam audience feedback (2026-09-04)
 

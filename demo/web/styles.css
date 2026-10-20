@@ -297,6 +297,29 @@ body {
 .tile.good .tile-s { color: var(--good); }
 .tile.bad .tile-s { color: var(--bad); }
 
+/* Win celebration: a one-off burst of bubbles rising from the Kraken-score
+ * tile, fired from main.ts the moment a freshly-scored placement beats
+ * Kraken (not on every re-render while that result is still on screen —
+ * see playerBeatsKraken in panel.ts). Purely decorative, so it's skipped
+ * outright under reduced motion rather than just disabling the keyframes. */
+#krakenScoreTile { position: relative; }
+.bubble-burst { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
+.bubble {
+  position: absolute; bottom: 4px; left: var(--bx, 50%);
+  width: var(--bs, 8px); height: var(--bs, 8px); border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, color-mix(in srgb, var(--sea-light) 85%, white 15%), var(--sea-mid) 75%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
+  opacity: 0;
+  animation: bubble-rise 1.1s ease-out forwards;
+  animation-delay: var(--bd, 0s);
+}
+@keyframes bubble-rise {
+  0% { transform: translate(-50%, 0) scale(0.5); opacity: 0; }
+  12% { opacity: 0.9; }
+  75% { opacity: 0.75; }
+  100% { transform: translate(calc(-50% + var(--dx, 0px)), -58px) scale(1.1); opacity: 0; }
+}
+
 .lb-title { font-size: 13.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft); margin: 4px 0 8px; }
 .lb-hint { text-transform: none; letter-spacing: 0; font-size: 12.5px; opacity: 0.85; }
 

@@ -2,9 +2,9 @@
 // panel sections and the reef; interactions use event delegation on stable
 // container elements (which persist across innerHTML updates).
 
-import { AppState } from "./state";
+import { AppState, type OfficialScore } from "./state";
 import { computeLayout, renderReef, type Layout, type ReefView } from "./reef";
-import { renderTopologyBar, renderQueryBar, renderTray, renderScorecard } from "./panel";
+import { renderTopologyBar, renderQueryBar, renderTray, renderScorecard, playerBeatsKraken } from "./panel";
 import { modalHtml } from "./modal";
 import type { Scenario } from "./types";
 
@@ -13,6 +13,12 @@ const $ = (id: string) => document.getElementById(id)!;
 const state = new AppState();
 let layout: Layout | null = null;
 let layoutFor: Scenario | null = null;
+// Identity of the last `state.official` we rendered, so the win-celebration
+// bubble burst fires exactly once per freshly-arrived win — not again on an
+// unrelated re-render (e.g. toggling reveal) while the same win is still on
+// screen. `rescore()` always creates a brand-new object when a result
+// resolves, so identity alone is a reliable "this is new" signal.
+let lastOfficial: OfficialScore | null = null;
 
 function reefView(): ReefView {
   return {
@@ -48,6 +54,36 @@ function render(): void {
   $("tray").innerHTML = renderTray(state);
   $("scorecard").innerHTML = renderScorecard(state);
   status.textContent = state.scenario.title;
+
+  if (state.official !== lastOfficial) {
+    lastOfficial = state.official;
+    if (state.official && playerBeatsKraken(state)) burstBubbles();
+  }
+}
+
+const REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+/** Win celebration: a short burst of bubbles rising from the Kraken-score
+ * tile. Self-cleaning (removes its own overlay after the animation), and a
+ * no-op under reduced motion rather than spawning motionless elements. */
+function burstBubbles(): void {
+  if (REDUCED_MOTION.matches) return;
+  const tile = document.getElementById("krakenScoreTile");
+  if (!tile) return;
+  const burst = document.createElement("div");
+  burst.className = "bubble-burst";
+  const n = 12;
+  for (let i = 0; i < n; i++) {
+    const b = document.createElement("span");
+    b.className = "bubble";
+    b.style.setProperty("--bx", `${10 + Math.random() * 80}%`);
+    b.style.setProperty("--bs", `${5 + Math.random() * 7}px`);
+    b.style.setProperty("--dx", `${(Math.random() - 0.5) * 36}px`);
+    b.style.setProperty("--bd", `${Math.random() * 0.35}s`);
+    burst.appendChild(b);
+  }
+  tile.appendChild(burst);
+  setTimeout(() => burst.remove(), 1500);
 }
 
 // ---- delegated interaction helpers ----
