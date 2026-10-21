@@ -19,7 +19,13 @@ const GLYPHS: Glyph[] = [
   // B — shadow (an unidentified shape underwater)
   {
     name: "shadow",
-    color: "#6f5bd1",
+    // Darkened/pushed further toward violet from the original #6f5bd1 --
+    // simulated against protanopia/deuteranopia/tritanopia, that color sat
+    // within ~0.07-0.10 (normalized RGB) of D's blue, closer than any pair
+    // in the reference Okabe-Ito colorblind-safe palette ever gets. This
+    // value keeps >=0.28 separation from every other glyph under all three
+    // simulated types -- see BACKLOG.md for the full before/after check.
+    color: "#3d2c96",
     shape: `<ellipse cx="12" cy="15.5" rx="8.4" ry="4"/><circle cx="12" cy="8.4" r="3.2"/>`,
   },
   // C — fleeing fish
@@ -31,13 +37,21 @@ const GLYPHS: Glyph[] = [
   // D — bubble trail
   {
     name: "bubbles",
-    color: "#3b9fd8",
+    // Paired change with B above -- see that comment.
+    color: "#2d7fd2",
     shape: `<circle cx="7.5" cy="17" r="2.6"/><circle cx="14" cy="10.5" r="3.4"/><circle cx="18.2" cy="6.2" r="1.7"/>`,
   },
   // E — starfish
   {
     name: "starfish",
-    color: "#d9a41e",
+    // Darkened from the original #d9a41e -- unrelated to the colorblind
+    // check above, this one was a plain WCAG contrast gap: every use draws
+    // a white icon directly on top of this color (petals, the event
+    // legend, dependency chips), and the original gold only cleared
+    // 2.26:1 against white, well under the 3:1 floor for graphical
+    // objects. This clears 3.58:1 while keeping its separation from every
+    // other glyph under simulated colorblindness.
+    color: "#a58312",
     shape: `<path d="M12 1.5l2.4 6.6 6.6 0.9-5 4.6 1.4 6.9-5.4-3.7-5.4 3.7 1.4-6.9-5-4.6 6.6-0.9z"/>`,
   },
   // F — spiral shell

@@ -235,9 +235,9 @@ does.
   copy, colorblind-safe palette check, mobile usability for a slam/QR-code
   crowd. **German UI — DONE (2026-10-21, revisited).** Deprioritized earlier
   the same week on the assumption the bilingual presenter would bridge any
-  gap; the user asked for it anyway, so it shipped — see item #21. The other
-  two sub-items (colorblind palette check, mobile usability) remain open,
-  unscoped.
+  gap; the user asked for it anyway, so it shipped — see item #21.
+  **Colorblind palette check — DONE (2026-10-21), see item #22.** Mobile
+  usability remains open, unscoped.
 
 ## Visual, from Science Slam audience feedback (2026-09-04)
 
@@ -993,6 +993,51 @@ in the demo now. Two concrete asks:
     item started. Confirmed the language choice survives a full page
     reload (`localStorage`). `tsc --noEmit` clean, `npm run build`
     succeeded, no new console errors.
+22. **Colorblind-safe palette check — DONE (2026-10-21).** Didn't eyeball
+    this — wrote a small simulation script (scratchpad, not committed:
+    simplified Brettel-style protanopia/deuteranopia/tritanopia matrices
+    applied in linear RGB, then Euclidean distance between the simulated
+    colors) and ran it against the 6-color event-glyph palette
+    (`icons.ts`'s `GLYPHS` — A-F, each already paired with its own icon
+    shape for redundancy almost everywhere **except** the Kraken-plan
+    reveal overlay, which colors topology edges by event type with no icon
+    on the line itself — the one genuinely color-only context in the app).
+    Calibrated the "is this actually bad" threshold against the published,
+    peer-reviewed-adjacent Okabe-Ito colorblind-safe palette run through
+    the same script (its own worst internal pair scores ~0.105) rather
+    than picking an arbitrary cutoff.
+
+    Found one real problem: B (shadow/purple, `#6f5bd1`) vs D
+    (bubbles/blue, `#3b9fd8`) scored 0.073-0.096 under protanopia/
+    deuteranopia — meaningfully worse than Okabe-Ito's own floor, i.e. a
+    genuine collision, not a false alarm. Fixed by retuning only those two
+    (`B` → `#3d2c96`, `D` → `#2d7fd2`), keeping A/C/E/F untouched; the new
+    worst-case pair across the whole 6-color set (E vs F, unrelated to the
+    fix, always borderline) sits at 0.120 — at or above Okabe-Ito's own
+    floor. Also found and fixed an unrelated plain WCAG contrast gap while
+    checking: E (starfish/gold, `#d9a41e`) only cleared 2.26:1 against
+    white, well under the 3:1 floor for graphical objects — every use of
+    this palette draws a white icon directly on a colored circle (reef
+    petals, the event legend, dependency chips), so a low-contrast
+    background makes the icon itself hard to see, independent of
+    colorblindness. Darkened to `#a58312` (3.58:1).
+
+    The separate, near-duplicate `PALETTE` array in `state.ts` (subquery
+    tag colors — same idea, slightly different drifted hex values) had the
+    *same* purple/blue collision plus its own orange/gold one (`#e8613c`
+    vs `#d99a1e`, 0.055). Rather than re-deriving a second palette,
+    replaced it with the same verified 6-color set (reordered to match its
+    own existing slot order) — removes the accidental drift between two
+    palettes meant to do the same job, not just the immediate collisions.
+
+    Verified live, not just computed: read the actual rendered
+    `.plan-edge` `stroke` values off the DOM in the reveal overlay (the
+    one color-only context) and confirmed the new B/D hex values render
+    distinctly; visually inspected the reef petals and event legend at
+    both the 1-event and 5-event density extremes from the earlier petal
+    work and confirmed the white starfish icon is now clearly legible
+    against its darker gold background. `tsc --noEmit` clean, `npm run
+    build` succeeded, no console errors.
 
 ## Engine (research code, not demo) — flagged, not scoped
 

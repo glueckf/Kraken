@@ -13,7 +13,12 @@ import type { Baselines, KrakenStage, Manifest, Placement, Scenario, ScoreResult
 import type { SubMeta } from "./reef";
 import { t } from "./i18n";
 
-const PALETTE = ["#e8613c", "#2f9e8f", "#6f5bd1", "#d99a1e", "#c0497e", "#3b7dd8"];
+// Same verified colorblind-safe set as icons.ts's GLYPHS (reordered to this
+// array's own existing slot order) -- this used to be a separately-drifted
+// near-duplicate palette with its own, worse collisions (orange/gold and
+// purple/blue both sat below any acceptable simulated separation). See
+// icons.ts's GLYPHS comment and BACKLOG.md for the full check.
+const PALETTE = ["#d9542f", "#2f9e8f", "#3d2c96", "#a58312", "#c0497e", "#2d7fd2"];
 
 /** Sentinel `pushChoice` value meaning "push every dependency, pull nothing" —
  * a deliberate, explicit choice distinct from picking one specific dep to
