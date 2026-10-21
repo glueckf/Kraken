@@ -116,6 +116,7 @@ interface Strings {
   tryAgain: string;
 
   // ---- reef aria labels ----
+  cloudName: string;
   cloudSink: string;
   watchtower: (id: number) => string;
   sourceNode: (id: number) => string;
@@ -217,7 +218,8 @@ const EN: Strings = {
   hidePlan: "Hide Kraken's plan",
   tryAgain: "Try again",
 
-  cloudSink: "König Cloud, the sink",
+  cloudName: "King Cloud",
+  cloudSink: "King Cloud, the sink",
   watchtower: (id) => `Watchtower ${id}`,
   sourceNode: (id) => `Reef source node ${id}`,
   holdsSubqueries: (n) => `, holds ${n} subquer${n === 1 ? "y" : "ies"}`,
@@ -231,7 +233,7 @@ const EN: Strings = {
   noPathFrom: (node, dep) =>
     `n${node} has no path from ${dep} — a subquery needs to sit above (or at) all of its inputs in the network.`,
   autoPlacedAtCloud: (dep) =>
-    `Placed at König Cloud automatically — its input ${dep} is already there, and no other node can reach it.`,
+    `Placed at King Cloud automatically — its input ${dep} is already there, and no other node can reach it.`,
 
   modalTitle: "Kraken — subquery placement",
   modalLede:
@@ -325,6 +327,7 @@ const DE: Strings = {
   hidePlan: "Kraken-Plan verbergen",
   tryAgain: "Nochmal versuchen",
 
+  cloudName: "König Cloud",
   cloudSink: "König Cloud, das Ziel",
   watchtower: (id) => `Wachturm ${id}`,
   sourceNode: (id) => `Riff-Quellknoten ${id}`,

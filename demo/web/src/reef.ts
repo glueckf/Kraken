@@ -301,7 +301,7 @@ export function renderReef(scenario: Scenario, layout: Layout, subMeta: Map<stri
       .filter(Boolean)
       .join(" ");
 
-    const label = n.is_cloud ? "König Cloud" : `n${n.id}`;
+    const label = n.is_cloud ? t().cloudName : `n${n.id}`;
     const ariaPlaced = (atNode.get(n.id) || []).length ? t().holdsSubqueries((atNode.get(n.id) || []).length) : "";
     const leafLetters = n.is_leaf ? Object.keys(n.events) : [];
     const ariaEvents = leafLetters.length ? t().producesEvents(leafLetters.join(", ")) : "";

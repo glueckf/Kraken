@@ -174,7 +174,7 @@ export function renderTray(state: AppState): string {
         `<span class="tag" style="background:${m.color}">${m.tag}${m.isRoot ? "★" : ""}</span>` +
         `<span class="tray-body"><span class="tray-name">${titleWithIcons(name)}</span>` +
         `<span class="tray-inputs">${t().needs} ${inputs}</span></span>` +
-        `<span class="tray-loc"${autoReason ? ` title="${escapeHtml(autoReason)}"` : ""}>${placed ? (node === 0 ? "👑 König Cloud" : "n" + node) : "—"}${autoReason ? ` <span class="tray-auto-badge">${t().autoBadge}</span>` : ""}</span>` +
+        `<span class="tray-loc"${autoReason ? ` title="${escapeHtml(autoReason)}"` : ""}>${placed ? (node === 0 ? `👑 ${t().cloudName}` : "n" + node) : "—"}${autoReason ? ` <span class="tray-auto-badge">${t().autoBadge}</span>` : ""}</span>` +
         `</div>` +
         (autoReason ? `<div class="tray-note">${escapeHtml(autoReason)}</div>` : "");
       return row + renderPushPullRow(state, name, proj);
