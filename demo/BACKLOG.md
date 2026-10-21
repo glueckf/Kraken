@@ -236,8 +236,10 @@ does.
   crowd. **German UI — DONE (2026-10-21, revisited).** Deprioritized earlier
   the same week on the assumption the bilingual presenter would bridge any
   gap; the user asked for it anyway, so it shipped — see item #21.
-  **Colorblind palette check — DONE (2026-10-21), see item #22.** Mobile
-  usability remains open, unscoped.
+  **Colorblind palette check — DONE (2026-10-21), see item #22.**
+  **Mobile/touch usability — DONE (2026-10-21), see item #23**, rescoped
+  mid-check to the actual booth hardware (a 32" touchscreen and a 55"
+  non-touch display) rather than a visitor's own phone.
 
 ## Visual, from Science Slam audience feedback (2026-09-04)
 
@@ -1038,6 +1040,73 @@ in the demo now. Two concrete asks:
     work and confirmed the white starfish icon is now clearly legible
     against its darker gold background. `tsc --noEmit` clean, `npm run
     build` succeeded, no console errors.
+23. **Mobile/touch usability — DONE (2026-10-21).** Started as a generic
+    "QR-code crowd on their own phones" check; the user clarified mid-task
+    that the actual booth hardware is **a 32" touchscreen (keyboard +
+    mouse available) and a 55" non-touch display on a stand** — no
+    visitor-phone scenario at all. Kept the phone-width fix already found
+    (real bug, costs nothing to keep) and shifted the rest of the work to
+    the hardware that's actually there.
+
+    **Phone-width stacking (kept, not the main ask).** At 375px wide the
+    existing two-column grid (`display: grid; grid-template-columns:
+    minmax(0, 2fr) minmax(280px, ...)`) gives the panel its 280px floor
+    and leaves the reef — the one interactive element the whole demo is
+    built around — a measured **29x19px** box, nowhere close to tappable.
+    Added an `@media (max-width: 600px)` block in
+    [styles.css](web/styles.css) that stacks `.stage` into a column (reef
+    full-width on top, panel below), lets the page scroll naturally
+    instead of clipping each half to a fixed-height row, and hides the
+    header tagline (doesn't fit next to the brand + controls at that
+    width, and the task is self-explanatory once the reef is visible).
+    Reef measured 355x260px after the fix — individually tappable nodes
+    again. Doesn't affect the booth hardware (see below) but is a real fix
+    for anyone who does open this on a phone, e.g. if a QR code ever goes
+    up, so left in.
+
+    **Touch-target sizing on the actual booth layout (the real ask).** The
+    32" touchscreen runs the normal desktop grid, not the phone
+    breakpoint — reef nodes there measure a comfortable 42-61px across
+    realistic resolutions (1366x768 up to 1920x1080), no fix needed. The
+    panel's own controls were a different story: fixed padding/font-size
+    that doesn't scale with viewport, measured well under the ~44px touch
+    target guideline regardless of resolution —
+    **`.pp-chip`/`.pp-chip-all`** (the push/pull decision itself, the one
+    control every multi-dependency subquery requires a tap on) at 26px
+    tall, **`.stage-btn`** (Fast/Balanced/Cheap) at 28px, **`.icon-btn`**
+    (About/language toggle) at 30x30px, **`.qpill`/`.tcard`** (query/
+    topology pickers) at 39-40px, and the reef's own SVG-drawn
+    placed-subquery badge (the control used to pick a subquery back up)
+    at roughly 33x28px screen size. Bumped all of them via padding/
+    min-height (`.pp-chip` and `.stage-btn` land at ~38-40px rather than a
+    full 44px deliberately, to avoid a push/pull row with 5-6 chips —
+    `AND_nested` — eating most of the panel's height) and widened the
+    reef chip's own SVG dimensions in [reef.ts](web/src/reef.ts) (26x22 →
+    32x28 viewBox units, so it scales with the reef like node radii
+    already do). Confirmed no hover-only functionality anywhere that a
+    touchscreen (no real hover state) would lose — checked every `title=`
+    attribute in the codebase and found each one redundant with text
+    already visible elsewhere (e.g. `tray-loc`'s auto-placement-reason
+    tooltip duplicates the always-visible `.tray-note` div below it), not
+    the sole source of information.
+
+    **55" non-touch display.** Not interactive, so none of the above
+    applies to it directly — it runs the same desktop layout as the
+    touchscreen (same breakpoints, same minimum width expected), just
+    physically larger, which standard CSS scaling already handles without
+    special-casing.
+
+    Verified live via actual `getBoundingClientRect()` measurements, not
+    visual guessing, at both 1920x1080 and 1366x768: every adjusted
+    control confirmed at its new size (`.pp-chip` 26→38px,
+    `.stage-btn` 28→40px, `.icon-btn` 30→40px, `.qpill`/`.tcard` to a flat
+    44px, reef chip 33x28→41x35px). Re-checked `AND_nested` (the
+    densest query, up to 5 dependency chips in one push/pull row) at
+    1920x1080 for layout overflow after the chip padding increase — none
+    (`scrollWidth` never exceeds `clientWidth` anywhere in the panel).
+    Re-verified the phone stacking fix still holds after the touch-target
+    changes landed on top of it. `tsc --noEmit` clean, `npm run build`
+    succeeded, no console errors.
 
 ## Engine (research code, not demo) — flagged, not scoped
 

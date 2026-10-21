@@ -94,8 +94,11 @@ body {
 .top-right { display: flex; align-items: center; gap: 12px; }
 .status { font-size: 12px; color: var(--ink-soft); font-variant: tabular-nums; }
 .icon-btn {
+  /* 40px, not the 44px touch-target guideline, to stay visually in scale
+     with the rest of a fairly compact topbar -- still a meaningful jump
+     from the original 30px for the booth's touchscreen. */
   border: 1px solid var(--line-strong); background: var(--panel-2); color: var(--ink-soft);
-  width: 30px; height: 30px; border-radius: 8px; cursor: pointer; font-size: 14px;
+  width: 40px; height: 40px; border-radius: 9px; cursor: pointer; font-size: 14px;
 }
 .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
 .lang-btn { font-size: 11.5px; font-weight: 700; letter-spacing: 0.02em; }
@@ -179,7 +182,7 @@ body {
 .qpill {
   flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
   background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px;
-  padding: 9px 6px; cursor: pointer; color: var(--ink);
+  padding: 9px 6px; min-height: 44px; cursor: pointer; color: var(--ink);
 }
 .qpill:hover { border-color: var(--line-strong); }
 .qpill.on { border-color: var(--accent); background: var(--accent-soft); }
@@ -198,7 +201,7 @@ body {
 .tcard {
   flex: 1; display: flex; align-items: baseline; justify-content: center; gap: 6px;
   background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px;
-  padding: 9px 8px; cursor: pointer; color: var(--ink); min-width: 0;
+  padding: 9px 8px; min-height: 44px; cursor: pointer; color: var(--ink); min-width: 0;
 }
 .tcard:hover { border-color: var(--line-strong); }
 .tcard.on { border-color: var(--accent); background: var(--accent-soft); }
@@ -246,8 +249,14 @@ body {
 }
 .pp-label { font-size: 12px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.05em; margin-right: 2px; }
 .pp-chip {
+  /* Padding bumped (was 4px 7px, ~26px tall) for the booth's touchscreen --
+     this is the push/pull decision itself, the one control every subquery
+     with 2+ decidable deps requires a tap on, so it's the last place to
+     leave undersized. ~40px tall now, short of the 44px guideline only to
+     avoid ballooning a row that can hold 5-6 chips (AND_nested) into most
+     of the panel's height. */
   display: inline-flex; align-items: center; gap: 3px; border: 1px solid var(--line-strong);
-  background: var(--panel-2); color: var(--ink); border-radius: 7px; padding: 4px 7px;
+  background: var(--panel-2); color: var(--ink); border-radius: 8px; padding: 10px 10px;
   cursor: pointer; font-size: 13.5px;
 }
 .pp-chip:hover { border-color: var(--accent); }
@@ -337,7 +346,7 @@ body {
 .stage-row { display: flex; align-items: center; gap: 4px; margin-bottom: 10px; }
 .stage-btn {
   flex: 1; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px;
-  padding: 6px 4px; font-size: 11.5px; font-weight: 600; color: var(--ink); cursor: pointer;
+  padding: 6px 4px; min-height: 40px; font-size: 11.5px; font-weight: 600; color: var(--ink); cursor: pointer;
   min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .stage-btn:hover { border-color: var(--line-strong); }
@@ -368,7 +377,7 @@ body {
 .plan-swatch.pull { background: repeating-linear-gradient(90deg, var(--ink-soft) 0 4px, transparent 4px 6px); }
 
 .sc-actions { display: flex; gap: 8px; margin-top: 10px; }
-.btn { flex: 1; border: 1px solid var(--accent); border-radius: 9px; padding: 10px; font-size: 13.5px; font-weight: 600; cursor: pointer; background: var(--accent); color: #fff; }
+.btn { flex: 1; border: 1px solid var(--accent); border-radius: 9px; padding: 10px; min-height: 44px; font-size: 13.5px; font-weight: 600; cursor: pointer; background: var(--accent); color: #fff; }
 .btn:hover { filter: brightness(1.05); }
 .btn.ghost { background: transparent; border-color: var(--line-strong); color: var(--ink); }
 .btn.ghost:hover { border-color: var(--accent); color: var(--accent); }
@@ -398,4 +407,22 @@ body {
 }
 @media (max-width: 720px) {
   .stage { grid-template-columns: minmax(0, 1.4fr) minmax(250px, 310px); }
+}
+/* True phone widths: the two-column grid above still assumes the panel can
+   keep a >=250px-wide lane next to the reef -- on an actual phone that
+   leaves the reef only a sliver (measured ~29x19px at 375px wide, i.e. the
+   one interactive element the whole demo is built around becomes
+   untappable). Stack instead: reef full-width on top at a usable height,
+   panel below, whole page scrolls naturally rather than each half clipping
+   its own content to a fixed viewport-height row. */
+@media (max-width: 600px) {
+  body { overflow-y: auto; overflow-x: hidden; }
+  .stage {
+    display: flex; flex-direction: column; flex: none; height: auto; min-height: 0;
+    padding: 10px;
+  }
+  .reef-wrap { width: 100%; max-height: none; align-self: stretch; min-height: 260px; }
+  .panel { overflow-y: visible; max-height: none; }
+  .topbar { flex-wrap: wrap; row-gap: 6px; padding: 8px 14px; }
+  .tag { display: none; } /* the one-line pitch doesn't fit next to the brand + controls at this width, and the task itself is self-explanatory once the reef is visible */
 }

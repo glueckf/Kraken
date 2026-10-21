@@ -322,17 +322,20 @@ export function renderReef(scenario: Scenario, layout: Layout, subMeta: Map<stri
       shape = `<circle class="node-dot" cx="${x}" cy="${y}" r="${r * 0.62}"/>` + towerShape(x, y, r);
     }
 
-    // placed-subquery chips near the node
+    // placed-subquery chips near the node -- the control a player taps to
+    // pick a placed subquery back up. Sized up from the original 26x22 for
+    // the booth's touchscreen, same reasoning as the push/pull chips.
     const placed = atNode.get(n.id) || [];
     let chips = "";
+    const chipH = 28;
     placed.forEach((sub, i) => {
       const m = subMeta.get(sub)!;
-      const cw = 26;
+      const cw = 32;
       const cx = x - ((placed.length - 1) * (cw + 4)) / 2 + i * (cw + 4);
-      const cy = y - r - 14;
+      const cy = y - r - chipH / 2 - 3;
       chips +=
         `<g class="chip" data-sub="${encodeURIComponent(sub)}" tabindex="0" role="button" aria-label="${t().subqueryChipAria(m.tag, n.id)}">` +
-        `<rect x="${cx - cw / 2}" y="${cy - 11}" rx="6" width="${cw}" height="22" fill="${m.color}"/>` +
+        `<rect x="${cx - cw / 2}" y="${cy - chipH / 2}" rx="7" width="${cw}" height="${chipH}" fill="${m.color}"/>` +
         `<text class="chip-tx" x="${cx}" y="${cy + 4}">${m.tag}${m.isRoot ? "★" : ""}</text>` +
         `</g>`;
     });
