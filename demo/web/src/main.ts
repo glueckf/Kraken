@@ -6,6 +6,7 @@ import { AppState, type OfficialScore } from "./state";
 import { computeLayout, renderReef, type Layout, type ReefView } from "./reef";
 import { renderTopologyBar, renderQueryBar, renderTray, renderScorecard, playerBeatsKraken } from "./panel";
 import { modalHtml } from "./modal";
+import { getLang, setLang, onLangChange, t } from "./i18n";
 import type { Scenario } from "./types";
 
 const $ = (id: string) => document.getElementById(id)!;
@@ -29,6 +30,21 @@ function reefView(): ReefView {
   };
 }
 
+/** Chrome that only depends on the current language, not app state (page
+ * title, tagline, button labels) -- applied once at startup and again on
+ * every language switch, not on every render (nothing here changes with
+ * placement/scoring). */
+function applyStaticI18n(): void {
+  document.title = t().pageTitle;
+  document.querySelector('meta[name="description"]')?.setAttribute("content", t().metaDescription);
+  document.querySelector(".tag")!.textContent = t().tagline;
+  const langBtn = $("langBtn");
+  langBtn.textContent = t().langToggleLabel;
+  langBtn.setAttribute("aria-label", t().langToggleAria);
+  $("infoBtn").setAttribute("aria-label", t().aboutBtn);
+  $("reefWrap").setAttribute("aria-label", t().networkRegionAria);
+}
+
 function render(): void {
   const status = $("status");
   if (state.error) {
@@ -36,7 +52,7 @@ function render(): void {
     return;
   }
   if (!state.scenario) {
-    $("reef").innerHTML = `<div class="loading">Loading…</div>`;
+    $("reef").innerHTML = `<div class="loading">${t().loading}</div>`;
     return;
   }
   // Keyed on object identity, not scenario_id (not unique across topologies —
@@ -152,6 +168,8 @@ function wire(): void {
   document.addEventListener("keydown", (e) => {
     if ((e as KeyboardEvent).key === "Escape") closeModal();
   });
+
+  $("langBtn").addEventListener("click", () => setLang(getLang() === "en" ? "de" : "en"));
 }
 
 function trayActivate(target: EventTarget | null): void {
@@ -194,6 +212,12 @@ function closeModal(): void {
 }
 
 state.subscribe(render);
+onLangChange(() => {
+  applyStaticI18n();
+  render();
+  if (!$("modal").hidden) openModal(); // re-render its content in the new language
+});
 wire();
+applyStaticI18n();
 render();
 state.init();

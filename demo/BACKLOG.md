@@ -233,10 +233,11 @@ does.
   console errors.
 - Open question: accessibility for a diverse audience — German vs English UI
   copy, colorblind-safe palette check, mobile usability for a slam/QR-code
-  crowd. **Deprioritized (2026-10-20)**: the booth is staffed and the
-  presenter is bilingual (DE/EN), so full i18n isn't worth the engineering
-  time for this pass — revisit only if visitors need to self-serve while
-  unattended.
+  crowd. **German UI — DONE (2026-10-21, revisited).** Deprioritized earlier
+  the same week on the assumption the bilingual presenter would bridge any
+  gap; the user asked for it anyway, so it shipped — see item #21. The other
+  two sub-items (colorblind palette check, mobile usability) remain open,
+  unscoped.
 
 ## Visual, from Science Slam audience feedback (2026-09-04)
 
@@ -949,6 +950,49 @@ in the demo now. Two concrete asks:
     petal work above — the legend is a sighted-only convenience, not a new
     source of truth. `tsc --noEmit` clean, `npm run build` succeeded, no new
     console errors.
+21. **German UI — DONE (2026-10-21).** Also caught and fixed one remaining
+    English "operator" the user spotted in the header tagline while
+    reviewing — a follow-up sweep found it wasn't alone: the page
+    title/meta, the "About this demo" modal copy, three reef aria-labels,
+    and two placement-error messages still said "operator" despite the
+    earlier panel-only sweep (`bfdb987`).
+
+    New `i18n.ts`: a `Lang` flag (`"en" | "de"`), detected from
+    `navigator.language` and sticky via `localStorage` across reloads (so
+    switching topology/query mid-session never resets it), plus a `t()`
+    accessor returning either a flat string or a small format function per
+    entry (interpolation and pluralization genuinely differ between the
+    languages — German's noun pluralization isn't just "add an s", and word
+    order shifts in several of the longer sentences). No framework, no
+    build-time string extraction — deliberately, for a ~50-string app.
+    Every UI-building function (`panel.ts`, `reef.ts`, `modal.ts`,
+    `state.ts`'s error/auto-placement messages, `main.ts`'s static chrome)
+    now reads through `t()` instead of inlining English. A toggle button
+    (`#langBtn`, top-right next to "About this demo") flips it;
+    `onLangChange` triggers a full re-render plus a few static DOM
+    updates that don't go through the normal render path (`document.title`,
+    the meta description, the header tagline, button `aria-label`s) and
+    re-opens the info modal if it's currently showing, so its content
+    doesn't go stale mid-read. Query headlines (item #2's "Crab signal" /
+    "Shark alarm" / etc.) got their own German set — "Hai-Alarm" for the
+    shark query deliberately echoes the Gamification section's own
+    "Hai-Alarm" fairy-tale phrase for continuity. Translated the German
+    copy directly rather than drafting English-first and asking for
+    approval on every string (as was done for the query headlines) — the
+    user can read and correct it directly, same as they did with "crab
+    signal" → "Crab signal" earlier.
+
+    Verified live, not just typechecked: drove the full flow in German
+    (place a subquery, make a push/pull call, reach the scored
+    leaderboard, reveal Kraken's plan, open the info modal — read via the
+    accessibility tree, not just a screenshot, to also catch aria-label
+    translations on the reef nodes/chips) end to end, then toggled back to
+    English mid-session and confirmed app state survived the switch
+    untouched (same placement, same score, same reveal state — only the
+    text changed) and the English text matched what was there before this
+    item started. Confirmed the language choice survives a full page
+    reload (`localStorage`). `tsc --noEmit` clean, `npm run build`
+    succeeded, no new console errors.
 
 ## Engine (research code, not demo) — flagged, not scoped
 

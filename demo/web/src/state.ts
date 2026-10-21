@@ -11,6 +11,7 @@ import { Engine } from "./engine";
 import { refinePushPull, backendConfigured, type PushPullResult } from "./backend";
 import type { Baselines, KrakenStage, Manifest, Placement, Scenario, ScoreResult, NormPoint, TopologyEntry } from "./types";
 import type { SubMeta } from "./reef";
+import { t } from "./i18n";
 
 const PALETTE = ["#e8613c", "#2f9e8f", "#6f5bd1", "#d99a1e", "#c0497e", "#3b7dd8"];
 
@@ -91,7 +92,7 @@ export class AppState {
       this.topologyId = defaultTopo.id;
       await this.loadScenario(defaultTopo.scenarios[0].id);
     } catch (e) {
-      this.error = `Failed to load scenarios: ${String(e)}`;
+      this.error = t().loadScenariosFailed(String(e));
       this.loading = false;
       this.emit();
     }
@@ -154,7 +155,7 @@ export class AppState {
       // auto-select the first (deepest-dependency) subquery to guide the user
       this.activeSubquery = scenario.processing_order[0] ?? null;
     } catch (e) {
-      this.error = `Failed to load scenario ${id}: ${String(e)}`;
+      this.error = t().loadScenarioFailed(id, String(e));
     } finally {
       this.loading = false;
       this.emit();
@@ -256,17 +257,17 @@ export class AppState {
     const proj = sc.projections.find((p) => p.name === subqueryName);
     if (!proj) return null;
     const reach = this.descendants.get(node);
-    if (!reach) return `Unknown node n${node}.`;
+    if (!reach) return t().unknownNode(node);
     for (const dep of proj.deps) {
       const producers = sc.event_map.producers[dep];
       if (producers) {
         if (!producers.every((p) => reach.has(p))) {
-          return `n${node} doesn't reach every source of ${dep} — a subquery needs the complete stream, and events only flow upward from where they're produced. Check which nodes sit downstream of n${node}.`;
+          return t().unreachableSource(node, dep);
         }
       } else {
         const depNode = this.placement[dep];
         if (depNode === undefined || !reach.has(depNode)) {
-          return `n${node} has no path from ${dep} — a subquery needs to sit above (or at) all of its inputs in the network.`;
+          return t().noPathFrom(node, dep);
         }
       }
     }
@@ -345,8 +346,7 @@ export class AppState {
         );
         if (forcingDep) {
           this.placement[name] = 0;
-          this.autoPlacedReason[name] =
-            `Placed at König Cloud automatically — its input ${forcingDep} is already there, and no other node can reach it.`;
+          this.autoPlacedReason[name] = t().autoPlacedAtCloud(forcingDep);
           changed = true;
         }
       }

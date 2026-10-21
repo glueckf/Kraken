@@ -5,6 +5,7 @@
 
 import type { Scenario } from "./types";
 import { eventIconGroup, glyphFor } from "./icons";
+import { t } from "./i18n";
 
 export interface SubMeta {
   idx: number;
@@ -301,12 +302,10 @@ export function renderReef(scenario: Scenario, layout: Layout, subMeta: Map<stri
       .join(" ");
 
     const label = n.is_cloud ? "König Cloud" : `n${n.id}`;
-    const ariaPlaced = (atNode.get(n.id) || []).length
-      ? `, holds ${(atNode.get(n.id) || []).length} subquer${(atNode.get(n.id) || []).length === 1 ? "y" : "ies"}`
-      : "";
+    const ariaPlaced = (atNode.get(n.id) || []).length ? t().holdsSubqueries((atNode.get(n.id) || []).length) : "";
     const leafLetters = n.is_leaf ? Object.keys(n.events) : [];
-    const ariaEvents = leafLetters.length ? `, produces ${leafLetters.join(", ")}` : "";
-    const aria = `${n.is_cloud ? "König Cloud, the sink" : n.is_leaf ? "Reef source node " + n.id : "Watchtower " + n.id}${ariaPlaced}${ariaEvents}`;
+    const ariaEvents = leafLetters.length ? t().producesEvents(leafLetters.join(", ")) : "";
+    const aria = `${n.is_cloud ? t().cloudSink : n.is_leaf ? t().sourceNode(n.id) : t().watchtower(n.id)}${ariaPlaced}${ariaEvents}`;
 
     let shape: string;
     let cloudBox: CloudBox | null = null;
@@ -332,7 +331,7 @@ export function renderReef(scenario: Scenario, layout: Layout, subMeta: Map<stri
       const cx = x - ((placed.length - 1) * (cw + 4)) / 2 + i * (cw + 4);
       const cy = y - r - 14;
       chips +=
-        `<g class="chip" data-sub="${encodeURIComponent(sub)}" tabindex="0" role="button" aria-label="Subquery ${m.tag} on node ${n.id}, click to move">` +
+        `<g class="chip" data-sub="${encodeURIComponent(sub)}" tabindex="0" role="button" aria-label="${t().subqueryChipAria(m.tag, n.id)}">` +
         `<rect x="${cx - cw / 2}" y="${cy - 11}" rx="6" width="${cw}" height="22" fill="${m.color}"/>` +
         `<text class="chip-tx" x="${cx}" y="${cy + 4}">${m.tag}${m.isRoot ? "★" : ""}</text>` +
         `</g>`;
@@ -357,7 +356,7 @@ export function renderReef(scenario: Scenario, layout: Layout, subMeta: Map<stri
   }
 
   return (
-    `<svg viewBox="0 0 ${VB_W} ${VB_H}" class="reef-svg" preserveAspectRatio="xMidYMid meet" role="group" aria-label="Fog-cloud topology; tap a node to place the selected subquery">` +
+    `<svg viewBox="0 0 ${VB_W} ${VB_H}" class="reef-svg" preserveAspectRatio="xMidYMid meet" role="group" aria-label="${t().topologyAria}">` +
     background() +
     `<g class="edges">${edges}</g>` +
     `<g class="plan-edges">${planEdges}</g>` +

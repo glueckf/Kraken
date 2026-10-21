@@ -4,6 +4,7 @@
 import type { AppState } from "./state";
 import type { Baselines, Projection, StrategyId } from "./types";
 import { eventIconSvg, glyphFor } from "./icons";
+import { t, getLang } from "./i18n";
 
 const STRAT_ORDER: StrategyId[] = ["all_push", "inev", "prepp", "sequential", "kraken"];
 
@@ -47,7 +48,7 @@ function renderPushPullRow(state: AppState, name: string, proj: Projection): str
       const isFree = !decidable.has(dep);
       const isPush = !isFree && (!!chosen ? chosen.includes(dep) : false);
       const isPull = !isFree && !isPush && !!chosen;
-      const role = isFree ? "here" : isPush ? "PUSH" : isPull ? "pull" : "";
+      const role = isFree ? t().roleHere : isPush ? t().rolePush : isPull ? t().rolePull : "";
       const roleHtml = role ? `<span class="pp-role">${role}</span>` : "";
       const cls = isFree ? " free" : isPush ? " push" : isPull ? " pull" : "";
       // Free chips get their own inert marker rather than data-pp: a plain
@@ -63,7 +64,7 @@ function renderPushPullRow(state: AppState, name: string, proj: Projection): str
         const rate = depProj ? fmtRate(depProj.output_rate) + "/s" : "";
         return (
           `<${el} class="pp-chip${cls}"${tag} ` +
-          `title="${escapeHtml(dep)}${isFree ? " is already at this node" : `: ${rate || "rate unknown"}`}">` +
+          `title="${escapeHtml(dep)}${isFree ? " " + t().alreadyHere : `: ${rate || t().rateUnknown}`}">` +
           `<span class="pp-sub-tag" style="background:${sub.color}">${sub.tag}</span>` +
           `<span class="pp-rate">${rate}</span>${roleHtml}` +
           `</${el}>`
@@ -73,7 +74,7 @@ function renderPushPullRow(state: AppState, name: string, proj: Projection): str
       const rate = rateMap ? Object.values(rateMap)[0] : undefined;
       return (
         `<${el} class="pp-chip${cls}"${tag} ` +
-        `title="${dep}${isFree ? " is already at this node" : `: ${rate !== undefined ? rate + "/s" : "rate unknown"}`}">` +
+        `title="${dep}${isFree ? " " + t().alreadyHere : `: ${rate !== undefined ? rate + "/s" : t().rateUnknown}`}">` +
         eventIconSvg(dep, 12) +
         `<span class="pp-letter">${dep}</span>` +
         `<span class="pp-rate">${rate !== undefined ? fmtRate(rate) + "/s" : ""}</span>${roleHtml}` +
@@ -85,21 +86,21 @@ function renderPushPullRow(state: AppState, name: string, proj: Projection): str
     // A lone decidable dep (or none) has no real combinatorial choice —
     // show the chips (including any "already here" ones) but no mandatory
     // call, no quick-set buttons.
-    return `<div class="pp-row done"><span class="pp-label">push</span>${chips}</div>`;
+    return `<div class="pp-row done"><span class="pp-label">${t().ppLabel}</span>${chips}</div>`;
   }
   const allPushed = !!chosen && chosen.length === decidable.size;
   const allPulled = !!chosen && chosen.length === 0;
   const pushAllChip =
     `<button class="pp-chip pp-chip-all${allPushed ? " push" : ""}" data-pushall="${encodeURIComponent(name)}" ` +
-    `title="Push every input, pull nothing">` +
-    `<span class="pp-all-label">push all</span>${allPushed ? `<span class="pp-role">PUSH</span>` : ""}` +
+    `title="${t().pushAllTitle}">` +
+    `<span class="pp-all-label">${t().pushAllLabel}</span>${allPushed ? `<span class="pp-role">${t().rolePush}</span>` : ""}` +
     `</button>`;
   const pullAllChip =
     `<button class="pp-chip pp-chip-all${allPulled ? " pull" : ""}" data-pullall="${encodeURIComponent(name)}" ` +
-    `title="Pull every input, push nothing">` +
-    `<span class="pp-all-label">pull all</span>${allPulled ? `<span class="pp-role">pull</span>` : ""}` +
+    `title="${t().pullAllTitle}">` +
+    `<span class="pp-all-label">${t().pullAllLabel}</span>${allPulled ? `<span class="pp-role">${t().rolePull}</span>` : ""}` +
     `</button>`;
-  return `<div class="pp-row${chosen ? "" : " needed"}"><span class="pp-label">push</span>${chips}${pushAllChip}${pullAllChip}</div>`;
+  return `<div class="pp-row${chosen ? "" : " needed"}"><span class="pp-label">${t().ppLabel}</span>${chips}${pushAllChip}${pullAllChip}</div>`;
 }
 
 // Compact by design: once you've picked a size/query you mostly just need
@@ -110,21 +111,17 @@ export function renderTopologyBar(state: AppState): string {
   if (!state.manifest) return "";
   const cur = state.topologyId;
   const items = state.manifest.topologies
-    .map((t) => {
-      const on = t.id === cur ? "on" : "";
+    .map((topo) => {
+      const on = topo.id === cur ? "on" : "";
       return (
-        `<button class="tcard ${on}" data-topology="${t.id}" title="${escapeHtml(t.label)} — ${t.network_size} nodes" aria-pressed="${t.id === cur}">` +
-        `<span class="tname">${escapeHtml(t.label)}</span>` +
-        `<span class="tsize">${t.network_size}n</span>` +
+        `<button class="tcard ${on}" data-topology="${topo.id}" title="${escapeHtml(t().topologyTitle(topo.label, topo.network_size))}" aria-pressed="${topo.id === cur}">` +
+        `<span class="tname">${escapeHtml(topo.label)}</span>` +
+        `<span class="tsize">${topo.network_size}n</span>` +
         `</button>`
       );
     })
     .join("");
   return `<div class="tlist">${items}</div>`;
-}
-
-function pluralSubqueries(n: number): string {
-  return `${n} subquer${n === 1 ? "y" : "ies"}`;
 }
 
 export function renderQueryBar(state: AppState): string {
@@ -136,7 +133,7 @@ export function renderQueryBar(state: AppState): string {
       const on = s.id === cur ? "on" : "";
       const emblem = EMBLEM_EMOJI[s.emblem] ?? "";
       return (
-        `<button class="qpill ${on}" data-scenario="${s.id}" title="${escapeHtml(s.title)} — ${pluralSubqueries(s.num_subqueries)}" aria-pressed="${s.id === cur}">` +
+        `<button class="qpill ${on}" data-scenario="${s.id}" title="${escapeHtml(t().queryTitle(s.title, t().subqueries(s.num_subqueries)))}" aria-pressed="${s.id === cur}">` +
         `<span class="qpill-badge">Q${i + 1}</span>` +
         (emblem ? `<span class="qpill-emblem" aria-hidden="true">${emblem}</span>` : "") +
         `</button>`
@@ -145,9 +142,9 @@ export function renderQueryBar(state: AppState): string {
     .join("");
   const active_line = active
     ? `<div class="qactive">` +
-      `<div class="qactive-headline">${EMBLEM_EMOJI[active.emblem] ?? ""} ${escapeHtml(QUERY_HEADLINE[active.id] ?? active.title)}</div>` +
+      `<div class="qactive-headline">${EMBLEM_EMOJI[active.emblem] ?? ""} ${escapeHtml(queryHeadline(active.id) ?? active.title)}</div>` +
       `<div class="qactive-sub"><span class="qactive-expr">${titleWithIcons(active.title)}</span>` +
-      `<span class="qactive-count">${pluralSubqueries(active.num_subqueries)}</span></div>` +
+      `<span class="qactive-count">${t().subqueries(active.num_subqueries)}</span></div>` +
       `</div>`
     : "";
   return `<div class="qpills">${pills}</div>${active_line}`;
@@ -176,8 +173,8 @@ export function renderTray(state: AppState): string {
         `<div class="tray-row ${active ? "active" : ""} ${placed ? "placed" : ""}" data-sub="${encodeURIComponent(name)}" tabindex="0" role="button" aria-pressed="${active}">` +
         `<span class="tag" style="background:${m.color}">${m.tag}${m.isRoot ? "★" : ""}</span>` +
         `<span class="tray-body"><span class="tray-name">${titleWithIcons(name)}</span>` +
-        `<span class="tray-inputs">needs ${inputs}</span></span>` +
-        `<span class="tray-loc"${autoReason ? ` title="${escapeHtml(autoReason)}"` : ""}>${placed ? (node === 0 ? "👑 König Cloud" : "n" + node) : "—"}${autoReason ? ` <span class="tray-auto-badge">auto</span>` : ""}</span>` +
+        `<span class="tray-inputs">${t().needs} ${inputs}</span></span>` +
+        `<span class="tray-loc"${autoReason ? ` title="${escapeHtml(autoReason)}"` : ""}>${placed ? (node === 0 ? "👑 König Cloud" : "n" + node) : "—"}${autoReason ? ` <span class="tray-auto-badge">${t().autoBadge}</span>` : ""}</span>` +
         `</div>` +
         (autoReason ? `<div class="tray-note">${escapeHtml(autoReason)}</div>` : "");
       return row + renderPushPullRow(state, name, proj);
@@ -186,18 +183,18 @@ export function renderTray(state: AppState): string {
 
   const pending = state.pendingPushChoices;
   const hint = state.activeSubquery
-    ? `<span class="tray-hint">Selected <b>${escapeHtml(state.activeSubquery)}</b> — now tap a node.</span>`
+    ? `<span class="tray-hint">${t().selectedNowTapNode(`<b>${escapeHtml(state.activeSubquery)}</b>`)}</span>`
     : !state.complete
-      ? `<span class="tray-hint">Tap a subquery, then tap a node.</span>`
+      ? `<span class="tray-hint">${t().tapSubqueryThenNode}</span>`
       : pending.length > 0
-        ? `<span class="tray-hint err">Still need a push/pull call for <b>${pending.map(escapeHtml).join(", ")}</b>.</span>`
-        : `<span class="tray-hint ok">All subqueries placed.</span>`;
+        ? `<span class="tray-hint err">${t().stillNeedPushPull(`<b>${pending.map(escapeHtml).join(", ")}</b>`)}</span>`
+        : `<span class="tray-hint ok">${t().allSubqueriesPlaced}</span>`;
   const errorHint = state.placementError
     ? `<span class="tray-hint err">${escapeHtml(state.placementError)}</span>`
     : "";
 
   return (
-    `<div class="tray-head"><span>Subqueries to place</span>` +
+    `<div class="tray-head"><span>${t().subqueriesToPlace}</span>` +
     `<span class="progress-txt">${state.placedCount}/${sc.processing_order.length}</span></div>` +
     `<div class="tray-rows">${rows}</div>${errorHint}${hint}`
   );
@@ -220,13 +217,14 @@ function renderStagePicker(state: AppState): string {
     .map((s, i) => {
       const on = i === state.stageIndex;
       const icon = STAGE_ICON[s.label.toLowerCase()];
+      const label = t().stageLabel(s.label);
       return (
         `<button class="stage-btn${on ? " on" : ""}" data-action="stage" data-stage="${i}" ` +
-        `title="Kraken optimised for ${escapeHtml(s.label.toLowerCase())}">${icon ? icon + " " : ""}${escapeHtml(s.label)}</button>`
+        `title="${escapeHtml(t().stageTitleFor(label.toLowerCase()))}">${icon ? icon + " " : ""}${escapeHtml(label)}</button>`
       );
     })
     .join("");
-  return `<div class="stage-row" title="How Kraken balances cost (fewer messages) vs. latency (speed)">${buttons}</div>`;
+  return `<div class="stage-row" title="${escapeHtml(t().stageRowTitle)}">${buttons}</div>`;
 }
 
 /** Shared with main.ts, which watches for the moment this flips to true on a
@@ -251,13 +249,13 @@ export function renderScorecard(state: AppState): string {
     const pct = Math.round((state.placedCount / sc.processing_order.length) * 100);
     const title =
       state.complete && pending.length > 0
-        ? `Choose push or pull for ${pending.length} more subquer${pending.length > 1 ? "ies" : "y"} to score your plan`
-        : `Place all ${pluralSubqueries(sc.processing_order.length)} to score your plan`;
+        ? t().choosePushPullFor(pending.length)
+        : t().placeAllToScore(t().subqueries(sc.processing_order.length));
     return (
       `<div class="sc-empty">` +
       `<div class="sc-empty-title">${title}</div>` +
       `<div class="progress"><div class="progress-fill" style="width:${pct}%"></div></div>` +
-      `<div class="sc-empty-sub">You choose <b>where</b> each subquery runs, and — for push-pull scoring — <b>which stream</b> it pushes. We compute the network cost and latency, then pit it against Kraken and four baselines.</div>` +
+      `<div class="sc-empty-sub">${t().scEmptySub}</div>` +
       stagePicker +
       `</div>`
     );
@@ -272,8 +270,8 @@ export function renderScorecard(state: AppState): string {
     return (
       `<div class="sc-scoring">` +
       `<div class="sc-scoring-icon" aria-hidden="true">🐙</div>` +
-      `<div class="sc-scoring-title">Kraken is crunching the numbers…</div>` +
-      `<div class="sc-scoring-sub">Optimising push/pull for your placement.</div>` +
+      `<div class="sc-scoring-title">${t().scoringTitle}</div>` +
+      `<div class="sc-scoring-sub">${t().scoringSub}</div>` +
       stagePicker +
       `</div>`
     );
@@ -285,13 +283,13 @@ export function renderScorecard(state: AppState): string {
   const beaten = STRAT_ORDER.filter((id) => id !== "kraken" && o.norm.score <= bl[id].score + 1e-9).length;
 
   const verdict = beatKraken
-    ? `<span class="v-win">You matched Kraken.</span>`
-    : `<span class="v-mid">You beat ${beaten} of 4 baselines — Kraken still wins.</span>`;
+    ? `<span class="v-win">${t().verdictMatched}</span>`
+    : `<span class="v-mid">${t().verdictMid(beaten)}</span>`;
 
   const modeTag =
     o.mode === "pushpull"
-      ? `<span class="mode pp">push-pull optimised</span>`
-      : `<span class="mode est">all-push estimate — no live scoring available</span>`;
+      ? `<span class="mode pp">${t().modePushPull}</span>`
+      : `<span class="mode est">${t().modeEstimate}</span>`;
 
   // stat tiles vs Kraken
   const dCost = o.cost - bl.kraken.cost;
@@ -299,15 +297,15 @@ export function renderScorecard(state: AppState): string {
 
   const tiles =
     `<div class="tiles">` +
-    tile("Tuples moved", fmtCost(o.cost), deltaLabel(dCost, true), dCost <= 0) +
-    tile("Latency (hops)", fmtLat(o.latency), deltaLabel(dLat, false), dLat <= 0) +
-    tile("Kraken score", o.norm.score.toFixed(3), `Kraken ${krakenScore.toFixed(3)}`, beatKraken, "krakenScoreTile") +
+    tile(t().tupleLabel, fmtCost(o.cost), deltaLabel(dCost, true), dCost <= 0) +
+    tile(t().latencyLabel, fmtLat(o.latency), deltaLabel(dLat, false), dLat <= 0) +
+    tile(t().krakenScoreLabel, o.norm.score.toFixed(3), `Kraken ${krakenScore.toFixed(3)}`, beatKraken, "krakenScoreTile") +
     `</div>`;
 
   // leaderboard: baselines + You, sorted by score asc
   const rows: { id: string; label: string; score: number; cost: number; latency: number; you?: boolean }[] =
     STRAT_ORDER.map((id) => ({ id, label: sc.strategies[id].label, score: bl[id].score, cost: bl[id].cost, latency: bl[id].latency }));
-  rows.push({ id: "you", label: "You", score: o.norm.score, cost: o.cost, latency: o.latency, you: true });
+  rows.push({ id: "you", label: t().youLabel, score: o.norm.score, cost: o.cost, latency: o.latency, you: true });
   rows.sort((a, b) => a.score - b.score);
   const maxScore = Math.max(...rows.map((r) => r.score), 0.001);
 
@@ -330,17 +328,17 @@ export function renderScorecard(state: AppState): string {
   return (
     `<div class="sc-head">${verdict}${modeTag}</div>` +
     tiles +
-    `<div class="lb-title">Leaderboard <span class="lb-hint">lower is better — cost & latency, balanced</span></div>` +
+    `<div class="lb-title">${t().leaderboardTitle} <span class="lb-hint">${t().leaderboardHint}</span></div>` +
     stagePicker +
     `<div class="leaderboard">${board}</div>` +
     (state.reveal
-      ? `<div class="plan-legend"><span class="plan-legend-hint">edge color = event type ·</span>` +
-        `<span class="plan-swatch push"></span>push` +
-        `<span class="plan-swatch pull"></span>pull</div>`
+      ? `<div class="plan-legend"><span class="plan-legend-hint">${t().legendHint}</span>` +
+        `<span class="plan-swatch push"></span>${t().legendPush}` +
+        `<span class="plan-swatch pull"></span>${t().legendPull}</div>`
       : "") +
     `<div class="sc-actions">` +
-    `<button class="btn ghost" data-action="reveal">${state.reveal ? "Hide" : "Reveal"} Kraken's plan</button>` +
-    `<button class="btn" data-action="clear">Try again</button>` +
+    `<button class="btn ghost" data-action="reveal">${state.reveal ? t().hidePlan : t().revealPlan}</button>` +
+    `<button class="btn" data-action="clear">${t().tryAgain}</button>` +
     `</div>`
   );
 }
@@ -356,10 +354,10 @@ function tile(label: string, value: string, sub: string, good: boolean, id?: str
 }
 
 function deltaLabel(d: number, cost: boolean): string {
-  if (Math.abs(d) < 1e-6) return "same as Kraken";
+  if (Math.abs(d) < 1e-6) return t().sameAsKraken;
   const s = d > 0 ? "+" : "−";
   const v = cost ? fmtCost(Math.abs(d)) : fmtLat(Math.abs(d));
-  return `${s}${v} vs Kraken`;
+  return t().vsKraken(s, v);
 }
 
 export function verdictOf(state: AppState, bl: Baselines): boolean {
@@ -389,9 +387,18 @@ const EMBLEM_EMOJI: Record<string, string> = { crab: "🦀", turtle: "🐢", sha
 // (see renderQueryBar) — it still carries real information (operator count,
 // which streams feed in) a returning player may want. Keyed by scenario_id
 // rather than emblem since that's the stable per-query identity.
-const QUERY_HEADLINE: Record<string, string> = {
+const QUERY_HEADLINE_EN: Record<string, string> = {
   seq_abc: "Crab signal",
   seq_abcd: "Turtle trail",
   seq_abcde: "Shark alarm",
   and_nested: "Reef bloom",
 };
+const QUERY_HEADLINE_DE: Record<string, string> = {
+  seq_abc: "Krabben-Signal",
+  seq_abcd: "Schildkröten-Spur",
+  seq_abcde: "Hai-Alarm",
+  and_nested: "Riff-Blüte",
+};
+function queryHeadline(scenarioId: string): string | undefined {
+  return (getLang() === "de" ? QUERY_HEADLINE_DE : QUERY_HEADLINE_EN)[scenarioId];
+}
