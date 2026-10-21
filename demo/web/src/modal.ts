@@ -5,20 +5,20 @@ export function modalHtml(): string {
   return (
     `<div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">` +
     `<button class="modal-close" data-action="close-modal" aria-label="Close">✕</button>` +
-    `<h2 id="modal-title">Kraken — operator placement</h2>` +
+    `<h2 id="modal-title">Kraken — subquery placement</h2>` +
 
-    `<p class="lede">A hands-on view of <b>Kraken</b>, a placement engine for distributed Complex Event Processing on <b>fog-cloud</b> networks. Continuous queries over geo-distributed event streams run as operators that must be placed on nodes, and each operator must acquire its inputs — either <b>all-push</b> (forward every tuple upward) or <b>push-pull</b> (push the low-rate stream, then pull only the matches). Placement and communication are tightly coupled.</p>` +
+    `<p class="lede">A hands-on view of <b>Kraken</b>, a placement engine for distributed Complex Event Processing on <b>fog-cloud</b> networks. Continuous queries over geo-distributed event streams run as subqueries that must be placed on nodes, and each subquery must acquire its inputs — either <b>all-push</b> (forward every tuple upward) or <b>push-pull</b> (push the low-rate stream, then pull only the matches). Placement and communication are tightly coupled.</p>` +
 
     `<h3>Your task</h3>` +
     `<ol class="how">` +
     `<li>Pick a query (the animal tokens).</li>` +
-    `<li>Place <b>every</b> operator (sub-query) onto a node — cloud, fog, or a source.</li>` +
+    `<li>Place <b>every</b> subquery onto a node — cloud, fog, or a source.</li>` +
     `<li>We compute the <b>tuples transmitted</b> and the <b>latency</b> of your plan, and rank it against four baselines and Kraken on a balanced (cost + latency) score.</li>` +
-    `<li>Operators near their sources move fewer tuples; operators near the cloud shorten the path to the sink. Find the balance the Kraken finds.</li>` +
+    `<li>Subqueries near their sources move fewer tuples; subqueries near the cloud shorten the path to the sink. Find the balance the Kraken finds.</li>` +
     `</ol>` +
 
     `<h3>Why joint optimisation wins</h3>` +
-    `<p>Existing planners decide placement and communication <i>in stages</i> — fix the placement first, then optimise input acquisition. Committing to a placement early rules out globally better plans. Kraken instead searches over <b>atomic deploy decisions</b>, weighing <i>both</i> communication schemes as it places each operator. In the paper's factory example (a windowed join <span class="mono">[A ∘ B]</span>), all-push moves <b>3010</b> tuples, a staged planner <b>2120</b>, and Kraken <b>360</b> — a plan unreachable when the two decisions are made separately.</p>` +
+    `<p>Existing planners decide placement and communication <i>in stages</i> — fix the placement first, then optimise input acquisition. Committing to a placement early rules out globally better plans. Kraken instead searches over <b>atomic deploy decisions</b>, weighing <i>both</i> communication schemes as it places each subquery. In the paper's factory example (a windowed join <span class="mono">[A ∘ B]</span>), all-push moves <b>3010</b> tuples, a staged planner <b>2120</b>, and Kraken <b>360</b> — a plan unreachable when the two decisions are made separately.</p>` +
 
     `<h3>Headline results</h3>` +
     `<ul class="results">` +

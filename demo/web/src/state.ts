@@ -261,12 +261,12 @@ export class AppState {
       const producers = sc.event_map.producers[dep];
       if (producers) {
         if (!producers.every((p) => reach.has(p))) {
-          return `n${node} doesn't reach every source of ${dep} — an operator needs the complete stream, and events only flow upward from where they're produced. Check which nodes sit downstream of n${node}.`;
+          return `n${node} doesn't reach every source of ${dep} — a subquery needs the complete stream, and events only flow upward from where they're produced. Check which nodes sit downstream of n${node}.`;
         }
       } else {
         const depNode = this.placement[dep];
         if (depNode === undefined || !reach.has(depNode)) {
-          return `n${node} has no path from ${dep} — an operator needs to sit above (or at) all of its inputs in the network.`;
+          return `n${node} has no path from ${dep} — a subquery needs to sit above (or at) all of its inputs in the network.`;
         }
       }
     }
