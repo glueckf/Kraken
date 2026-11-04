@@ -2,11 +2,17 @@
 // leaderboard. Pure HTML-string builders; main.ts owns the DOM + delegated events.
 
 import type { AppState } from "./state";
-import type { Baselines, Projection, StrategyId } from "./types";
+import type { Baselines, CommScheme, Projection, StrategyId, TopologyEntry } from "./types";
 import { eventIconSvg, glyphFor } from "./icons";
 import { t, getLang } from "./i18n";
 
 const STRAT_ORDER: StrategyId[] = ["all_push", "inev", "prepp", "sequential", "kraken"];
+
+/** The baselines this round actually exports (the paper round has no INEv). */
+function strategyIds(state: AppState, bl: Baselines): StrategyId[] {
+  const sc = state.scenario!;
+  return STRAT_ORDER.filter((id) => sc.strategies[id] && bl[id]);
+}
 
 function fmtCost(n: number): string {
   if (n >= 10000) return (n / 1000).toFixed(1) + "k";
@@ -89,17 +95,29 @@ function renderPushPullRow(state: AppState, name: string, proj: Projection): str
     return `<div class="pp-row done"><span class="pp-label">${t().ppLabel}</span>${chips}</div>`;
   }
   const allPushed = !!chosen && chosen.length === decidable.size;
-  const allPulled = !!chosen && chosen.length === 0;
   const pushAllChip =
     `<button class="pp-chip pp-chip-all${allPushed ? " push" : ""}" data-pushall="${encodeURIComponent(name)}" ` +
     `title="${t().pushAllTitle}">` +
     `<span class="pp-all-label">${t().pushAllLabel}</span>${allPushed ? `<span class="pp-role">${t().rolePush}</span>` : ""}` +
     `</button>`;
-  const pullAllChip =
-    `<button class="pp-chip pp-chip-all${allPulled ? " pull" : ""}" data-pullall="${encodeURIComponent(name)}" ` +
-    `title="${t().pullAllTitle}">` +
-    `<span class="pp-all-label">${t().pullAllLabel}</span>${allPulled ? `<span class="pp-role">${t().rolePull}</span>` : ""}` +
-    `</button>`;
+  // "Pull all" (force every decidable dep to be pulled) only makes sense
+  // when at least one of this subquery's OTHER dependencies is already free
+  // -- already at this node for free, with nothing to decide (see the
+  // "isFree" chips above) -- since that's the one local tuple a pull can
+  // actually filter/trigger against. With zero free deps (e.g. Kraken's
+  // Forge, where neither of SEQ(A, B)'s two raw deps is ever collocated
+  // with a candidate node) there is nothing anywhere to filter with, so
+  // "pull everything" isn't a cheap-but-valid choice, just incoherent --
+  // see score_one.py's validation, which rejects an empty push group for
+  // exactly those subqueries.
+  const hasFreeAnchor = proj.deps.length > decidable.size;
+  const allPulled = !!chosen && chosen.length === 0;
+  const pullAllChip = !hasFreeAnchor
+    ? ""
+    : `<button class="pp-chip pp-chip-all${allPulled ? " pull" : ""}" data-pullall="${encodeURIComponent(name)}" ` +
+      `title="${t().pullAllTitle}">` +
+      `<span class="pp-all-label">${t().pullAllLabel}</span>${allPulled ? `<span class="pp-role">${t().rolePull}</span>` : ""}` +
+      `</button>`;
   return `<div class="pp-row${chosen ? "" : " needed"}"><span class="pp-label">${t().ppLabel}</span>${chips}${pushAllChip}${pullAllChip}</div>`;
 }
 
@@ -107,16 +125,27 @@ function renderPushPullRow(state: AppState, name: string, proj: Projection): str
 // to see (and occasionally switch) it, not re-read four full cards every
 // render — the freed vertical space goes to the tray/scorecard instead.
 
+// Several concrete networks share one `family` (see topologies.py) so that
+// repeat visitors see different edges -- and sometimes a node more or fewer
+// -- under the same query, without the topology bar growing a button per
+// variant. One button per family; it shows (and, on click, re-selects) the
+// family's currently-active variant.
 export function renderTopologyBar(state: AppState): string {
   if (!state.manifest) return "";
   const cur = state.topologyId;
-  const items = state.manifest.topologies
-    .map((topo) => {
-      const on = topo.id === cur ? "on" : "";
+  const families = new Map<string, TopologyEntry[]>();
+  for (const topo of state.manifest.topologies) {
+    (families.get(topo.family) ?? families.set(topo.family, []).get(topo.family)!).push(topo);
+  }
+  const items = [...families.values()]
+    .map((variants) => {
+      const active = variants.find((v) => v.id === cur) ?? variants[0];
+      const on = active.id === cur ? "on" : "";
+      const label = getLang() === "de" ? active.label_de : active.label;
       return (
-        `<button class="tcard ${on}" data-topology="${topo.id}" title="${escapeHtml(t().topologyTitle(topo.label, topo.network_size))}" aria-pressed="${topo.id === cur}">` +
-        `<span class="tname">${escapeHtml(topo.label)}</span>` +
-        `<span class="tsize">${topo.network_size}n</span>` +
+        `<button class="tcard ${on}" data-topology="${active.id}" title="${escapeHtml(t().topologyTitle(label, active.network_size))}" aria-pressed="${active.id === cur}">` +
+        `<span class="tname">${escapeHtml(label)}</span>` +
+        `<span class="tsize">${active.network_size}n</span>` +
         `</button>`
       );
     })
@@ -181,6 +210,15 @@ export function renderTray(state: AppState): string {
     })
     .join("");
 
+  // Paper round only: a standing nudge toward the rate-driven intuition the
+  // chips above now show directly (same "⚡ letter rate" shape as Reef) --
+  // shown regardless of placement/choice state, not just on first visit,
+  // since re-reading it costs nothing and a later visitor restarting the
+  // round benefits just as much as the first.
+  const paperHint = state.paperRound
+    ? `<div class="tray-note paper-hint">${escapeHtml(t().paperRatesHint)}</div>`
+    : "";
+
   const pending = state.pendingPushChoices;
   const hint = state.activeSubquery
     ? `<span class="tray-hint">${t().selectedNowTapNode(`<b>${escapeHtml(state.activeSubquery)}</b>`)}</span>`
@@ -196,7 +234,7 @@ export function renderTray(state: AppState): string {
   return (
     `<div class="tray-head"><span>${t().subqueriesToPlace}</span>` +
     `<span class="progress-txt">${state.placedCount}/${sc.processing_order.length}</span></div>` +
-    `<div class="tray-rows">${rows}</div>${errorHint}${hint}`
+    `${paperHint}<div class="tray-rows">${rows}</div>${errorHint}${hint}`
   );
 }
 
@@ -238,11 +276,120 @@ export function playerBeatsKraken(state: AppState): boolean {
   return o.norm.score <= bl.kraken.score + 1e-9;
 }
 
+/** Always-visible line saying how this round is scored right now, so a
+ * visitor (and the booth staff) can tell a real push-pull result from a
+ * fallback before reading any number. */
+export function renderServiceBadge(state: AppState): string {
+  if (state.paperRound) {
+    return `<div class="svc svc-table" role="status">${t().svcTable}</div>`;
+  }
+  const s = state.backendStatus;
+  const cls = s === "up" ? "svc-up" : s === "unknown" ? "svc-unknown" : "svc-down";
+  const text = s === "up" ? t().svcUp : s === "unknown" ? t().svcUnknown : s === "off" ? t().svcOff : t().svcDown;
+  return `<div class="svc ${cls}" role="status">${text}</div>`;
+}
+
+function renderUnscorable(stagePicker: string): string {
+  return (
+    `<div class="sc-unscorable" role="alert">` +
+    `<div class="sc-unscorable-title">${t().unscorableTitle}</div>` +
+    `<div class="sc-unscorable-sub">${t().unscorableBody}</div>` +
+    stagePicker +
+    `</div>`
+  );
+}
+
+/** Paper round, after "reveal": the complete enumeration (all three schemes
+ * per node, see ALL_SCHEMES in factory_example.py) with tuple volume,
+ * critical-path latency and the score F at the current stage — the evidence
+ * behind the ranking, readable at the booth. Deliberately not just the
+ * paper's own two: seeing push_a tie all-push's volume but still lose on
+ * latency is itself the "I tried it, here's why it doesn't help" answer to
+ * the hint above the chips. */
+const SCHEME_ORDER: CommScheme[] = ["all_push", "push_pull", "push_a"];
+// The two schemes the paper actually names vs. the one that only ever ties
+// all-push's volume and loses on latency (see factory_example.py's
+// ALL_SCHEMES comment) -- muted in the table so the one real win (push_pull)
+// reads clearly against the two ways of not winning, instead of all three
+// schemes competing for attention equally.
+const SCHEME_DOMINATED: Partial<Record<CommScheme, boolean>> = { push_a: true };
+function renderDecisionTable(state: AppState): string {
+  const pr = state.paperRound;
+  const stage = state.currentStage;
+  const a = stage?.analysis;
+  if (!pr || !stage || !a) return "";
+  const name = state.subqueries[0];
+  const mine = state.paperDecision;
+  const seq = a.sequential.decision;
+  const opt = a.reference_optimum;
+  const kNode = stage.placement[name];
+  const kScheme = stage.per_placement?.[name]?.strategy as CommScheme | undefined;
+  const label = (n: number) => (n === 0 ? `👑 ${t().cloudName}` : `n${n}`);
+  const byNode = new Map<number, typeof pr.decision_table>();
+  for (const d of pr.decision_table) {
+    if (!byNode.has(d.node)) byNode.set(d.node, []);
+    byNode.get(d.node)!.push(d);
+  }
+  const nodeOrder = [...byNode.keys()].sort((x, y) => (x === 0 ? 9 : x) - (y === 0 ? 9 : y));
+  const rows = nodeOrder
+    .map((node) => {
+      const group = [...byNode.get(node)!].sort(
+        (x, y) => SCHEME_ORDER.indexOf(x.scheme) - SCHEME_ORDER.indexOf(y.scheme)
+      );
+      return group
+        .map((d, i) => {
+          const score = a.scores.find((s) => s.node === d.node && s.scheme === d.scheme)?.score ?? NaN;
+          const isBest = d.node === opt.node && d.scheme === opt.scheme;
+          const marks = [
+            isBest ? `<span class="dt-mark opt" title="${escapeHtml(t().dtOptTitle)}">★</span>` : "",
+            d.node === kNode && d.scheme === kScheme ? `<span class="dt-mark k" title="Kraken">K</span>` : "",
+            d.node === seq.node && d.scheme === seq.scheme ? `<span class="dt-mark s" title="Sequential">S</span>` : "",
+            mine && d.node === mine.node && d.scheme === mine.scheme ? `<span class="dt-mark you" title="${escapeHtml(t().youLabel)}">${escapeHtml(t().youLabel)}</span>` : "",
+          ].join("");
+          const cls = [
+            i === 0 ? "group-start" : "",
+            isBest ? "best" : "",
+            SCHEME_DOMINATED[d.scheme] ? "dominated" : "",
+          ].filter(Boolean).join(" ");
+          const nodeCell = i === 0 ? `<td class="dt-node" rowspan="${group.length}">${label(node)}</td>` : "";
+          // F is already 0 (best) to 1 (worst) -- bar fullness is "how close
+          // to optimal", not the raw score, so a longer bar reads as
+          // "better" (matching every other bar in the app) instead of
+          // "more F", which would be backwards.
+          const barPct = Math.max(2, Math.round((1 - score) * 100));
+          return (
+            `<tr${cls ? ` class="${cls}"` : ""}>` +
+            nodeCell +
+            `<td>${escapeHtml(t().paperCommTitle(d.scheme))}</td>` +
+            `<td class="num">${fmtCost(d.cost)}</td><td class="num">${fmtLat(d.latency)}</td>` +
+            `<td class="num dt-score"><span class="dt-bar" style="width:${barPct}%"></span><span class="dt-score-tx">${score.toFixed(3)}</span></td>` +
+            `<td class="marks">${marks}</td></tr>`
+          );
+        })
+        .join("");
+    })
+    .join("");
+  const verdict = stage.matches_reference ? t().dtKrakenMatches : t().dtKrakenDiffers;
+  return (
+    `<div class="dtable-wrap">` +
+    `<div class="dtable-title">${t().dtTitle(pr.decision_table.length, stage.alpha)}</div>` +
+    `<table class="dtable"><thead><tr><th>${t().dtNode}</th><th>${t().dtComm}</th>` +
+    `<th class="num">${t().tupleLabel}</th><th class="num">${t().latencyLabel}</th><th class="num">F</th><th></th></tr></thead>` +
+    `<tbody>${rows}</tbody></table>` +
+    `<div class="dtable-note">${verdict} ${t().dtNote}</div>` +
+    `</div>`
+  );
+}
+
 export function renderScorecard(state: AppState): string {
   const sc = state.scenario;
   const bl = state.effectiveBaselines;
   if (!sc || !bl) return "";
   const stagePicker = renderStagePicker(state);
+
+  if (state.readyToScore && state.unscorable) {
+    return renderUnscorable(stagePicker);
+  }
 
   if (!state.readyToScore) {
     const pending = state.pendingPushChoices;
@@ -280,16 +427,20 @@ export function renderScorecard(state: AppState): string {
   const o = state.official;
   const krakenScore = bl.kraken.score;
   const beatKraken = playerBeatsKraken(state);
-  const beaten = STRAT_ORDER.filter((id) => id !== "kraken" && o.norm.score <= bl[id].score + 1e-9).length;
+  const ids = strategyIds(state, bl);
+  const others = ids.filter((id) => id !== "kraken");
+  const beaten = others.filter((id) => o.norm.score <= bl[id]!.score + 1e-9).length;
 
   const verdict = beatKraken
     ? `<span class="v-win">${t().verdictMatched}</span>`
-    : `<span class="v-mid">${t().verdictMid(beaten)}</span>`;
+    : `<span class="v-mid">${t().verdictMid(beaten, others.length)}</span>`;
 
   const modeTag =
     o.mode === "pushpull"
       ? `<span class="mode pp">${t().modePushPull}</span>`
-      : `<span class="mode est">${t().modeEstimate}</span>`;
+      : o.mode === "table"
+        ? `<span class="mode pp">${t().modeTable}</span>`
+        : `<span class="mode est">${t().modeAllPushLocal}</span>`;
 
   // stat tiles vs Kraken
   const dCost = o.cost - bl.kraken.cost;
@@ -304,9 +455,14 @@ export function renderScorecard(state: AppState): string {
 
   // leaderboard: baselines + You, sorted by score asc
   const rows: { id: string; label: string; score: number; cost: number; latency: number; you?: boolean }[] =
-    STRAT_ORDER.map((id) => ({ id, label: sc.strategies[id].label, score: bl[id].score, cost: bl[id].cost, latency: bl[id].latency }));
+    ids.map((id) => ({ id, label: sc.strategies[id]!.label, score: bl[id]!.score, cost: bl[id]!.cost, latency: bl[id]!.latency }));
   rows.push({ id: "you", label: t().youLabel, score: o.norm.score, cost: o.cost, latency: o.latency, you: true });
-  rows.sort((a, b) => a.score - b.score);
+  // Equal scores: You first (a tie counts as matching), then Kraken, then the
+  // export order — so a baseline that ties Kraken (e.g. PrePP in the paper
+  // round, where the joint optimum happens to be "cloud + push-pull") is not
+  // listed above it by accident of array order.
+  const tieRank = (r: { id: string; you?: boolean }) => (r.you ? 0 : r.id === "kraken" ? 1 : 2);
+  rows.sort((a, b) => (Math.abs(a.score - b.score) > 1e-9 ? a.score - b.score : tieRank(a) - tieRank(b)));
   const maxScore = Math.max(...rows.map((r) => r.score), 0.001);
 
   const board = rows
@@ -334,7 +490,8 @@ export function renderScorecard(state: AppState): string {
     (state.reveal
       ? `<div class="plan-legend"><span class="plan-legend-hint">${t().legendHint}</span>` +
         `<span class="plan-swatch push"></span>${t().legendPush}` +
-        `<span class="plan-swatch pull"></span>${t().legendPull}</div>`
+        `<span class="plan-swatch pull"></span>${t().legendPull}</div>` +
+        renderDecisionTable(state)
       : "") +
     `<div class="sc-actions">` +
     `<button class="btn ghost" data-action="reveal">${state.reveal ? t().hidePlan : t().revealPlan}</button>` +
@@ -379,7 +536,7 @@ function titleWithIcons(title: string): string {
   );
 }
 
-const EMBLEM_EMOJI: Record<string, string> = { crab: "🦀", turtle: "🐢", shark: "🦈", seedling: "🌱" };
+const EMBLEM_EMOJI: Record<string, string> = { crab: "🦀", turtle: "🐢", shark: "🦈", seedling: "🌱", factory: "⚒️" };
 
 // Short, story-flavored stand-in for the raw SEQ(...)/AND(...) expression as
 // the primary headline — reads as "spot the alarm," not programming syntax.
@@ -392,12 +549,14 @@ const QUERY_HEADLINE_EN: Record<string, string> = {
   seq_abcd: "Turtle trail",
   seq_abcde: "Shark alarm",
   and_nested: "Reef bloom",
+  factory_join: "Forge alarm (paper example)",
 };
 const QUERY_HEADLINE_DE: Record<string, string> = {
   seq_abc: "Krabben-Signal",
   seq_abcd: "Schildkröten-Spur",
   seq_abcde: "Hai-Alarm",
   and_nested: "Riff-Blüte",
+  factory_join: "Schmiede-Alarm (Paper-Beispiel)",
 };
 function queryHeadline(scenarioId: string): string | undefined {
   return (getLang() === "de" ? QUERY_HEADLINE_DE : QUERY_HEADLINE_EN)[scenarioId];

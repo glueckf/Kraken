@@ -22,6 +22,23 @@ export function backendConfigured(): boolean {
   return backendBase() !== null;
 }
 
+/** Liveness probe (server.py GET /health) for the scoring-mode badge. Never
+ * throws: false on any network error, timeout, CORS failure or non-200. */
+export async function checkBackend(timeoutMs = 2000): Promise<boolean> {
+  const base = backendBase();
+  if (!base) return false;
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${base}/health`, { signal: ctrl.signal, cache: "no-store" });
+    return res.ok;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
 export async function refinePushPull(
   scenarioId: string,
   placement: Placement,

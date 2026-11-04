@@ -35,9 +35,17 @@ def add_cors_headers(resp):
     # Local dev only: the frontend (esbuild serve, a different port) needs to
     # be allowed to call this cross-origin.
     resp.headers["Access-Control-Allow-Origin"] = "*"
-    resp.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+    resp.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
     resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
     return resp
+
+
+@app.route("/health", methods=["GET"])
+def health():
+    # Cheap liveness probe for the frontend's scoring-mode badge (state.ts
+    # pollBackend). Does not run the engine; /score failures are still
+    # reported per request.
+    return jsonify({"ok": True, "service": "kraken-demo-push-pull-scoring"})
 
 
 @app.route("/score", methods=["POST", "OPTIONS"])

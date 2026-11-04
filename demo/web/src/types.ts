@@ -13,7 +13,11 @@ export interface ManifestEntry {
 
 export interface TopologyEntry {
   id: string;
+  /** Groups several concrete networks (different seed/size, same queries)
+   * under one topology-bar button -- see topologies.py. */
+  family: string;
   label: string;
+  label_de: string;
   network_size: number;
   scenarios: ManifestEntry[];
 }
@@ -72,6 +76,61 @@ export interface Strategy {
  * just a re-normalized score of a single fixed run. */
 export interface KrakenStage extends Strategy {
   alpha: number;
+  /** Paper-example round only: the full enumeration evaluated at this alpha. */
+  analysis?: StageAnalysis;
+  /** Paper-example round only: Kraken's greedy plan == enumeration optimum? */
+  matches_reference?: boolean;
+}
+
+// "push_a" is never better than all_push (see factory_example.py's
+// ALL_SCHEMES comment) but is a real, engine-computed cell: a player's free
+// per-dependency push/pull chips (same component as Reef) can build it, and
+// the reveal table shows what it costs. "pull_both" (push neither) isn't
+// offered at all -- pulling needs an already-pushed tuple to filter
+// against, so it has nothing to filter with.
+export type CommScheme = "all_push" | "push_pull" | "push_a";
+
+/** One cell of the paper example's decision table: Kraken's CostCalculator
+ * cost/latency for a (node, scheme) deployment decision, plus the same cell
+ * recomputed from the paper's formulas. */
+export interface Decision {
+  node: number;
+  scheme: CommScheme;
+  cost: number;
+  latency: number;
+  steps: { mode: "push" | "pull"; events: string[] }[];
+  paper: { cost: number; latency: number };
+}
+
+export interface DecisionRef {
+  node: number;
+  scheme: CommScheme;
+  cost: number;
+  latency: number;
+}
+
+export interface StageAnalysis {
+  alpha: number;
+  scores: { node: number; scheme: CommScheme; score: number }[];
+  reference_optimum: DecisionRef;
+  all_push_best: DecisionRef;
+  sequential: Strategy & { decision: { node: number; scheme: CommScheme } };
+}
+
+/** Present only on the paper's motivating example (factory topology). */
+export interface PaperRound {
+  source: string;
+  node_labels: Record<string, string>;
+  inputs: {
+    rates: Record<string, number>;
+    selectivity_AB: number;
+    output_rate: number;
+    edges: [number, number][];
+    sink: number;
+  };
+  comm_options: { id: CommScheme; push: string[]; pull: string[] }[];
+  decision_table: Decision[];
+  default_alpha: number;
 }
 
 export interface Scenario {
@@ -96,7 +155,9 @@ export interface Scenario {
   };
   projections: Projection[];
   processing_order: string[];
-  strategies: Record<StrategyId, Strategy>;
+  /** Not every round has every baseline (the paper round has no INEv row). */
+  strategies: Partial<Record<StrategyId, Strategy>>;
+  paper_round?: PaperRound;
   /** Named cost/latency-balance presets, each with Kraken's own real
    * placement at that alpha — see KrakenStage. */
   kraken_stages: KrakenStage[];
@@ -134,9 +195,15 @@ export interface NormPoint {
   score: number;
 }
 
-export type Baselines = Record<
-  StrategyId,
-  { cost: number; latency: number; cost_norm: number; latency_norm: number; score: number }
->;
+export interface BaselinePoint {
+  cost: number;
+  latency: number;
+  cost_norm: number;
+  latency_norm: number;
+  score: number;
+}
+
+/** Always has "kraken"; the others only when the round exports them. */
+export type Baselines = Partial<Record<StrategyId, BaselinePoint>> & { kraken: BaselinePoint };
 
 export type Placement = Record<string, number>; // subquery name -> node id

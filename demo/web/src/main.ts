@@ -4,7 +4,7 @@
 
 import { AppState, type OfficialScore } from "./state";
 import { computeLayout, renderReef, type Layout, type ReefView } from "./reef";
-import { renderTopologyBar, renderQueryBar, renderTray, renderScorecard, playerBeatsKraken } from "./panel";
+import { renderTopologyBar, renderQueryBar, renderTray, renderScorecard, renderServiceBadge, playerBeatsKraken } from "./panel";
 import { modalHtml } from "./modal";
 import { getLang, setLang, onLangChange, t } from "./i18n";
 import type { Scenario } from "./types";
@@ -68,7 +68,7 @@ function render(): void {
   $("topologyBar").innerHTML = renderTopologyBar(state);
   $("queryBar").innerHTML = renderQueryBar(state);
   $("tray").innerHTML = renderTray(state);
-  $("scorecard").innerHTML = renderScorecard(state);
+  $("scorecard").innerHTML = renderScorecard(state) + renderServiceBadge(state);
   status.textContent = state.scenario.title;
 
   if (state.official !== lastOfficial) {

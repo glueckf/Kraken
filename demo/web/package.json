@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "build": "node build.mjs",
     "dev": "node build.mjs --watch",
-    "serve": "node serve.mjs"
+    "serve": "node serve.mjs",
+    "test": "node --test tests/factory_wasm.test.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.24.0",

@@ -6,6 +6,8 @@
 // whatever the visitor last picked (so switching topology/query doesn't
 // reset it), and every consumer re-renders on change via onLangChange.
 
+import type { CommScheme } from "./types";
+
 export type Lang = "en" | "de";
 
 const STORAGE_KEY = "kraken-lang";
@@ -83,6 +85,21 @@ interface Strings {
   pushAllLabel: string;
   pullAllLabel: string;
 
+  // ---- paper-example round ----
+  paperCommTitle: (scheme: CommScheme) => string;
+  /** Shown once per visit to the paper round, above its push/pull chips --
+   * explains, in the same vocabulary the rate chips themselves use, why
+   * pushing the rare stream and pulling the common one on demand is the one
+   * combination worth trying. */
+  paperRatesHint: string;
+  dtTitle: (n: number, alpha: number) => string;
+  dtNode: string;
+  dtComm: string;
+  dtOptTitle: string;
+  dtKrakenMatches: string;
+  dtKrakenDiffers: string;
+  dtNote: string;
+
   // ---- stage picker ----
   stageTitleFor: (stage: string) => string;
   stageRowTitle: string;
@@ -97,9 +114,17 @@ interface Strings {
 
   // ---- scorecard: results ----
   verdictMatched: string;
-  verdictMid: (n: number) => string;
+  verdictMid: (n: number, total: number) => string;
   modePushPull: string;
-  modeEstimate: string;
+  modeTable: string;
+  modeAllPushLocal: string;
+  unscorableTitle: string;
+  unscorableBody: string;
+  svcTable: string;
+  svcUp: string;
+  svcUnknown: string;
+  svcOff: string;
+  svcDown: string;
   tupleLabel: string;
   latencyLabel: string;
   krakenScoreLabel: string;
@@ -188,6 +213,20 @@ const EN: Strings = {
   pushAllLabel: "push all",
   pullAllLabel: "pull all",
 
+  paperCommTitle: (scheme) =>
+    scheme === "all_push" ? "All-push"
+    : scheme === "push_pull" ? "Push B, pull A"
+    : "Push A, pull B",
+  paperRatesHint: "B is 100x rarer than A — still worth pushing A fully, instead of just letting it be pulled when needed?",
+  dtTitle: (n, alpha) => `All ${n} options, checked one by one (weight α = ${alpha})`,
+  dtNode: "Node",
+  dtComm: "Communication",
+  dtOptTitle: "Best of all options (full enumeration)",
+  dtKrakenMatches: "Kraken's plan (K) is the best option (★).",
+  dtKrakenDiffers: "Kraken's greedy plan (K) is not the best option (★) here.",
+  dtNote:
+    "S = sequential planner: first picks the node that is best under all-push, then optimises communication there. F = α·(tuples, scaled 0–1) + (1−α)·(latency, scaled 0–1) over these options; lower is better.",
+
   stageTitleFor: (stage) => `Kraken optimised for ${stage}`,
   stageRowTitle: "How Kraken balances cost (fewer messages) vs. latency (speed)",
   stageLabel: (enLabel) => enLabel,
@@ -195,14 +234,23 @@ const EN: Strings = {
   choosePushPullFor: (n) => `Choose push or pull for ${n} more subquer${n > 1 ? "ies" : "y"} to score your plan`,
   placeAllToScore: (subqueries) => `Place all ${subqueries} to score your plan`,
   scEmptySub:
-    "You choose where each subquery runs, and — for push-pull scoring — which stream it pushes. We compute the network cost and latency, then pit it against Kraken and four baselines.",
+    "You choose where each subquery runs, and — for push-pull scoring — which stream it pushes. We compute the network cost and latency, then pit it against Kraken and the baselines.",
   scoringTitle: "Kraken is crunching the numbers…",
   scoringSub: "Optimising push/pull for your placement.",
 
   verdictMatched: "You matched Kraken.",
-  verdictMid: (n) => `You beat ${n} of 4 baselines — Kraken still wins.`,
-  modePushPull: "push-pull optimised",
-  modeEstimate: "all-push estimate — no live scoring available",
+  verdictMid: (n, total) => `You beat ${n} of ${total} baselines — Kraken still wins.`,
+  modePushPull: "push-pull scored by the engine",
+  modeTable: "exact — engine's precomputed table",
+  modeAllPushLocal: "all-push model (in browser) — push-pull service offline",
+  unscorableTitle: "Can't score this plan right now",
+  unscorableBody:
+    "Your plan pulls some inputs, and the push-pull scoring service is not reachable. An all-push number would ignore your pull choices, so we show none. Choose “push all” everywhere for an exact all-push score, or ask the booth team to start the service — the score appears by itself once it is back.",
+  svcTable: "Scoring: exact values for every option, computed in advance — no service needed",
+  svcUp: "Scoring: push-pull service connected",
+  svcUnknown: "Scoring: checking push-pull service…",
+  svcOff: "Scoring: no push-pull service configured — only all-push plans can be scored",
+  svcDown: "Scoring: push-pull service not reachable — only all-push plans can be scored",
   tupleLabel: "Tuples moved",
   latencyLabel: "Latency (hops)",
   krakenScoreLabel: "Kraken score",
@@ -242,19 +290,19 @@ const EN: Strings = {
   taskStep1: "Pick a query (the animal tokens).",
   taskStep2: "Place <b>every</b> subquery onto a node — cloud, fog, or a source.",
   taskStep3:
-    "We compute the <b>tuples transmitted</b> and the <b>latency</b> of your plan, and rank it against four baselines and Kraken on a balanced (cost + latency) score.",
+    "We compute the <b>tuples transmitted</b> and the <b>latency</b> of your plan, and rank it against the baselines and Kraken on a balanced (cost + latency) score.",
   taskStep4:
     "Subqueries near their sources move fewer tuples; subqueries near the cloud shorten the path to the sink. Find the balance the Kraken finds.",
   whyJoint: "Why joint optimisation wins",
   jointBody:
-    'Existing planners decide placement and communication <i>in stages</i> — fix the placement first, then optimise input acquisition. Committing to a placement early rules out globally better plans. Kraken instead searches over <b>atomic deploy decisions</b>, weighing <i>both</i> communication schemes as it places each subquery. In the paper\'s factory example (a windowed join <span class="mono">[A ∘ B]</span>), all-push moves <b>3010</b> tuples, a staged planner <b>2120</b>, and Kraken <b>360</b> — a plan unreachable when the two decisions are made separately.',
+    'Existing planners decide placement and communication <i>in stages</i> — fix the placement first, then optimise input acquisition. Committing to a placement early rules out globally better plans. Kraken instead searches over <b>atomic deploy decisions</b>, weighing <i>both</i> communication schemes as it places each subquery. In the paper\'s factory example (a windowed join <span class="mono">[A ∘ B]</span>), all-push moves <b>3010</b> tuples, a staged planner <b>2120</b>, and Kraken <b>360</b> — a plan unreachable when the two decisions are made separately. Play it yourself on <b>Kraken\'s Forge</b>.',
   headlineResults: "Headline results",
   result1: "<b>~3×</b> fewer tuples transmitted vs the sequential baseline (median).",
   result2: "<b>14%</b> lower median transmission latency.",
   result3: "<b>7×</b> faster planning time.",
   aboutScoring: "About the scoring",
   scoringFine:
-    'Your instant score uses the exact all-push cost model (computed in-browser via Rust/WASM). When a scoring service is available, it is refined with the real push-pull optimiser for an apples-to-apples number. The combined "Kraken score" normalises tuples and latency against this scenario\'s baselines (0 = as good as the best); Kraken co-optimises communication, which by-hand placement cannot.',
+    'Your plan is scored by Kraken\'s own cost model through the local push-pull scoring service, including your push/pull choices. Without that service only pure all-push plans are scored (by the same all-push model, in the browser); plans that pull are not scored at all rather than mis-scored. Kraken\'s Forge needs no service: every one of its options was computed in advance. The combined "Kraken score" normalises tuples and latency against this scenario\'s range (0 = as good as the best).',
   linkPaper: "Paper (DEBS '26, DOI)",
   linkRepo: "Code repository",
 };
@@ -296,6 +344,20 @@ const DE: Strings = {
   pushAllLabel: "alles pushen",
   pullAllLabel: "alles pullen",
 
+  paperCommTitle: (scheme) =>
+    scheme === "all_push" ? "All-Push"
+    : scheme === "push_pull" ? "B pushen, A pullen"
+    : "A pushen, B pullen",
+  paperRatesHint: "B ist 100x seltener als A — lohnt es sich trotzdem, A komplett zu pushen, statt es nur bei Bedarf zu pullen?",
+  dtTitle: (n, alpha) => `Alle ${n} Optionen einzeln geprüft (Gewicht α = ${alpha})`,
+  dtNode: "Knoten",
+  dtComm: "Kommunikation",
+  dtOptTitle: "Beste aller Optionen (vollständige Enumeration)",
+  dtKrakenMatches: "Krakens Plan (K) ist die beste Option (★).",
+  dtKrakenDiffers: "Krakens Greedy-Plan (K) ist hier nicht die beste Option (★).",
+  dtNote:
+    "S = sequentieller Planer: wählt erst den unter All-Push besten Knoten und optimiert dann dort die Kommunikation. F = α·(Tupel, auf 0–1 skaliert) + (1−α)·(Latenz, auf 0–1 skaliert) über diese Optionen; niedriger ist besser.",
+
   stageTitleFor: (stage) => `Kraken optimiert für ${stage}`,
   stageRowTitle: "Wie Kraken Kosten (weniger Nachrichten) gegen Latenz (Geschwindigkeit) abwägt",
   stageLabel: (enLabel) => STAGE_LABEL_DE[enLabel.toLowerCase()] ?? enLabel,
@@ -304,14 +366,23 @@ const DE: Strings = {
     `Wähle Push oder Pull für ${n} weitere Teilabfrage${n > 1 ? "n" : ""}, um deinen Plan zu bewerten`,
   placeAllToScore: (subqueries) => `Platziere alle ${subqueries}, um deinen Plan zu bewerten`,
   scEmptySub:
-    "Du entscheidest, wo jede Teilabfrage läuft und — für die Push-Pull-Bewertung — welchen Stream sie pusht. Wir berechnen die Netzwerkkosten und die Latenz und vergleichen sie mit Kraken und vier weiteren Baselines.",
+    "Du entscheidest, wo jede Teilabfrage läuft und — für die Push-Pull-Bewertung — welchen Stream sie pusht. Wir berechnen die Netzwerkkosten und die Latenz und vergleichen sie mit Kraken und den Baselines.",
   scoringTitle: "Kraken knackt die Zahlen …",
   scoringSub: "Optimiert Push/Pull für deine Platzierung.",
 
   verdictMatched: "Du hast mit Kraken gleichgezogen.",
-  verdictMid: (n) => `Du schlägst ${n} von 4 Baselines — Kraken gewinnt noch.`,
-  modePushPull: "Push-Pull-optimiert",
-  modeEstimate: "All-Push-Schätzung — keine Live-Bewertung verfügbar",
+  verdictMid: (n, total) => `Du schlägst ${n} von ${total} Baselines — Kraken gewinnt noch.`,
+  modePushPull: "Push-Pull, von der Engine bewertet",
+  modeTable: "exakt — vorberechnete Tabelle der Engine",
+  modeAllPushLocal: "All-Push-Modell (im Browser) — Push-Pull-Dienst offline",
+  unscorableTitle: "Dieser Plan kann gerade nicht bewertet werden",
+  unscorableBody:
+    "Dein Plan pullt Eingaben, und der Push-Pull-Bewertungsdienst ist nicht erreichbar. Eine All-Push-Zahl würde deine Pull-Wahl ignorieren, darum zeigen wir keine. Wähle überall „alles pushen“ für eine exakte All-Push-Bewertung, oder bitte das Standteam, den Dienst zu starten — die Bewertung erscheint dann von selbst.",
+  svcTable: "Bewertung: exakte Werte für jede Option, vorab berechnet — kein Dienst nötig",
+  svcUp: "Bewertung: Push-Pull-Dienst verbunden",
+  svcUnknown: "Bewertung: Push-Pull-Dienst wird geprüft …",
+  svcOff: "Bewertung: kein Push-Pull-Dienst konfiguriert — nur All-Push-Pläne bewertbar",
+  svcDown: "Bewertung: Push-Pull-Dienst nicht erreichbar — nur All-Push-Pläne bewertbar",
   tupleLabel: "Übertragene Tupel",
   latencyLabel: "Latenz (Hops)",
   krakenScoreLabel: "Kraken-Wert",
@@ -351,19 +422,19 @@ const DE: Strings = {
   taskStep1: "Wähle eine Anfrage (die Tier-Symbole).",
   taskStep2: "Platziere <b>jede</b> Teilabfrage auf einem Knoten — Cloud, Fog oder eine Quelle.",
   taskStep3:
-    "Wir berechnen die <b>übertragenen Tupel</b> und die <b>Latenz</b> deines Plans und vergleichen ihn mit vier Baselines und Kraken anhand eines ausgewogenen (Kosten + Latenz) Werts.",
+    "Wir berechnen die <b>übertragenen Tupel</b> und die <b>Latenz</b> deines Plans und vergleichen ihn mit den Baselines und Kraken anhand eines ausgewogenen (Kosten + Latenz) Werts.",
   taskStep4:
     "Teilabfragen nahe ihren Quellen bewegen weniger Tupel; Teilabfragen nahe der Cloud verkürzen den Weg zur Senke. Finde die Balance, die Kraken findet.",
   whyJoint: "Warum gemeinsame Optimierung gewinnt",
   jointBody:
-    'Bestehende Planer entscheiden Platzierung und Kommunikation <i>in Stufen</i> — zuerst die Platzierung festlegen, dann die Eingabebeschaffung optimieren. Eine frühe Festlegung schließt global bessere Pläne aus. Kraken sucht stattdessen über <b>atomare Einsatzentscheidungen</b> und wägt <i>beide</i> Kommunikationsschemata ab, während es jede Teilabfrage platziert. Im Fabrikbeispiel des Papers (ein Fenster-Join <span class="mono">[A ∘ B]</span>) bewegt All-Push <b>3010</b> Tupel, ein gestufter Planer <b>2120</b>, und Kraken <b>360</b> — ein Plan, der unerreichbar ist, wenn beide Entscheidungen getrennt getroffen werden.',
+    'Bestehende Planer entscheiden Platzierung und Kommunikation <i>in Stufen</i> — zuerst die Platzierung festlegen, dann die Eingabebeschaffung optimieren. Eine frühe Festlegung schließt global bessere Pläne aus. Kraken sucht stattdessen über <b>atomare Einsatzentscheidungen</b> und wägt <i>beide</i> Kommunikationsschemata ab, während es jede Teilabfrage platziert. Im Fabrikbeispiel des Papers (ein Fenster-Join <span class="mono">[A ∘ B]</span>) bewegt All-Push <b>3010</b> Tupel, ein gestufter Planer <b>2120</b>, und Kraken <b>360</b> — ein Plan, der unerreichbar ist, wenn beide Entscheidungen getrennt getroffen werden. Spiel es selbst nach in <b>Krakens Schmiede</b>.',
   headlineResults: "Kernergebnisse",
   result1: "<b>~3×</b> weniger übertragene Tupel ggü. der sequentiellen Baseline (Median).",
   result2: "<b>14%</b> niedrigere mediane Übertragungslatenz.",
   result3: "<b>7×</b> schnellere Planungszeit.",
   aboutScoring: "Über die Bewertung",
   scoringFine:
-    'Dein Sofort-Wert nutzt das exakte All-Push-Kostenmodell (im Browser via Rust/WASM berechnet). Sobald ein Bewertungsdienst verfügbar ist, wird er mit dem echten Push-Pull-Optimierer für einen fairen Vergleich verfeinert. Der kombinierte "Kraken-Wert" normalisiert Tupel und Latenz gegen die Baselines dieses Szenarios (0 = so gut wie die beste); Kraken optimiert Kommunikation mit, was eine manuelle Platzierung nicht kann.',
+    'Dein Plan wird über den lokalen Push-Pull-Bewertungsdienst mit Krakens eigenem Kostenmodell bewertet, inklusive deiner Push/Pull-Wahl. Ohne diesen Dienst werden nur reine All-Push-Pläne bewertet (mit demselben All-Push-Modell, im Browser); Pläne mit Pull werden dann gar nicht bewertet statt falsch. Krakens Schmiede braucht keinen Dienst: alle ihre Optionen sind vorab berechnet. Der kombinierte "Kraken-Wert" normalisiert Tupel und Latenz auf die Spannweite dieses Szenarios (0 = so gut wie die beste).',
   linkPaper: "Paper (DEBS '26, DOI)",
   linkRepo: "Code-Repository",
 };

@@ -2,8 +2,17 @@
 
 Interactive single-page demo for the Kraken cloud-fog operator placement engine.
 You place operators on network nodes yourself, and the app scores your plan
-against Kraken and four baselines. Scoring runs client-side via a Rust engine
-compiled to WebAssembly.
+against Kraken and the baselines. All-push scoring runs client-side via a Rust
+engine compiled to WebAssembly; push-pull scoring uses the local backend.
+
+Topologies: **Reef** (12 nodes) and **Grand Reef** (24 nodes) with four story
+queries each — each of those two is actually several networks (different
+seed, occasionally a node more or fewer; see `topologies.py`'s `family`
+grouping) so repeat visitors see different edges under the same query — and
+**Kraken's Forge**, the paper's motivating example (Example 1–4), a small
+fixed round where the best node depends on the communication scheme. See
+[FACTORY_ROUND.md](FACTORY_ROUND.md) for its derivation and
+[BOOTH.md](BOOTH.md) for the booth staff's start/reset/recovery guide.
 
 ## Layout
 
@@ -79,12 +88,17 @@ front end. Each topology exports in its own subprocess — don't remove that
 isolation (see the comment in `export_scenario.py`): sharing one process lets
 RNG state from a randomly-sized topology leak into another's reconstruction.
 
-## Push-pull scoring backend (optional)
+## Push-pull scoring backend
 
-Without a backend, the demo scores your placement with the instant
-client-side all-push estimate only. To also show the real push-pull-optimized
-number (labelled "push-pull optimised" instead of "all-push estimate" in the
-scorecard), run the local backend alongside the frontend:
+The Reef rounds need it to score any plan that pulls. Without it (not
+configured, or not reachable), only pure all-push plans are scored, by the
+in-browser all-push model and labelled as such; a plan that pulls anything
+shows "can't score this plan right now" instead of an all-push number that
+would ignore the pulls. A status line under the scorecard says which mode is
+active; the page polls `GET /health` every 15 s and rescores by itself when the
+service comes back. Kraken's Forge never needs the backend (scored from its
+exported, engine-computed decision table). Run the backend alongside the
+frontend:
 
 ```bash
 uv run python demo/backend/server.py   # http://localhost:8787
@@ -96,5 +110,21 @@ local development. The backend reuses Kraken's own `CostCalculator` (via
 RNG-isolation reason as above) to pick the cheapest push/push-pull strategy
 per operator for whatever placement you chose — the same model the
 "Sequential" baseline already uses for INEv's placement, generalized to any
-placement. If the backend isn't running, `backend.ts` degrades gracefully
-back to the all-push estimate.
+placement. For Kraken's Forge it restricts placement to nodes 1, 2, cloud,
+and push/pull to real subsets of {A, B} (so a player's free per-dependency
+chips can build any of the four combinations, not just the paper's own two)
+— `score_one.py` is also what the exported decision table itself comes from
+(via `factory_example.enumerate_decisions`), but the game never calls the
+backend for this round: every cell was computed at export time, so it scores
+from that table directly, offline.
+
+## Tests
+
+```bash
+# Python: paper round (engine vs. paper formulas, enumeration, backend) + push/pull regressions
+cd demo/export && uv run python -m unittest tests.test_factory_example tests.test_score_one
+# Frontend: types, and the shipped WASM scorer against Kraken's Forge
+cd demo/web && npm run typecheck && npm test
+# Rust scorer goldens (unchanged)
+cd demo/engine && cargo test --release
+```

@@ -85,9 +85,16 @@ def main():
     topology = next((t for t in TOPOLOGIES if t["id"] == topology_id), None)
     if topology is None:
         fail(f"unknown topology_id: {topology_id!r}")
-    spec = next((s for s in scenarios_def.SCENARIOS if s["id"] == scenario_id), None)
-    if spec is None:
-        fail(f"unknown scenario_id: {scenario_id!r}")
+    paper_round = topology.get("kind") == "paper_example"
+    if paper_round:
+        import factory_example as fx
+        spec = None
+        if scenario_id != "factory_join":
+            fail(f"unknown scenario_id for {topology_id!r}: {scenario_id!r}")
+    else:
+        spec = next((s for s in scenarios_def.SCENARIOS if s["id"] == scenario_id), None)
+        if spec is None:
+            fail(f"unknown scenario_id: {scenario_id!r}")
 
     try:
         placement = json.loads(placement_json)
@@ -98,11 +105,52 @@ def main():
     except json.JSONDecodeError as e:
         fail(f"invalid push-choice JSON: {e}")
 
+    if paper_round:
+        # Clean (un-run) simulation, and the paper's inputs stay installed for
+        # the whole scoring loop: PrePP reads its selectivity table at
+        # calculate() time, not only at setup. See factory_example.py.
+        # Candidate nodes are restricted to <1, 2, c>, same as the paper's
+        # N_cand. Push/pull is NOT restricted to the paper's own two named
+        # schemes, though: a player gets the same free per-dependency chips
+        # as the Reef rounds (see panel.ts renderPushPullRow), so any
+        # non-empty proper subset of {A, B} is a legal forced group --
+        # including one the paper itself never names, like pushing A instead
+        # of B. Three shapes are invalid: a dependency this projection
+        # doesn't have; forcing *every* dependency as one raw group (the
+        # ALL_PUSH sentinel must be used for "push everything" -- see the
+        # comment on `chosen is not None` in score_simulation, a separate
+        # PrePP bug); and forcing *none* of them -- pulling needs an
+        # already-pushed tuple to filter against, so "pull everything" has
+        # nothing to filter with (see the ALL_SCHEMES comment in
+        # factory_example.py). This round has no pull-all quick button for
+        # the same reason.
+        valid_deps = set(fx.RATES)  # {"A", "B"}
+        for name, node in placement.items():
+            if int(node) not in (fx.CLOUD, fx.FOG_MERGE, fx.FOG_PRE_CLOUD):
+                fail(f"node {node} is not a valid execution node for {name} in the paper example")
+        for name, chosen in push_choice.items():
+            if chosen == ALL_PUSH:
+                continue
+            group = {chosen} if isinstance(chosen, str) else set(chosen)
+            if not group <= valid_deps:
+                fail(f"push choice {chosen!r} for {name} is not a dependency of the paper example "
+                     f"(valid: {sorted(valid_deps)})")
+            if group == valid_deps:
+                fail(f"push choice {chosen!r} for {name} forces every dependency at once "
+                     f"-- use {ALL_PUSH!r} instead")
+            if not group:
+                fail(f"push choice {chosen!r} for {name} forces nothing pushed -- "
+                     f"there is nothing to pull without a pushed trigger")
+        sim = fx.fresh_simulation(output_dataset_name="score_worker")
+        with fx.factory_model():
+            score_simulation(sim, placement, push_choice)
+        return
+
     q = number_children(spec["build"]())
     se.generate_hardcoded_workload = lambda: [q]
 
     network_size = topology["network_size"]
-    if network_size == 12:
+    if topology.get("kind") == "hardcoded":
         cfg = se.SimulationConfig.create_deterministic(
             network_size=12, num_event_types=6, xi=0.0, cost_weight=0.5,
             latency_threshold=None, output_dataset_name="score_worker",
@@ -118,7 +166,10 @@ def main():
     with contextlib.redirect_stdout(io.StringIO()):
         sim = se.Simulation(cfg)
         sim.run()
+    score_simulation(sim, placement, push_choice)
 
+
+def score_simulation(sim, placement, push_choice):
     deps_levels = compute_dependencies(sim, sim.h_mycombi, getattr(sim, "h_criticalMSTypes", None))
     order = sorted(deps_levels.keys(), key=lambda x: deps_levels[x])
 

@@ -1107,8 +1107,191 @@ in the demo now. Two concrete asks:
     Re-verified the phone stacking fix still holds after the touch-target
     changes landed on top of it. `tsc --noEmit` clean, `npm run build`
     succeeded, no console errors.
+24. **Paper-example round "Factory" + honest backend fallback — DONE
+    (2026-10-30).** New topology `factory` (5 nodes) replaying the paper's
+    motivating example (Example 1–4): one join [A ∘ B], candidate nodes
+    1/2/cloud, all-push vs. "push B, pull A". All six cells come from
+    Kraken's CostCalculator and match both the paper's printed figures and
+    an independent re-derivation; Kraken's real greedy run is compared to a
+    full enumeration per stage; Sequential is Example 1's two-step planner on
+    the same table and F (alpha 0.6 for the headline comparison). Full
+    derivation, model boundaries (SEQ instead of AND, PrePP's hardcoded reef
+    selectivity table swapped in scope, sigma(B|A) unspecified) in
+    [FACTORY_ROUND.md](FACTORY_ROUND.md). Also: with the backend down or
+    unconfigured, a plan that pulls is no longer shown with the all-push
+    number ("estimate") — it is not scored at all, pure all-push plans are
+    scored by the local all-push model and labelled so, a status line shows
+    the mode, and `/health` polling rescores automatically on recovery.
+    Booth guide: [BOOTH.md](BOOTH.md).
+26. **More topology variants per family, "Factory" renamed to "Kraken's
+    Forge" — DONE (2026-11-03).** Previously each of Reef/Grand Reef was one
+    fixed network, so every visitor who picked the same query saw the exact
+    same edges. `topologies.py` entries now carry a `family` (`medium`,
+    `large`, `factory`) and a `kind` (`hardcoded` for the original hand-built
+    12-node tree, `sized_random` for the rest, `paper_example` unchanged);
+    Reef has 4 concrete networks (12/12/13/11 nodes, 3 different seeds) and
+    Grand Reef has 3 (24/26/22 nodes) — same four queries on each, only the
+    network (and occasionally the node count) differs. The topology bar
+    still shows exactly 3 buttons (`renderTopologyBar` groups by `family`
+    and shows the currently-active variant's label + node count); "try
+    again" after a reveal (`state.ts` `clear()`) now jumps to a random
+    *other* concrete network — usually a sibling in the same family, so the
+    query carries over (`selectTopology`'s existing "keep the same query
+    where it exists" already did the right thing once siblings share a
+    scenario set) — excluding the `factory` family, which stays a
+    deliberately manual round. Also renamed the paper-example round from
+    "Factory" to **Kraken's Forge** (DE: Krakens Schmiede) everywhere a
+    visitor sees it (topology label, modal copy, query headline "Forge
+    alarm", emblem 🏭→⚒️) — the id `factory`/`factory_join` and the
+    `factory_example.py`/`FACTORY_ROUND.md` internals are unchanged, since
+    those describe the paper's actual factory setting, not the UI name.
+    `TopologyEntry` gained `family`/`label_de`; the WASM-loader test's
+    hardcoded 3-id list was pinned to the families instead (variant count is
+    expected to grow). Verified: `export_scenario.py` re-export (29
+    scenarios, 0 mismatches), `unittest tests.test_factory_example
+    tests.test_score_one` (20/20), `npm run typecheck` clean, `npm test`
+    (3/3), live in the browser in both languages — topology bar shows
+    Riff/Großes Riff/Krakens Schmiede, a reveal+"try again" cycle swapped
+    the Reef network from the 12-node hand-built tree to an 11-node random
+    one while keeping SEQ(A,B,C) selected, and the About modal's "Play it
+    yourself on **Kraken's Forge**" renders correctly in both languages.
+27. **Kraken's Forge: rate chips, a rates hint, leftmost placement, an
+    extended topology, and a visually upgraded decision table — DONE
+    (2026-11-04).** Several rounds of follow-up, landing on:
+    - **Rate chips + hint.** The round's subquery tray used to show two
+      large "All-push"/"Push-pull" buttons with no numbers on them
+      (`renderPaperCommRow`) — a different presentation than the Reef
+      rounds' per-dependency rate chips, so nothing a visitor learned there
+      carried over. Switched onto the exact same `renderPushPullRow`
+      component Reef uses: the same "⚡ letter rate" chips (A: 1k/s, B:
+      10/s, from the scenario's own `local_rate_lookup`) plus a "push all"
+      quick button (no "pull all" — see below), and a standing hint above
+      them ("B is 100x rarer than A — still worth pushing A fully, instead
+      of just letting it be pulled when needed?", `paperRatesHint`).
+      Removed now-dead code this replaced: `renderPaperCommRow`,
+      `setPaperScheme`, `paperCommSub`, the `data-paper-comm` click
+      handler, the `.comm-opt`/`.comm-row` CSS. Also dropped the paper-round
+      source labels ("Machine A"/"Panel B", DE "Maschine A"/"Bedienfeld
+      B") — every source node now reads the same way across every round,
+      just its letter, like Reef.
+    - **"Push A" is real; "pull both" is not.** Switching to the free chips
+      surfaced that the round only ever let a player choose the paper's own
+      two named schemes. Investigated what the engine actually computes
+      for the other combinations (not assumed): pushing A instead of B
+      costs exactly what all-push costs at every node (σ(B|A)=1.0 makes
+      pulling B on demand never cheaper than publishing it), but latency is
+      worse (the exact-plan search realizes it as two sequential push
+      steps, paying dist(node,A)+dist(node,B) instead of all-push's
+      parallel max) — a genuinely distinct, engine-verified result, added
+      as a third scheme (`push_a`). Pushing *nothing* ("pull both") was
+      initially added too, on the same reasoning, but removed again:
+      pulling needs an already-pushed tuple to filter/trigger against, so
+      forcing nothing pushed isn't a cheap-but-valid choice the way
+      "push A" is — it's not a coherent operation at all (confirmed live in
+      a Reef scenario too: forcing an empty push group on a 3-dependency
+      subquery also collapses toward an all-push-like cost, nowhere near
+      the optimizer's own free pick — flagged for Reef separately, not
+      changed there without being asked). Removed the "pull all" quick
+      button from this round's tray only (`renderPushPullRow`'s
+      `pullAllChip` is now `state.paperRound ? "" : ...`; Reef keeps it
+      unchanged), and `score_one.py`'s `paper_round` validation now rejects
+      an empty push group outright instead of accepting it.
+      `factory_example.py`'s `enumerate_decisions` returns 3 candidates × 3
+      schemes = 9 cells (`ALL_SCHEMES`), each cross-checked against an
+      extended `paper_cost_model`; `comm_options` lists all three so
+      `state.paperScheme` (unchanged, matched by exact push-set) resolves
+      any chip choice against a real table row — still scored from the
+      exported table, no backend call.
+    - **Topology-bar position.** Moved the `factory` entry to the front of
+      `topologies.py`'s `TOPOLOGIES` list, so its button renders leftmost
+      (`renderTopologyBar` orders by first appearance) — a different kind
+      of round (one fixed query, no backend), not just another size
+      alongside Reef/Grand Reef. Doesn't touch which topology loads by
+      default (`state.init()` still looks up id `"medium"` by name).
+    - **Extended topology, so the round can also teach "a node that doesn't
+      reach every source can't host it."** The paper's own topology (Fig.
+      1) has A and B both feed straight into node 1, so every real
+      candidate happened to see both — nowhere to show the rule every Reef
+      round already teaches. First attempt: a disconnected sibling node off
+      to the side (reachable from neither source) — functionally correct
+      but visually sprawled (the generic layout spreads a layer's nodes
+      edge-to-edge, and the lone extra node had nothing pulling it back
+      toward the rest of the tree). Replaced with a real restructuring: A
+      and B each get their own fog hub (`FOG_A`=n1, `FOG_B`=n2, each
+      reaching only their own source), merging for the first time at
+      `FOG_MERGE`=n3, then `FOG_PRE_CLOUD`=n4, then the cloud — a clean
+      diamond shape, and n1/n2 read as plausible nodes a visitor would
+      actually try, not a dead branch. n1/n2 are still never placement
+      candidates (`get_possible_placement_nodes_optimized` excludes them
+      like the sources themselves,
+      `test_single_source_hubs_are_unreachable_and_never_candidates`);
+      tapping either triggers the same generic client-side rejection as
+      Reef, verified live ("n1 erreicht nicht jede Quelle von B..."). This
+      changes every hop distance from the paper's own Fig. 1, so the
+      cost/latency numbers are no longer the paper's printed figures (3010,
+      2120, 360, ...) — `EXTENDED_EXAMPLE_GOLDENS` in
+      `test_factory_example.py` pins this round's own, freshly computed and
+      cross-checked numbers instead (e.g. cloud/push-pull = 480/L12, now
+      the optimum). `network_size` 5 -> 7. [FACTORY_ROUND.md](FACTORY_ROUND.md)
+      and [BOOTH.md](BOOTH.md) rewritten to match throughout.
+    - **Decision table visual pass.** The then-12-row table (now 9) read as
+      one flat list. `renderDecisionTable` groups rows by node with
+      `rowspan` on the node cell and a bold top border between groups
+      (`tr.group-start`), mutes the always-dominated `push_a` scheme
+      (`SCHEME_DOMINATED`) to `--ink-soft` so the one real win reads
+      clearly, and the F column gets a thin inline bar (`.dt-bar`, width =
+      `(1 - score)*100%` so a *longer* bar means *better*, matching the
+      rest of the app's convention rather than the raw score where lower is
+      better). `.dt-mark` badges (★/K/S/You) got a filled-pill look
+      (background tint + rounder radius) instead of plain outlined text.
+    Verified throughout: `export_scenario.py` re-export (0 mismatches),
+    `unittest tests.test_factory_example tests.test_score_one` (23/23),
+    `npm run typecheck` clean, `npm test` (3/3), live in the browser in
+    both languages at each stage (placed at n3, pushed only A, scored
+    4.02k/4h matching the revealed table's "Push A" row marked "You"/"Du";
+    the revealed table groups correctly with muted/bold rows and visible
+    bars). English-language pass skipped (explicitly deferred by the user —
+    the i18n architecture is generic enough that German coverage is
+    considered sufficient signal).
+
+    **Follow-up (2026-11-04): "pull all" needed a real rule, not a
+    paperRound special case.** The Forge-only hide from above was a hack:
+    checking `state.paperRound` said nothing about *why* pulling everything
+    is sometimes fine and sometimes not. The actual rule, from the user:
+    pulling needs *something already local* to filter/trigger against —
+    either an explicitly pushed dep, or one that's already free (collocated
+    for free, no push/pull decision needed, e.g. a placed sub-query
+    dependency sitting at the same node). A subquery with zero free deps
+    (Forge's SEQ(A, B): neither raw dep is ever collocated with a candidate
+    node) genuinely has nothing to pull against; one with 3+ deps where
+    one is already free (common in Reef once a player starts collocating
+    placements) does. `renderPushPullRow`'s `pullAllChip` now hides itself
+    whenever `proj.deps.length === decidable.size` (no free dep at all) —
+    this condition happens to always hold for Forge, so the `paperRound`
+    check was replaced outright, and the exact same check now also governs
+    Reef. Verified live: Reef's `SEQ(A,B,C,D,E)` with `SEQ(B,D)` placed at
+    the cloud and the final subquery auto-placed there too (so `SEQ(B,D)`
+    is free) shows both "push all" and "pull all" (2 decidable: E, SEQ(A,B,
+    C) + 1 free anchor); `SEQ(B,D)` itself (2 decidable, 0 free) shows only
+    "push all" — same as Forge. Also renamed the Forge decision table's
+    scheme columns from the terse "Push-Pull"/"Push A" to the explicit
+    "Push B, pull A"/"Push A, pull B" (`paperCommTitle` in i18n.ts), so the
+    direction is never ambiguous when read in the 9-row table. Verified:
+    `npm run typecheck` clean, `npm test` (3/3), `unittest
+    tests.test_factory_example tests.test_score_one` (23/23, unaffected),
+    live in the browser in German (English pass still skipped, per above).
 
 ## Engine (research code, not demo) — flagged, not scoped
+
+25. **INEv mutates `h_eventNodes`, shrinking Kraken's candidate set.**
+    `Simulation.run()` runs INEv before Kraken; INEv's placement writes its
+    forwarding decisions into the shared event-node matrix
+    (`core/structures.set_event_nodes`), and Kraken's `PlacementOptimizer`
+    reads that matrix to choose candidate nodes. On the factory topology
+    Kraken then only sees the cloud. No effect on the four 12-node reef
+    queries (same Kraken plan with and without, checked 2026-10-30); the
+    factory round sidesteps it by running Kraken on an un-run Simulation.
+    Worth an issue for the research pipeline.
 
 8. **Enable Kraken's multi-node ("MS") placement.** Currently explicitly
    left out of the integrated search — per the TODOs in the algorithm:

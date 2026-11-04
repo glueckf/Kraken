@@ -301,6 +301,10 @@ export function renderReef(scenario: Scenario, layout: Layout, subMeta: Map<stri
       .filter(Boolean)
       .join(" ");
 
+    // Paper round sources used to carry special names ("Machine A", "Panel
+    // B") -- dropped so every source node reads the same way across every
+    // round: just its letter, like the Reef rounds. Fog nodes already keep
+    // n1/n2, which happen to match the paper's own node numbers 1 and 2.
     const label = n.is_cloud ? t().cloudName : `n${n.id}`;
     const ariaPlaced = (atNode.get(n.id) || []).length ? t().holdsSubqueries((atNode.get(n.id) || []).length) : "";
     const leafLetters = n.is_leaf ? Object.keys(n.events) : [];

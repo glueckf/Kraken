@@ -1,15 +1,19 @@
 // Central application state + scoring orchestration. Framework-free: subscribers
 // are notified on every change and re-render. Scoring waits for the real
 // push-pull number from the backend instead of flashing the client-side
-// all-push estimate first (that estimate ignores the player's own push/pull
-// choices entirely, sometimes wildly — see BACKLOG.md item #10): `official`
-// stays null and `scoring` stays true until the backend replies, at which
-// point either the real number (mode "pushpull") or, only if the backend is
-// unreachable, the estimate (mode "estimate", clearly labeled) fills it in.
+// all-push model first (it ignores the player's own push/pull choices
+// entirely, sometimes wildly — see BACKLOG.md item #10): `official` stays
+// null and `scoring` stays true until the backend replies. If the backend is
+// unreachable, only a pure all-push plan is scored (mode "allpush_local");
+// a plan that pulls is marked `unscorable` instead of being mis-scored. The
+// paper-example round is scored from its exported decision table (mode
+// "table") and never needs the backend. See ScoreMode.
 
 import { Engine } from "./engine";
-import { refinePushPull, backendConfigured, type PushPullResult } from "./backend";
-import type { Baselines, KrakenStage, Manifest, Placement, Scenario, ScoreResult, NormPoint, TopologyEntry } from "./types";
+import { refinePushPull, backendConfigured, checkBackend, type PushPullResult } from "./backend";
+import type {
+  Baselines, CommScheme, Decision, KrakenStage, Manifest, PaperRound, Placement, Scenario, ScoreResult, NormPoint, TopologyEntry,
+} from "./types";
 import type { SubMeta } from "./reef";
 import { t } from "./i18n";
 
@@ -27,12 +31,28 @@ const PALETTE = ["#d9542f", "#2f9e8f", "#3d2c96", "#a58312", "#c0497e", "#2d7fd2
  * strategy in its own right and needed its own selectable option. */
 export const ALL_PUSH = "__all_push__";
 
+/** How a score was obtained — shown on the scorecard, never mixed up:
+ * - "pushpull": the backend costed the player's exact placement + push/pull calls.
+ * - "table": paper-example round; looked up in the exported decision table,
+ *   which is Kraken's own CostCalculator on every (node, scheme) cell —
+ *   exact, and needs no backend.
+ * - "allpush_local": backend unavailable, but the player's plan is pure
+ *   all-push, so the in-browser all-push model is the right model for it.
+ * A plan that pulls anything is never scored by the all-push model; see
+ * `unscorable`. */
+export type ScoreMode = "pushpull" | "table" | "allpush_local";
+
 export interface OfficialScore {
   cost: number;
   latency: number;
   norm: NormPoint;
-  mode: "estimate" | "pushpull"; // estimate = client all-push (only when there's no real number to wait for); pushpull = backend-refined
+  mode: ScoreMode;
 }
+
+/** off = no backend configured; unknown = not probed yet. */
+export type BackendStatus = "off" | "unknown" | "up" | "down";
+
+const BACKEND_POLL_MS = 15000;
 
 export class AppState {
   manifest: Manifest | null = null;
@@ -75,11 +95,17 @@ export class AppState {
    * real push-pull number lands (or fails) — the scorecard shows a
    * "scoring…" state instead of a number while this is true. */
   scoring = false;
+  /** Set instead of a score when the plan uses pull somewhere and the
+   * push-pull backend is unavailable: an all-push number would ignore those
+   * choices, so no score, rank or "you matched Kraken" is shown at all. */
+  unscorable: "backend_down" | null = null;
+  backendStatus: BackendStatus = backendConfigured() ? "unknown" : "off";
   loading = false;
   error: string | null = null;
 
   private listeners = new Set<() => void>();
   private refineToken = 0;
+  private pollTimer: ReturnType<typeof setInterval> | null = null;
 
   subscribe(fn: () => void): void {
     this.listeners.add(fn);
@@ -88,7 +114,25 @@ export class AppState {
     for (const fn of this.listeners) fn();
   }
 
+  /** Probe the backend now and every BACKEND_POLL_MS, so the badge recovers
+   * by itself once the service is (re)started — no page reload needed. A
+   * plan left unscorable while it was down is rescored on recovery. */
+  startBackendPolling(): void {
+    if (!backendConfigured() || this.pollTimer) return;
+    const probe = async () => {
+      const up = await checkBackend();
+      const next: BackendStatus = up ? "up" : "down";
+      if (next === this.backendStatus) return;
+      this.backendStatus = next;
+      if (up && this.unscorable === "backend_down") this.rescore();
+      else this.emit();
+    };
+    void probe();
+    this.pollTimer = setInterval(probe, BACKEND_POLL_MS);
+  }
+
   async init(base = "scenarios/"): Promise<void> {
+    this.startBackendPolling();
     this.loading = true;
     this.emit();
     try {
@@ -157,6 +201,7 @@ export class AppState {
       this.clientScore = null;
       this.official = null;
       this.scoring = false;
+      this.unscorable = null;
       // auto-select the first (deepest-dependency) subquery to guide the user
       this.activeSubquery = scenario.processing_order[0] ?? null;
     } catch (e) {
@@ -235,7 +280,58 @@ export class AppState {
     const stage = this.currentStage;
     if (!bl || !stage || !this.engine) return bl;
     const norm = this.engine.normalizePoint(stage.cost, stage.latency);
-    return { ...bl, kraken: { cost: stage.cost, latency: stage.latency, ...norm } };
+    const out: Baselines = { ...bl, kraken: { cost: stage.cost, latency: stage.latency, ...norm } };
+    // Paper round: Sequential's step 2 (pick the scheme at its fixed node)
+    // also uses alpha, so it is re-derived per stage at export time, from
+    // the same decision table and score F as Kraken.
+    const seq = stage.analysis?.sequential;
+    if (seq) {
+      out.sequential = { cost: seq.cost, latency: seq.latency, ...this.engine.normalizePoint(seq.cost, seq.latency) };
+    }
+    return out;
+  }
+
+  /** The paper's motivating example (factory topology), if that is the
+   * loaded round — placement is restricted to its three candidate nodes,
+   * and it's scored from its exported decision table (all four schemes the
+   * free push/pull chips can build, not just the paper's own two — see
+   * ALL_SCHEMES in factory_example.py) instead of the backend. */
+  get paperRound(): PaperRound | null {
+    return this.scenario?.paper_round ?? null;
+  }
+
+  /** The player's scheme for `name` in the paper round, if their push/pull
+   * chip choice (pushChoice[name], the same field the Reef rounds use)
+   * matches one of the four exported comm_options by its exact push set. */
+  paperScheme(name: string): CommScheme | undefined {
+    const pr = this.paperRound;
+    const pushed = this.pushChoice[name];
+    if (!pr || !pushed) return undefined;
+    const key = [...pushed].sort().join(",");
+    return pr.comm_options.find((o) => [...o.push].sort().join(",") === key)?.id;
+  }
+
+  /** Decision-table cell for the current placement + scheme (paper round). */
+  get paperDecision(): Decision | null {
+    const pr = this.paperRound;
+    const name = this.subqueries[0];
+    if (!pr || name === undefined) return null;
+    const node = this.placement[name];
+    const scheme = this.paperScheme(name);
+    if (node === undefined || !scheme) return null;
+    return pr.decision_table.find((d) => d.node === node && d.scheme === scheme) ?? null;
+  }
+
+  /** True iff nothing in the plan is pulled and nothing is left for the
+   * optimizer to decide — the only case the in-browser all-push model
+   * scores correctly without the backend. */
+  get planIsPureAllPush(): boolean {
+    return this.subqueries.every((name) => {
+      const decidable = this.decidableDeps(name);
+      if (decidable.length === 0) return true;
+      const pushed = this.pushChoice[name];
+      return !!pushed && decidable.every((d) => pushed.includes(d));
+    });
   }
 
   selectSubquery(name: string): void {
@@ -372,9 +468,15 @@ export class AppState {
     // If the plan was revealed, retrying the identical topology/query is a
     // non-challenge -- jump to a different topology instead (same query
     // where it exists there, via selectTopology) so "try again" is a fresh
-    // puzzle, not a replay of the one whose answer was just shown.
+    // puzzle, not a replay of the one whose answer was just shown. The pool
+    // includes sibling networks of the *same* family (topologies.py has
+    // several per family, each a different seed/size) -- most jumps land on
+    // one of those, so the next visitor keeps the same query but sees
+    // different edges, occasionally a node more or fewer. The paper's fixed
+    // "Kraken's Forge" example is excluded: it's a deliberate separate round
+    // a visitor taps into on purpose, not something "try again" should pick.
     const jumpToOtherTopology = this.reveal && this.manifest
-      ? this.manifest.topologies.filter((t) => t.id !== this.topologyId)
+      ? this.manifest.topologies.filter((t) => t.id !== this.topologyId && t.family !== "factory")
       : [];
 
     this.placement = {};
@@ -385,6 +487,7 @@ export class AppState {
     this.clientScore = null;
     this.official = null;
     this.scoring = false;
+    this.unscorable = null;
     this.emit();
 
     if (jumpToOtherTopology.length) {
@@ -459,6 +562,7 @@ export class AppState {
   }
 
   private rescore(): void {
+    this.unscorable = null;
     if (!this.engine || !this.readyToScore) {
       this.clientScore = null;
       this.official = null;
@@ -466,16 +570,24 @@ export class AppState {
       this.emit();
       return;
     }
-    // Always compute the instant client-side estimate (cheap — pure WASM,
-    // no network) — but it ignores every push/pull choice the player made
-    // (it can only model all-push), so it's kept internal, not shown as
-    // "official", unless there's no backend to eventually give a real
-    // number instead.
-    this.clientScore = this.engine.score(this.placement);
-    if (!backendConfigured()) {
-      this.official = this.estimateAsOfficial();
+    // Paper round: every reachable (node, scheme) cell was costed by the
+    // engine at export time, so the exact number is a lookup — no backend,
+    // no estimate.
+    if (this.paperRound) {
+      this.clientScore = null;
       this.scoring = false;
+      const d = this.paperDecision;
+      this.official = d
+        ? { cost: d.cost, latency: d.latency, norm: this.engine.normalizePoint(d.cost, d.latency), mode: "table" }
+        : null;
       this.emit();
+      return;
+    }
+    // The instant client-side model is all-push only: it ignores every pull
+    // the player chose, so it is never shown for a plan that pulls.
+    this.clientScore = this.engine.score(this.placement);
+    if (this.backendStatus === "off" || this.backendStatus === "down") {
+      this.applyFallback();
       return;
     }
     // Wait for the real push-pull number rather than flashing the (often
@@ -486,14 +598,23 @@ export class AppState {
     this.refine();
   }
 
-  private estimateAsOfficial(): OfficialScore {
-    const c = this.clientScore!;
-    return {
-      cost: c.total_cost,
-      latency: c.total_latency,
-      norm: { cost_norm: c.cost_norm, latency_norm: c.latency_norm, score: c.score },
-      mode: "estimate",
-    };
+  /** No push-pull service: score only what the all-push model can score
+   * correctly (a pure all-push plan); otherwise show no score at all. */
+  private applyFallback(): void {
+    this.scoring = false;
+    if (this.planIsPureAllPush && this.clientScore) {
+      const c = this.clientScore;
+      this.official = {
+        cost: c.total_cost,
+        latency: c.total_latency,
+        norm: { cost_norm: c.cost_norm, latency_norm: c.latency_norm, score: c.score },
+        mode: "allpush_local",
+      };
+    } else {
+      this.official = null;
+      this.unscorable = "backend_down";
+    }
+    this.emit();
   }
 
   /** Wire format for the backend: an operator whose *entire* decidable set
@@ -527,15 +648,17 @@ export class AppState {
     if (token !== this.refineToken || !this.readyToScore) return; // stale / placement or push choice changed
     this.scoring = false;
     if (result && this.engine) {
+      this.backendStatus = "up";
       const norm = this.engine.normalizePoint(result.cost, result.latency);
       this.official = { cost: result.cost, latency: result.latency, norm, mode: "pushpull" };
+      this.emit();
     } else {
-      // backend unreachable — fall back to the estimate rather than leaving
-      // the player with nothing; still clearly labeled "estimate", not silently
-      // presented as the real number.
-      this.official = this.estimateAsOfficial();
+      // Backend unreachable (or it rejected the request): never pass the
+      // all-push number off as a push-pull result — see applyFallback().
+      // The poller flips the badge back and rescores once it answers again.
+      this.backendStatus = "down";
+      this.applyFallback();
     }
-    this.emit();
   }
 }
 
