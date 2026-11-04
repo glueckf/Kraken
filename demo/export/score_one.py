@@ -63,6 +63,7 @@ from kraken.run import _gather_problem_parameters
 from kraken.problem import PlacementProblem
 import scenarios_def
 from topologies import TOPOLOGIES
+import reef_topologies
 
 
 # Mirrors ALL_PUSH in demo/web/src/state.ts — an explicit "push everything,
@@ -150,11 +151,23 @@ def main():
     se.generate_hardcoded_workload = lambda: [q]
 
     network_size = topology["network_size"]
-    if topology.get("kind") == "hardcoded":
+    kind = topology.get("kind")
+    if kind == "hardcoded":
         cfg = se.SimulationConfig.create_deterministic(
             network_size=12, num_event_types=6, xi=0.0, cost_weight=0.5,
             latency_threshold=None, output_dataset_name="score_worker",
         )
+        with contextlib.redirect_stdout(io.StringIO()):
+            sim = se.Simulation(cfg)
+            sim.run()
+    elif kind == "hand_curated":
+        cfg = se.SimulationConfig.create_deterministic(
+            network_size=network_size, num_event_types=6, xi=0.0, cost_weight=0.5,
+            latency_threshold=None, output_dataset_name="score_worker",
+        )
+        with reef_topologies.curated_tree(topology["id"]), contextlib.redirect_stdout(io.StringIO()):
+            sim = se.Simulation(cfg)
+            sim.run()
     else:
         random.seed(topology["seed"])
         np.random.seed(topology["seed"])
@@ -162,10 +175,9 @@ def main():
             network_size=network_size, num_event_types=6, xi=0.0, cost_weight=0.5,
             latency_threshold=None, output_dataset_name="score_worker",
         )
-
-    with contextlib.redirect_stdout(io.StringIO()):
-        sim = se.Simulation(cfg)
-        sim.run()
+        with contextlib.redirect_stdout(io.StringIO()):
+            sim = se.Simulation(cfg)
+            sim.run()
     score_simulation(sim, placement, push_choice)
 
 

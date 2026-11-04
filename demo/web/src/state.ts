@@ -466,17 +466,19 @@ export class AppState {
 
   clear(): void {
     // If the plan was revealed, retrying the identical topology/query is a
-    // non-challenge -- jump to a different topology instead (same query
-    // where it exists there, via selectTopology) so "try again" is a fresh
-    // puzzle, not a replay of the one whose answer was just shown. The pool
-    // includes sibling networks of the *same* family (topologies.py has
-    // several per family, each a different seed/size) -- most jumps land on
-    // one of those, so the next visitor keeps the same query but sees
-    // different edges, occasionally a node more or fewer. The paper's fixed
-    // "Kraken's Forge" example is excluded: it's a deliberate separate round
-    // a visitor taps into on purpose, not something "try again" should pick.
-    const jumpToOtherTopology = this.reveal && this.manifest
-      ? this.manifest.topologies.filter((t) => t.id !== this.topologyId && t.family !== "factory")
+    // non-challenge -- jump to a sibling topology instead (same query where
+    // it exists there, via selectTopology) so "try again" is a fresh puzzle,
+    // not a replay of the one whose answer was just shown. The pool is
+    // restricted to the *same family* as the current topology (topologies.py
+    // has several per family, each a different hand-curated or random
+    // shape) -- Reef stays Reef, Grand Reef stays Grand Reef, so "try again"
+    // never surprises a visitor mid-round with a totally different node
+    // count or label; the family buttons already offer the cross-family
+    // jump explicitly. The paper's fixed "Kraken's Forge" example is
+    // excluded regardless: it's a deliberate separate round a visitor taps
+    // into on purpose, not something "try again" should pick.
+    const jumpToOtherTopology = this.reveal && this.manifest && this.topology
+      ? this.manifest.topologies.filter((t) => t.id !== this.topologyId && t.family === this.topology!.family)
       : [];
 
     this.placement = {};

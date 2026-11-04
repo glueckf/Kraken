@@ -5,10 +5,23 @@ You place operators on network nodes yourself, and the app scores your plan
 against Kraken and the baselines. All-push scoring runs client-side via a Rust
 engine compiled to WebAssembly; push-pull scoring uses the local backend.
 
-Topologies: **Reef** (12 nodes) and **Grand Reef** (24 nodes) with four story
-queries each — each of those two is actually several networks (different
-seed, occasionally a node more or fewer; see `topologies.py`'s `family`
-grouping) so repeat visitors see different edges under the same query — and
+Topologies: **Reef** (~9–13 nodes) and **Grand Reef** (~13–26 nodes) with
+four story queries each — each of those two is actually several networks
+(see `topologies.py`'s `family` grouping) so repeat visitors see different
+edges under the same query. Those networks are hand-curated, not randomly
+generated (`demo/export/reef_topologies.py`): a random network almost
+never gives a query more than one real placement candidate (its valid set
+is just the ancestor chain up to the root), so it never showed the actual
+placement trade-off this demo is about, no matter how many times you tried
+again. "Try again" only rotates within the current size (Reef stays Reef,
+Grand Reef stays Grand Reef) — the topology-bar buttons are the explicit
+way to switch size. Grand Reef's own default network started out randomly
+generated and un-curated on purpose, as a bigger, messier reference point,
+but its 67 edges (most nodes with 3-4 parents at once) read as noise, not
+a network, so it's since been pruned down to the 24 edges its query
+letters actually depend on — same shape, same placements, just legible —
+see `demo/BACKLOG.md` item #30 for the investigation and the per-query
+verification table. And
 **Kraken's Forge**, the paper's motivating example (Example 1–4), a small
 fixed round where the best node depends on the communication scheme. See
 [FACTORY_ROUND.md](FACTORY_ROUND.md) for its derivation and

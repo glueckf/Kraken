@@ -174,7 +174,7 @@ function background(): string {
   );
 }
 
-export function renderReef(scenario: Scenario, layout: Layout, subMeta: Map<string, SubMeta>, view: ReefView): string {
+export function renderReef(scenario: Scenario, layout: Layout, subMeta: Map<string, SubMeta>, view: ReefView, topologyId: string): string {
   const nodes = scenario.topology.nodes;
   const pos = (id: number) => layout.get(id)!;
 
@@ -362,6 +362,11 @@ export function renderReef(scenario: Scenario, layout: Layout, subMeta: Map<stri
       `</g>`;
   }
 
+  // Quiet reference tag, not UI — lets a visitor (or us, in a bug report)
+  // name *this exact* concrete network ("id large_b") rather than only its
+  // family label ("Grand Reef"), which several variants share.
+  const idTag = `<text class="topo-id" x="${VB_W - 10}" y="${VB_H - 10}" text-anchor="end">${topologyId}</text>`;
+
   return (
     `<svg viewBox="0 0 ${VB_W} ${VB_H}" class="reef-svg" preserveAspectRatio="xMidYMid meet" role="group" aria-label="${t().topologyAria}">` +
     background() +
@@ -369,6 +374,7 @@ export function renderReef(scenario: Scenario, layout: Layout, subMeta: Map<stri
     `<g class="plan-edges">${planEdges}</g>` +
     `<g class="nodes">${g}</g>` +
     eventLegend(Object.keys(scenario.event_map.producers)) +
+    idTag +
     `</svg>`
   );
 }

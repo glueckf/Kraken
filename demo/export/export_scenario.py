@@ -39,6 +39,7 @@ from inev.process_combination import compute_dependencies
 from kraken.run import run_kraken_solver
 import scenarios_def
 from topologies import TOPOLOGIES
+import reef_topologies
 
 SINKS = (0,)
 XI = 0.0
@@ -200,12 +201,27 @@ def build_scenario(spec, topology):
     se.generate_hardcoded_workload = lambda: [q]
 
     network_size = topology["network_size"]
-    if topology.get("kind") == "hardcoded":
+    kind = topology.get("kind")
+    if kind == "hardcoded":
         # The original 12-node reef: hand-built tree, no RNG involved at all.
         cfg = se.SimulationConfig.create_deterministic(
             network_size=12, num_event_types=6, xi=XI, cost_weight=COST_WEIGHT,
             latency_threshold=None, output_dataset_name="demo_%s" % spec["id"],
         )
+        with contextlib.redirect_stdout(io.StringIO()):
+            sim = se.Simulation(cfg)
+            sim.run()
+    elif kind == "hand_curated":
+        # A different hand-built tree (reef_topologies.py), also no RNG --
+        # see topologies.py's module docstring for why these exist instead
+        # of more random ones.
+        cfg = se.SimulationConfig.create_deterministic(
+            network_size=network_size, num_event_types=6, xi=XI, cost_weight=COST_WEIGHT,
+            latency_threshold=None, output_dataset_name="demo_%s_%s" % (topology["id"], spec["id"]),
+        )
+        with reef_topologies.curated_tree(topology["id"]), contextlib.redirect_stdout(io.StringIO()):
+            sim = se.Simulation(cfg)
+            sim.run()
     else:
         # A sized-but-random reef. Topology generation draws from both stdlib
         # `random` (parent/edge sampling) and `numpy.random` (event rates/leaf
@@ -217,9 +233,9 @@ def build_scenario(spec, topology):
             network_size=network_size, num_event_types=6, xi=XI, cost_weight=COST_WEIGHT,
             latency_threshold=None, output_dataset_name="demo_%s_%s" % (topology["id"], spec["id"]),
         )
-    sim = se.Simulation(cfg)
-    with contextlib.redirect_stdout(io.StringIO()):
-        sim.run()
+        with contextlib.redirect_stdout(io.StringIO()):
+            sim = se.Simulation(cfg)
+            sim.run()
 
     tables = extract_static_tables(sim)
     dist, local_rate, workload = tables["dist"], tables["local_rate"], tables["workload"]
@@ -629,7 +645,10 @@ def export_one_topology(topology):
         "network_size": topology["network_size"], "scenarios": [],
     }
     ok = True
+    excluded = set(topology.get("exclude_scenarios", ()))
     for spec in scenarios_def.SCENARIOS:
+        if spec["id"] in excluded:
+            continue
         print(f"--- exporting {topology['id']}/{spec['id']} ({spec['title']}) ---")
         try:
             scenario, mismatches = build_scenario(spec, topology)

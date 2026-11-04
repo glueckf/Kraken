@@ -64,7 +64,7 @@ function render(): void {
     layout = computeLayout(state.scenario);
     layoutFor = state.scenario;
   }
-  $("reef").innerHTML = renderReef(state.scenario, layout!, state.subMeta, reefView());
+  $("reef").innerHTML = renderReef(state.scenario, layout!, state.subMeta, reefView(), state.topologyId!);
   $("topologyBar").innerHTML = renderTopologyBar(state);
   $("queryBar").innerHTML = renderQueryBar(state);
   $("tray").innerHTML = renderTray(state);

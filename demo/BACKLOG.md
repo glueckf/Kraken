@@ -196,13 +196,6 @@ does.
 
 ## Gamification (later — once the above works)
 
-- Weave the "Hai-Alarm" fairy-tale framing into the actual UI copy (query
-  picker, task description, info modal), not just the spoken talk — e.g.
-  frame query selection as "which alarm are you hunting" rather than an
-  abstract `SEQ(...)` expression. **Deprioritized (2026-10-20)**: for a
-  staffed booth with a poster already carrying the story, this is lower
-  value than it looked in isolation — revisit only if the demo needs to run
-  unstaffed.
 - Add a tangible reward moment (short animation/sound) for beating Kraken —
   a bare score delta (0.342 vs 0.298) doesn't land emotionally for a lay
   audience. **DONE (2026-10-20), visual only.** A short bubble-burst
@@ -1280,6 +1273,252 @@ in the demo now. Two concrete asks:
     `npm run typecheck` clean, `npm test` (3/3), `unittest
     tests.test_factory_example tests.test_score_one` (23/23, unaffected),
     live in the browser in German (English pass still skipped, per above).
+28. **Show planning time in the comparison — requested 2026-11-04, not
+    started.** Idea: surface computation/planning time somewhere in the
+    scorecard/leaderboard, probably just Kraken vs. one other baseline
+    rather than a column for all of them (exact scope still open). The
+    headline modal already claims "~7× faster planning time"
+    (`i18n.ts` `result3`) but that's a static, paper-level number, never
+    shown live per scenario. The underlying data already exists and
+    wouldn't need new instrumentation: `simulation_environment.py` already
+    records `computing_time` for all-push/PrePP/sequential
+    (`extract_sequential_strategy` etc.) and `kraken/run.py` records
+    `execution_time_seconds` per strategy — none of it currently flows into
+    `extract_static_tables`/`summarize_kraken_run` or the exported scenario
+    JSON. Needs a scoping pass: which comparison (Kraken vs. Sequential?
+    vs. the player, who has no "time"?), where in the panel it'd live, and
+    whether per-stage (alpha) timings differ enough to matter.
+30. **Random topologies replaced with hand-curated ones — DONE
+    (2026-11-04).** Item #5's "large collapses to 1 operator" was only half
+    the story: even where a random topology *does* leave a query several
+    mathematically valid candidate nodes, Kraken's own Balanced-stage (α=0.6)
+    search picked the exact same single node for every one of Q1-Q4, every
+    time, on every random variant tested (`medium_b/c/d`, `large/b/c` as
+    they stood before this item) -- cloud for all six non-hand-built
+    variants, node 1 for the original hand-built "medium" tree regardless of
+    which query. A player never actually faced the placement trade-off the
+    demo is about, no matter how many "try again"s they used. Investigated
+    *why* rather than tuning generation parameters again (that was already
+    tried and ruled out, see item #5): in a random topology the valid
+    candidate set for any single-operator query is literally the straight
+    ancestor chain from the deepest common point up to the root -- there is
+    no such thing as two siblings that are both valid, non-nested
+    candidates, so there was never a real branching choice to find, at any
+    seed.
+
+    Fix: `demo/export/reef_topologies.py` adds hand-built alternative
+    networks (same pattern as `factory_example.py`'s own hardcoded tree --
+    deliberate multi-parent structure, not randomly generated) -- a "left
+    wing" of sources (A, B, C) and a "right wing" (E, F) joined by a shared
+    bridge node that also holds D, plus a plain branching chain for
+    contrast. Event rates are untouched (still the engine's own
+    A=1000/B=2/C=45/D=203/E=800/F=5 default); the diversity comes entirely
+    from *shape*. Verified empirically, not assumed: for every one of Q1-Q4,
+    at least 3 of the 4 Reef variants (the original `medium` plus 3 new
+    ones) and all 4 Grand Reef variants (`large` kept random as a bigger
+    reference point, plus 3 new hand-curated ones) place it at a genuinely
+    different node or different *number* of nodes under Kraken's real greedy
+    search at Balanced:
+
+    | Query | Reef (medium / \_b / \_c / \_d) | Grand Reef (large / \_b / \_c / \_d) |
+    |---|---|---|
+    | seq_abc | (1) / (2) / (6) / (2,3) | (0) / (3,5) / (2) / (3) |
+    | seq_abcd | (1) / (1,2) / (5,6) / (2,3) | (0) / (2,3,5) / (2) / (3) |
+    | seq_abcde | (1) / (1,2) / (5,6) / (2,3) | (0) / (2,5) / (2) / (3) |
+    | and_nested | (1) / (1) / (5) / (2) | (0) / (2) / (2,3) / (3) |
+
+    (First pass at `medium_c` reused `medium_b`'s exact network with the two
+    wings' letters swapped -- same shape, different cheapest node in
+    principle, but its and_nested result happened to land on the same raw
+    node id as `medium_b` and `medium` by coincidence, which a player would
+    see as "node 1 always wins" even though the underlying graphs differ.
+    Rebuilt with the bridge/hub ids moved instead of just the letters, which
+    also moves which id is cheapest -- confirmed via the table above, not
+    assumed fixed.) `kind: "hand_curated"` in `topologies.py` dispatches to
+    `reef_topologies.curated_tree(topology_id)`, a context manager that
+    monkey-patches `simulation_environment.create_hardcoded_tree` for the
+    duration of one export/score call -- same pattern as
+    `factory_example.py`'s `factory_model()`. `e_list`, the hardcoded-tree
+    contract's third return value, is dead data in the engine itself
+    (`self.eList` is assigned in `Simulation.__init__` but never read
+    anywhere) -- every builder returns `{}` for it, same as
+    `factory_example.py`'s own tree builder already does.
+
+    Verified: `export_scenario.py` re-export (0 mismatches), `unittest
+    tests.test_factory_example tests.test_score_one` (23/23, unaffected --
+    this only touches Reef/Grand Reef, not Kraken's Forge), `npm run
+    typecheck` clean, `npm test` (3/3), the backend worker
+    (`score_one.py medium_c and_nested ...`) cross-checked against the
+    exported JSON's own Kraken cost/latency (exact match, 1252.44/11),
+    live in the browser: switched to `and_nested`, revealed, "try again"
+    jumped straight to a 13-node Grand Reef variant with a visibly different
+    decomposition (`AND(B, F)` as the first subquery, not `AND(SEQ(A, B),
+    F)` like the original tree), no console errors.
+
+    **Follow-up (2026-11-04):** two things from playtesting feedback.
+
+    1. "Try again" (`state.ts`'s `clear()`) used to pick its next topology
+       from *all* non-Forge entries, so a visitor mid-round on Reef could get
+       bounced to Grand Reef (different node count, different label) without
+       asking for it -- surprising, and not what the family buttons are for
+       (they're the explicit way to switch size). Restricted the jump pool to
+       `t.family === this.topology.family`: Reef stays Reef, Grand Reef stays
+       Grand Reef; verified live by cycling "try again" on Grand Reef through
+       several rounds and watching only `large`/`large_b`/`large_c`/`large_d`
+       scenario files get fetched, never `medium*`.
+
+    2. `large`'s own default random network (`create_sized_deterministic`,
+       seed=1024) was kept un-curated on purpose as "one bigger, more
+       tangled-looking variant" -- but at 24 nodes and 67 edges (most
+       internal nodes had 3-4 parents at once) it read as noise, not a
+       network, especially next to the three deliberately clean
+       `large_b/c/d` trees. Rather than regenerate it (which would mean
+       re-verifying placement behavior from scratch) or hand-design a
+       replacement, pruned it in place: computed, for every node, the exact
+       set of letters (A-F) reachable below it, then greedily removed parent
+       edges whose removal doesn't change that set for *any* node -- i.e.
+       edges that were never load-bearing for any query's reachability, just
+       the random generator over-connecting. 67 edges dropped to 24 (a near
+       tree -- one node still genuinely needs two parents, since they reach
+       different letters below them); verified by brute force, not assumed,
+       that every node's reachable-letter-set is bit-for-bit identical
+       before/after for all 24 nodes. Consequence confirmed empirically
+       before shipping: the Balanced-stage placement for all four queries
+       stayed at node 0 (cloud) on both the old and the pruned graph --
+       `large` was already the family's "doesn't give real placement choice"
+       baseline (see the table above), and pruning doesn't change that, only
+       the drawing. Absolute cost/latency numbers *do* shift (e.g. seq_abc:
+       45447 → 777, latency 12 → 20) because fewer edges means some letter
+       producers now sit farther apart in hop-distance, which the engine's
+       own rate/cost model correctly reflects -- an expected, honest
+       consequence of actually removing edges, not a bug, and harmless since
+       nothing compares `large`'s numbers against a prior export. Shipped as
+       a new hand-curated builder (`reef_topologies.build_large`, baked from
+       the pruned graph) rather than a live pruning step, so it costs nothing
+       at export time and is just as reproducible as `large_b/c/d`;
+       `topologies.py`'s `large` entry is now `kind: "hand_curated"` too (no
+       `TOPOLOGIES` entry is `"sized_random"` any more, though the code path
+       stays for future use).
+
+       Verified: re-export (0 mismatches), `unittest
+       tests.test_factory_example tests.test_score_one` (23/23), `npm run
+       typecheck` clean, `npm test` (3/3), live in the browser (screenshot:
+       the Grand Reef default now reads as four clean layers, barely any
+       crossing lines, versus the previous dense tangle).
+
+    3. Playtesting still found Reef's "try again" feeling repetitive after
+       only 2 rounds, even restricted to one family (point 1 above). Root
+       cause: the per-query table above compares the *set of every node a
+       query's decomposition touches*, which hid a weaker property -- the
+       *root* query's own node (the one a player actually watches get
+       highlighted, win or lose) collides between variants. Checked that
+       specifically, per query: `medium` and `medium_b` both land the root
+       on node 1 for seq_abcd/seq_abcde/and_nested; `medium_b` and
+       `medium_d` both land it on node 2 for seq_abc. So of 4 variants,
+       only 3 distinct root outcomes existed per query -- a visitor hitting
+       "try again" a few times has better-than-even odds of a repeat,
+       exactly what was reported. First fix attempt, per the suggestion to
+       try it directly: moved event C from the native `medium` tree's node
+       11 to node 6 and re-evaluated. Result: *every* query's root
+       collapsed to node 0 (cloud), at every alpha, for all four
+       queries -- the same "no real choice" failure mode item #30 exists to
+       avoid, just reached a different way (moving C broke the last node
+       that gave several letters a shared low ancestor), so not added.
+       Added `medium_e` instead: `medium_b`'s own proven wing/bridge shape
+       (A, B, C left; D on the bridge; E, F right) is kept as-is -- any
+       shape that still resolves Q1 inside one A/B/C hub, which is required
+       to keep its root off the bridge at all, necessarily produces the
+       same kind of hub/bridge split, so a genuinely different *shape*
+       wasn't the lever here -- but the bridge and left-hub, the two nodes
+       that actually end up holding a root, are renumbered from ids 1/2 to
+       8/7, spending the one real degree of freedom (which raw id a given
+       role gets) on ids neither collision pair uses. Verified empirically:
+       root 7 for seq_abc, root 8 for seq_abcd/seq_abcde/and_nested,
+       colliding with none of `medium`/`_b`/`_c`/`_d` on any query -- gives
+       every query 4 distinct root outcomes across the 5 variants (up from
+       3 across 4). seq_abcd/seq_abcde/and_nested also got a genuinely
+       different Kraken *decomposition*, not just a different node (e.g.
+       `SEQ(A, B, D)` grouped before `C` joins, where every other variant
+       groups `C` in first).
+
+       Verified: re-export (0 mismatches, 10 topologies/37 scenarios),
+       `unittest tests.test_factory_example tests.test_score_one` (23/23),
+       `npm run typecheck` clean, `npm test` (3/3), live in the browser:
+       cycled "try again" on Reef until `medium_e` came up, placed both
+       subqueries, revealed -- cost 37/latency 7h matching the export
+       exactly, no console errors.
+
+    4. Two more requests tested on `large` (Grand Reef's default, pruned
+       24-node topology from point 2). First, adding back some of the
+       redundant cross-edges point 2 deliberately removed (6-11, 6-12, 6-8,
+       2-7), hoping extra connectivity would open up more placement options
+       without otherwise changing much. Measured effect instead: `and_nested`
+       is the only one of the four queries that decomposes into more than
+       one subquery on `large` (3 subqueries, vs. 1 for the other three --
+       see point below); every edge-set tried that included 6-11 (even
+       alone) or all three of {6-12, 6-8, 2-7} together collapsed
+       `and_nested` down to 1 subquery too, i.e. made the topology *more*
+       degenerate, not less -- confirmed any *two* of {6-12, 6-8, 2-7}
+       together leaves `and_nested` at 3, so the effect only appears once
+       connectivity crosses a threshold. The full 4-edge set as first
+       requested was not applied (regression against "ideally not much, but
+       maybe options are more", consistent with point 3's C-move finding
+       above -- extra shortcuts make a single node cheap enough to reach
+       everything, so Kraken's search stops finding splitting worthwhile,
+       same mechanism as the "no real choice" failure mode item #30 exists
+       to avoid). Shipped a safe pair instead, per follow-up request: `6-12`
+       and `6-8` (both anchored on node 6, closest to the original ask),
+       dropping `6-11` and `2-7`. `and_nested` stays at 3 subqueries;
+       `seq_abc`/`seq_abcd`/`seq_abcde` unaffected (still 1 subquery,
+       still cloud); only cost numbers shift slightly (e.g. seq_abc
+       Balanced: 777.5 -> 750.1) -- the "not much changes" outcome hoped
+       for.
+
+       Wiring this up surfaced a real bug in `reef_topologies._build`
+       (the generic builder every hand-curated topology in this file uses):
+       `nodes[c].Parent = [nodes[parent]]` *overwrites* rather than
+       accumulates, so a child listed under two parent keys silently keeps
+       only whichever parent was processed last in the `edges` dict --
+       `core.graph.create_fog_graph` builds the actual distance graph from
+       `Node.Parent` alone (`Child` is unused for distances), so the lost
+       parent's route vanished from every cost/latency computation, not
+       just the drawing. This was already live and unnoticed in `large`'s
+       own base graph: node 13 is listed under both 9 and 10 (see point 2's
+       "one node still genuinely needs two parents" claim), but the
+       exported JSON showed `"parents": [10]`, silently missing 9, before
+       this fix. Fixed by accumulating (`nodes[c].Parent.append(...)`
+       across all occurrences instead of reassigning). No other shipped
+       topology is affected -- checked every hand-curated edge dict
+       (`medium_b/c/d/e`, `large_b/c/d`) for a child appearing under more
+       than one parent key, and `large` (before the two new edges) is the
+       only one that had any, so the fix only changes `large`'s own graph
+       (now correctly multi-parented at nodes 8, 12, and 13).
+
+       Second: confirmed `large` gives `seq_abc`/`seq_abcd`/`seq_abcde` a
+       single, un-decomposed subquery each (always placed at node 0, no
+       push/pull decision at all), unlike every other topology in the demo
+       -- `large_b/c/d` all decompose every query into 2-6 subqueries. Per
+       the stated criterion, dropped 2 of the 3 (`seq_abc`, `seq_abcd`) from
+       `large`'s own rotation, keeping `seq_abcde` (touches the most event
+       letters of the three) alongside `and_nested` (still 3 subqueries,
+       unaffected). New `exclude_scenarios` field on a `topologies.py`
+       entry, read by `export_scenario.py`'s `export_one_topology` to skip
+       building/listing those scenario ids for that one topology only --
+       every other topology, including `large`'s own siblings, is
+       unaffected since each topology's scenario list is independent.
+       `large`'s query-picker now shows 2 pills instead of 4.
+
+       Verified: re-export (0 mismatches, 10 topologies/35 scenarios),
+       `unittest tests.test_factory_example tests.test_score_one` (23/23),
+       `npm run typecheck` clean, `npm test` (3/3), live in the browser:
+       switched to Grand Reef, picker shows exactly "Hai-Alarm"
+       (`seq_abcde`) and the seedling (`and_nested`), no `seq_abc`/
+       `seq_abcd` pills, no console errors. The `6-12`/`6-8` edges plus the
+       `_build` Parent fix were verified together the same way, plus
+       directly inspecting the built network before export (`node.Parent`
+       for 8, 12, 13 each show both expected ids) and confirming `and_nested`
+       still shows all 3 subqueries (s1/s2/s3) live in the browser on
+       Grand Reef.
 
 ## Engine (research code, not demo) — flagged, not scoped
 
@@ -1293,7 +1532,9 @@ in the demo now. Two concrete asks:
     factory round sidesteps it by running Kraken on an un-run Simulation.
     Worth an issue for the research pipeline.
 
-8. **Enable Kraken's multi-node ("MS") placement.** Currently explicitly
+8. **Enable Kraken's multi-node ("MS") placement — targeted for the demo
+   paper after BSW (confirmed 2026-11-04), alongside item #29 (resource
+   capacities).** Currently explicitly
    left out of the integrated search — per the TODOs in the algorithm:
    `# ComputeMSPlacement` / `# TODO: Currently leave out MS placement for
    integrated approach, as it is not yet implemented` /
@@ -1307,3 +1548,22 @@ in the demo now. Two concrete asks:
    `CostCalculator` this would plug in, what "multi-node" changes about a
    `PlacementInfo`/`SolutionCandidate`) before estimating effort. Not
    touched today.
+
+29. **Resource capacities — targeted for the demo paper after BSW
+    (confirmed 2026-11-04), alongside item #8 (multi-node placement), not
+    scoped yet.** Add real per-node resource capacity constraints (compute
+    and/or bandwidth) to Kraken's joint search, instead of the current
+    unconstrained model — every demo/test topology sets `compute_power =
+    math.inf` on every fog/cloud node, and `latency_threshold`/`L_max` is
+    accepted as a `SimulationConfig` field but not enforced anywhere in
+    `kraken/problem.py` or `CostCalculator` (confirmed by grep: no
+    `capacity` handling in either). The paper's own factory example
+    explicitly sets this aside too ("ignoring capacity and latency
+    constraints", Sec. 2.3) but mentions a different winner once L_max ≤ 8
+    is enforced (node d4) — this item would let the demo (and the research
+    pipeline) actually show that trade-off instead of just citing it. Needs
+    its own scoping pass before estimating effort: where a capacity limit
+    would plug into `PlacementProblem.expand()`'s candidate filtering,
+    whether it's a hard constraint (prune infeasible candidates) or a
+    penalty term in the cost function, and how it interacts with the
+    existing latency-weight (α) trade-off. Not touched today.

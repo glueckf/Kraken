@@ -14,7 +14,7 @@
   ]
  },
  "topology": {
-  "num_nodes": 12,
+  "num_nodes": 9,
   "cloud_node_id": 0,
   "event_letters": [
    "A",
@@ -33,37 +33,36 @@
     "is_leaf": false,
     "parents": [],
     "children": [
-     1,
-     2
+     1
     ],
     "events": {}
    },
    {
     "id": 1,
     "layer": 1,
-    "computational_power": 3,
+    "computational_power": 25,
     "is_cloud": false,
     "is_leaf": false,
     "parents": [
      0
     ],
     "children": [
-     4,
-     5
+     2,
+     3,
+     8
     ],
     "events": {}
    },
    {
     "id": 2,
-    "layer": 1,
-    "computational_power": 3,
+    "layer": 2,
+    "computational_power": 20,
     "is_cloud": false,
     "is_leaf": false,
     "parents": [
-     0
+     1
     ],
     "children": [
-     3,
      4,
      5
     ],
@@ -72,163 +71,87 @@
    {
     "id": 3,
     "layer": 2,
-    "computational_power": 2,
+    "computational_power": 20,
     "is_cloud": false,
     "is_leaf": false,
     "parents": [
-     2
+     1
     ],
     "children": [
-     7,
-     8,
-     9,
-     10,
-     11
+     6,
+     7
     ],
     "events": {}
    },
    {
     "id": 4,
-    "layer": 2,
-    "computational_power": 2,
+    "layer": 3,
+    "computational_power": 10,
     "is_cloud": false,
-    "is_leaf": false,
+    "is_leaf": true,
     "parents": [
-     1,
      2
     ],
-    "children": [
-     6,
-     7,
-     8,
-     9,
-     10,
-     11
-    ],
-    "events": {}
+    "children": [],
+    "events": {
+     "A": 1000
+    }
    },
    {
     "id": 5,
-    "layer": 2,
-    "computational_power": 2,
+    "layer": 3,
+    "computational_power": 10,
     "is_cloud": false,
-    "is_leaf": false,
+    "is_leaf": true,
     "parents": [
-     1,
      2
     ],
-    "children": [
-     7,
-     8,
-     9,
-     10,
-     11
-    ],
-    "events": {}
+    "children": [],
+    "events": {
+     "B": 2,
+     "C": 45
+    }
    },
    {
     "id": 6,
     "layer": 3,
-    "computational_power": 1,
+    "computational_power": 10,
     "is_cloud": false,
     "is_leaf": true,
     "parents": [
-     4
+     3
     ],
     "children": [],
     "events": {
-     "D": 770,
-     "F": 668
+     "E": 800
     }
    },
    {
     "id": 7,
     "layer": 3,
-    "computational_power": 1,
+    "computational_power": 10,
     "is_cloud": false,
     "is_leaf": true,
     "parents": [
-     5,
-     3,
-     4
+     3
     ],
     "children": [],
     "events": {
-     "B": 927,
-     "C": 815,
-     "D": 770,
-     "F": 668
+     "F": 5
     }
    },
    {
     "id": 8,
-    "layer": 3,
-    "computational_power": 1,
+    "layer": 2,
+    "computational_power": 10,
     "is_cloud": false,
     "is_leaf": true,
     "parents": [
-     5,
-     3,
-     4
+     1
     ],
     "children": [],
     "events": {
-     "A": 1000,
-     "B": 927,
-     "D": 770
-    }
-   },
-   {
-    "id": 9,
-    "layer": 3,
-    "computational_power": 1,
-    "is_cloud": false,
-    "is_leaf": true,
-    "parents": [
-     3,
-     4,
-     5
-    ],
-    "children": [],
-    "events": {
-     "B": 927,
-     "E": 713
-    }
-   },
-   {
-    "id": 10,
-    "layer": 3,
-    "computational_power": 1,
-    "is_cloud": false,
-    "is_leaf": true,
-    "parents": [
-     4,
-     3,
-     5
-    ],
-    "children": [],
-    "events": {
-     "A": 1000,
-     "B": 927,
-     "E": 713
-    }
-   },
-   {
-    "id": 11,
-    "layer": 3,
-    "computational_power": 1,
-    "is_cloud": false,
-    "is_leaf": true,
-    "parents": [
-     3,
-     5,
-     4
-    ],
-    "children": [],
-    "events": {
-     "C": 815,
-     "E": 713,
-     "F": 668
+     "D": 203
     }
    }
   ],
@@ -236,238 +159,162 @@
    [
     0,
     1,
+    2,
+    2,
+    3,
+    3,
+    3,
+    3,
+    2
+   ],
+   [
+    1,
+    0,
+    1,
     1,
     2,
     2,
     2,
+    2,
+    1
+   ],
+   [
+    2,
+    1,
+    0,
+    2,
+    1,
+    1,
     3,
     3,
+    2
+   ],
+   [
+    2,
+    1,
+    2,
+    0,
     3,
     3,
+    1,
+    1,
+    2
+   ],
+   [
     3,
+    2,
+    1,
+    3,
+    0,
+    2,
+    4,
+    4,
     3
    ],
    [
-    1,
-    0,
-    2,
     3,
+    2,
     1,
-    1,
-    2,
-    2,
-    2,
-    2,
-    2,
-    2
-   ],
-   [
-    1,
-    2,
-    0,
-    1,
-    1,
-    1,
-    2,
-    2,
-    2,
-    2,
-    2,
-    2
-   ],
-   [
-    2,
     3,
-    1,
-    0,
-    2,
-    2,
-    3,
-    1,
-    1,
-    1,
-    1,
-    1
-   ],
-   [
-    2,
-    1,
-    1,
     2,
     0,
-    2,
-    1,
-    1,
-    1,
-    1,
-    1,
-    1
-   ],
-   [
-    2,
-    1,
-    1,
-    2,
-    2,
-    0,
-    3,
-    1,
-    1,
-    1,
-    1,
-    1
+    4,
+    4,
+    3
    ],
    [
     3,
     2,
-    2,
     3,
     1,
-    3,
+    4,
+    4,
     0,
     2,
-    2,
-    2,
-    2,
-    2
+    3
    ],
    [
     3,
     2,
-    2,
+    3,
     1,
-    1,
-    1,
+    4,
+    4,
     2,
     0,
-    2,
-    2,
-    2,
-    2
+    3
    ],
    [
+    2,
+    1,
+    2,
+    2,
     3,
-    2,
-    2,
-    1,
-    1,
-    1,
-    2,
-    2,
-    0,
-    2,
-    2,
-    2
-   ],
-   [
     3,
-    2,
-    2,
-    1,
-    1,
-    1,
-    2,
-    2,
-    2,
-    0,
-    2,
-    2
-   ],
-   [
     3,
-    2,
-    2,
-    1,
-    1,
-    1,
-    2,
-    2,
-    2,
-    2,
-    0,
-    2
-   ],
-   [
     3,
-    2,
-    2,
-    1,
-    1,
-    1,
-    2,
-    2,
-    2,
-    2,
-    2,
     0
    ]
   ]
  },
  "event_map": {
   "producers": {
-   "D": [
-    6,
-    7,
-    8
-   ],
-   "F": [
-    6,
-    7,
-    11
+   "A": [
+    4
    ],
    "B": [
-    7,
-    8,
-    9,
-    10
+    5
    ],
    "C": [
-    7,
-    11
-   ],
-   "A": [
-    8,
-    10
+    5
    ],
    "E": [
-    9,
-    10,
-    11
+    6
+   ],
+   "F": [
+    7
+   ],
+   "D": [
+    8
    ]
   },
   "local_rate_lookup": {
-   "D": {
-    "6": 770.0,
-    "7": 770.0,
-    "8": 770.0
-   },
-   "F": {
-    "6": 668.0,
-    "7": 668.0,
-    "11": 668.0
+   "A": {
+    "4": 1000.0
    },
    "B": {
-    "7": 927.0,
-    "8": 927.0,
-    "9": 927.0,
-    "10": 927.0
+    "5": 2.0
    },
    "C": {
-    "7": 815.0,
-    "11": 815.0
-   },
-   "A": {
-    "8": 1000.0,
-    "10": 1000.0
+    "5": 45.0
    },
    "E": {
-    "9": 713.0,
-    "10": 713.0,
-    "11": 713.0
+    "6": 800.0
+   },
+   "F": {
+    "7": 5.0
+   },
+   "D": {
+    "8": 203.0
    }
   }
  },
  "projections": [
+  {
+   "name": "SEQ(A, B)",
+   "primitives": [
+    "A",
+    "B"
+   ],
+   "deps": [
+    "A",
+    "B"
+   ],
+   "selection_rate": 0.0013437,
+   "output_rate": 2.6874,
+   "is_workload": false,
+   "level": 0
+  },
   {
    "name": "SEQ(A, B, C)",
    "primitives": [
@@ -476,80 +323,95 @@
     "C"
    ],
    "deps": [
-    "A",
-    "B",
+    "SEQ(A, B)",
     "C"
    ],
    "selection_rate": 6.839234086604956e-05,
-   "output_rate": 826732.0877760763,
+   "output_rate": 6.15531067794446,
    "is_workload": true,
-   "level": 0
+   "level": 2
   }
  ],
  "processing_order": [
+  "SEQ(A, B)",
   "SEQ(A, B, C)"
  ],
  "strategies": {
   "all_push": {
    "label": "All-Push",
    "placement": {
+    "SEQ(A, B)": 0,
     "SEQ(A, B, C)": 0
    },
    "comm": "push",
-   "cost": 22014.0,
+   "cost": 3141.0,
    "latency": 3.0,
-   "processing_latency": 2480196.263328229
+   "processing_latency": 18.46593203383338
   },
   "inev": {
    "label": "INEv",
    "placement": {
-    "SEQ(A, B, C)": 0
+    "SEQ(A, B)": 2,
+    "SEQ(A, B, C)": 2
    },
    "comm": "push",
-   "cost": 22014.0,
+   "cost": 1071.6212427117778,
    "latency": 3.0,
-   "processing_latency": 2480196.263328229
+   "processing_latency": 2.951954900198186
   },
   "sequential": {
    "label": "Sequential",
    "placement": {
-    "SEQ(A, B, C)": 0
+    "SEQ(A, B)": 2,
+    "SEQ(A, B, C)": 2
    },
    "comm": "push_pull",
-   "cost": 19094.61598271586,
-   "latency": 9.0,
-   "processing_latency": 2149468.6805392453
+   "cost": 36.98414021523731,
+   "latency": 7.0,
+   "processing_latency": 0.11470827641710357
   },
   "prepp": {
    "label": "PrePP",
    "placement": {
+    "SEQ(A, B)": 0,
     "SEQ(A, B, C)": 0
    },
    "comm": "push_pull",
-   "cost": 18700.574584573522,
-   "latency": 9.0,
-   "processing_latency": 1722176.7380178142
+   "cost": 74.02055657804519,
+   "latency": 15.0,
+   "processing_latency": 0.37619387330535325
   },
   "kraken": {
    "label": "Kraken",
    "placement": {
-    "SEQ(A, B, C)": 0
+    "SEQ(A, B)": 2,
+    "SEQ(A, B, C)": 2
    },
-   "comm": "all_push",
-   "cost": 22014.0,
-   "latency": 3.0,
-   "processing_latency": 826732.0877760763,
+   "comm": "push_pull",
+   "cost": 36.98414021523731,
+   "latency": 7.0,
+   "processing_latency": 0.11470827641710357,
    "per_placement": {
-    "SEQ(A, B, C)": {
-     "node": 0,
-     "strategy": "all_push",
-     "cost": 22014.0,
+    "SEQ(A, B)": {
+     "node": 2,
+     "strategy": "push_pull",
+     "cost": 5.3437,
      "lt": 3.0,
-     "lp": 826732.0877760763,
+     "lp": 0.008967923532934132,
      "edges": {
-      "A": "push",
       "B": "push",
-      "C": "push"
+      "A": "pull"
+     }
+    },
+    "SEQ(A, B, C)": {
+     "node": 2,
+     "strategy": "push_pull",
+     "cost": 31.640440215237312,
+     "lt": 4.0,
+     "lp": 0.10574035288416944,
+     "edges": {
+      "SEQ(A, B)": "push",
+      "C": "pull"
      }
     }
    }
@@ -560,22 +422,33 @@
    "alpha": 0.2,
    "label": "Fast",
    "placement": {
-    "SEQ(A, B, C)": 0
+    "SEQ(A, B)": 2,
+    "SEQ(A, B, C)": 2
    },
    "comm": "all_push",
-   "cost": 22014.0,
-   "latency": 3.0,
-   "processing_latency": 826732.0877760763,
+   "cost": 1059.310621355889,
+   "latency": 4.0,
+   "processing_latency": 8.84271067794446,
    "per_placement": {
-    "SEQ(A, B, C)": {
-     "node": 0,
+    "SEQ(A, B)": {
+     "node": 2,
      "strategy": "all_push",
-     "cost": 22014.0,
-     "lt": 3.0,
-     "lp": 826732.0877760763,
+     "cost": 1002.0,
+     "lt": 1.0,
+     "lp": 2.6874,
      "edges": {
       "A": "push",
-      "B": "push",
+      "B": "push"
+     }
+    },
+    "SEQ(A, B, C)": {
+     "node": 2,
+     "strategy": "all_push",
+     "cost": 57.31062135588892,
+     "lt": 3.0,
+     "lp": 6.15531067794446,
+     "edges": {
+      "SEQ(A, B)": "push",
       "C": "push"
      }
     }
@@ -585,22 +458,33 @@
    "alpha": 0.6,
    "label": "Balanced",
    "placement": {
-    "SEQ(A, B, C)": 0
+    "SEQ(A, B)": 2,
+    "SEQ(A, B, C)": 2
    },
    "comm": "push_pull",
-   "cost": 17427.314651476332,
-   "latency": 9.0,
-   "processing_latency": 1960978.6750437284,
+   "cost": 36.98414021523731,
+   "latency": 7.0,
+   "processing_latency": 0.11470827641710357,
    "per_placement": {
-    "SEQ(A, B, C)": {
-     "node": 0,
+    "SEQ(A, B)": {
+     "node": 2,
      "strategy": "push_pull",
-     "cost": 17427.314651476332,
-     "lt": 9.0,
-     "lp": 1960978.6750437284,
+     "cost": 5.3437,
+     "lt": 3.0,
+     "lp": 0.008967923532934132,
      "edges": {
-      "A": "push",
       "B": "push",
+      "A": "pull"
+     }
+    },
+    "SEQ(A, B, C)": {
+     "node": 2,
+     "strategy": "push_pull",
+     "cost": 31.640440215237312,
+     "lt": 4.0,
+     "lp": 0.10574035288416944,
+     "edges": {
+      "SEQ(A, B)": "push",
       "C": "pull"
      }
     }
@@ -610,22 +494,33 @@
    "alpha": 0.9,
    "label": "Cheap",
    "placement": {
-    "SEQ(A, B, C)": 0
+    "SEQ(A, B)": 2,
+    "SEQ(A, B, C)": 2
    },
    "comm": "push_pull",
-   "cost": 18217.827969965358,
-   "latency": 9.0,
-   "processing_latency": 2049350.9762194126,
+   "cost": 36.98414021523731,
+   "latency": 7.0,
+   "processing_latency": 0.11470827641710357,
    "per_placement": {
-    "SEQ(A, B, C)": {
-     "node": 0,
+    "SEQ(A, B)": {
+     "node": 2,
      "strategy": "push_pull",
-     "cost": 18217.827969965358,
-     "lt": 9.0,
-     "lp": 2049350.9762194126,
+     "cost": 5.3437,
+     "lt": 3.0,
+     "lp": 0.008967923532934132,
      "edges": {
-      "A": "push",
       "B": "push",
+      "A": "pull"
+     }
+    },
+    "SEQ(A, B, C)": {
+     "node": 2,
+     "strategy": "push_pull",
+     "cost": 31.640440215237312,
+     "lt": 4.0,
+     "lp": 0.10574035288416944,
+     "edges": {
+      "SEQ(A, B)": "push",
       "C": "pull"
      }
     }
@@ -633,35 +528,38 @@
   }
  ],
  "norm_anchors": {
-  "cost_min": 17427.314651476332,
-  "cost_max": 22014.0,
+  "cost_min": 36.98414021523731,
+  "cost_max": 3141.0,
   "latency_min": 3.0,
-  "latency_max": 9.0
+  "latency_max": 15.0
  },
  "goldens": [
   {
    "name": "all_at_cloud",
    "placement": {
+    "SEQ(A, B)": 0,
     "SEQ(A, B, C)": 0
    },
-   "all_push_cost": 22014.0,
-   "all_push_latency": 3.0
+   "all_push_cost": 3141.0,
+   "all_push_latency": 6.0
   },
   {
    "name": "inev_placement",
    "placement": {
-    "SEQ(A, B, C)": 0
+    "SEQ(A, B)": 2,
+    "SEQ(A, B, C)": 2
    },
-   "all_push_cost": 22014.0,
-   "all_push_latency": 3.0
+   "all_push_cost": 1059.310621355889,
+   "all_push_latency": 4.0
   },
   {
    "name": "kraken_placement",
    "placement": {
-    "SEQ(A, B, C)": 0
+    "SEQ(A, B)": 2,
+    "SEQ(A, B, C)": 2
    },
-   "all_push_cost": 22014.0,
-   "all_push_latency": 3.0
+   "all_push_cost": 1059.310621355889,
+   "all_push_latency": 4.0
   }
  ]
 }
