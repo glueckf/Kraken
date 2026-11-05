@@ -82,7 +82,7 @@ export interface KrakenStage extends Strategy {
   matches_reference?: boolean;
 }
 
-// "push_a" is never better than all_push (see factory_example.py's
+// "push_a" always equals all_push (see factory_example.py's
 // ALL_SCHEMES comment) but is a real, engine-computed cell: a player's free
 // per-dependency push/pull chips (same component as Reef) can build it, and
 // the reveal table shows what it costs. "pull_both" (push neither) isn't

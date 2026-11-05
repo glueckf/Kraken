@@ -130,3 +130,21 @@ fn kraken_beats_baselines_on_combined_score() {
         }
     }
 }
+
+/// medium_c, Q1, everything pushed (reported 2026-11-05): inputs arrive in
+/// parallel, so no placement can take longer than the longest path an event
+/// travels -- 3 hops in this tree (cloud 0 <- 5 <- 6 <- {1, 2}). The old
+/// recursion summed SEQ(A, B, C)'s own input hops (C's 3) onto SEQ(A, B)'s
+/// full latency: 6, 4 and 5 hops below.
+#[test]
+fn all_push_inputs_arrive_in_parallel() {
+    let path = format!("{}/../web/scenarios/medium_c/seq_abc.json", env!("CARGO_MANIFEST_DIR"));
+    let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("read {path}: {e}"));
+    let sc: Scenario = serde_json::from_str(&text).unwrap_or_else(|e| panic!("parse {path}: {e}"));
+    for (s1, s2) in [(0, 0), (6, 6), (5, 0)] {
+        let placement: HashMap<String, usize> =
+            HashMap::from([("SEQ(A, B)".to_string(), s1), ("SEQ(A, B, C)".to_string(), s2)]);
+        let res = sc.score_all_push(&placement);
+        assert!(close(res.total_latency, 3.0), "({s1}, {s2}): latency {} != 3", res.total_latency);
+    }
+}

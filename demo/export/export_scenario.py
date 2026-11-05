@@ -65,33 +65,42 @@ KRAKEN_STAGES = [
 # This is the exact model the Rust/WASM client scorer must reproduce.
 # ----------------------------------------------------------------------------
 def ref_all_push(placement, dist, local_rate, out_rate, deps_map, order, workload):
-    """placement: {proj_str: node_id}. Returns (total_cost, max_latency, per_placement)."""
-    e2e = {}
+    """placement: {proj_str: node_id}. Returns (total_cost, max_latency, per_placement).
+
+    Inputs arrive in parallel: each at ready(input) + hops, a primitive being
+    ready at 0 at its sources, a sub-projection once its own inputs are in
+    (sink egress is not part of ready)."""
+    ready, e2e = {}, {}
     total = 0.0
     per = {}
     for p in order:
         n = placement[p]
         cost = 0.0
         tlat = 0.0
+        arrival = 0.0
         for dep in deps_map[p]:
             if dep in local_rate:  # primitive event: sum over all its source nodes
                 dep_lat = 0.0
                 for src, rate in local_rate[dep].items():
                     cost += dist[src][n] * rate
                     dep_lat = max(dep_lat, dist[src][n])
+                arrival = max(arrival, dep_lat)
             else:  # already-placed sub-projection: single source = its node
                 src = placement[dep]
                 cost += dist[src][n] * out_rate[dep]
                 dep_lat = dist[src][n]
+                arrival = max(arrival, ready[dep] + dep_lat)
             tlat = max(tlat, dep_lat)
+        egress = 0.0
         if p in workload and n not in SINKS:  # egress to sink(s)
             cost += sum(dist[n][s] for s in SINKS) * out_rate[p]
-            tlat += max(dist[n][s] for s in SINKS)
+            egress = max(dist[n][s] for s in SINKS)
+            tlat += egress
         proc = out_rate[p]
         per[p] = {"cost": cost, "lt": tlat, "lp": proc}
         total += cost
-        latest = max([e2e.get(dep, 0.0) for dep in deps_map[p]], default=0.0)
-        e2e[p] = XI * proc + tlat + latest
+        ready[p] = XI * proc + arrival
+        e2e[p] = ready[p] + egress
     max_lat = max(e2e.values()) if e2e else 0.0
     return total, max_lat, per
 

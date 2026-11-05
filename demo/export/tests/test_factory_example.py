@@ -137,7 +137,7 @@ class TestFactoryExample(unittest.TestCase):
             # the player's explicit choice costs the same as PrePP's own pick
             self.assertAlmostEqual(d["forced_cost"], d["cost"])
 
-    def test_push_a_costs_like_all_push_but_adds_latency(self):
+    def test_push_a_is_all_push_in_cost_and_latency(self):
         # The player's free per-dependency push/pull chips (panel.ts
         # renderPushPullRow, same component the Reef rounds use) let them try
         # pushing A instead of B for SEQ(A, B) -- not just the paper's named
@@ -146,16 +146,18 @@ class TestFactoryExample(unittest.TestCase):
         # (score_one.py) -- this confirms what they'll see: the *volume* is
         # identical to all-push at every node (with sigma(B|A)=1.0 there's
         # nothing to request B's low native rate against, so the search
-        # falls back to publishing it outright), but the *latency* is worse
-        # -- realized as two sequential push steps instead of all-push's one
-        # parallel step. Pushing B and pulling A is the only direction where
+        # falls back to publishing it outright), and so is the latency: the
+        # plan's two push steps wait for no request, so both streams arrive
+        # in parallel (until 2026-11-05 the engine summed them, see
+        # tests/test_critical_path_latency.py at the repo root). Pushing B
+        # and pulling A is the only direction where
         # pulling genuinely saves cost (sigma(A|B)=0.1) -- see the
         # ALL_SCHEMES comment.
         for n in (fx.CLOUD, fx.FOG_MERGE, fx.FOG_PRE_CLOUD):
             all_push = self.table[(n, "all_push")]
             d = self.table[(n, "push_a")]
             self.assertAlmostEqual(d["cost"], all_push["cost"], msg=n)
-            self.assertGreater(d["latency"], all_push["latency"], msg=n)
+            self.assertAlmostEqual(d["latency"], all_push["latency"], msg=n)
 
     # --- coupling + planners -------------------------------------------
     def test_all_push_preference_differs_from_joint_optimum(self):

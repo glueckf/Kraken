@@ -165,7 +165,7 @@ als All-Push am selben Knoten, da gleiches V aber höhere L.)
    für den Pull-all-Knopf im Riff, siehe
    [BACKLOG.md](BACKLOG.md)). Die paper-eigenen Zellen hängen weiterhin
    nicht von σ(B|A) ab (sie pullen B nie); „push_a" jetzt schon — beides
-   geprüft in `test_push_a_costs_like_all_push_but_adds_latency` und
+   geprüft in `test_push_a_is_all_push_in_cost_and_latency` und
    `test_unquantified_sigma_B_given_A_does_not_matter`.
 4. **Sequential der Engine.** `Simulation.run()` berechnet „Sequential" als
    INEv-Platzierung + PrePP. Die Runde verwendet stattdessen die

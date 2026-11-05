@@ -116,9 +116,9 @@ PUSH_PULL_PUSHED = ["B"]
 # "pull everything" has nothing to filter with -- not a cheap-but-valid
 # choice the way "push A" is, but not a coherent operation at all. "push_a"
 # (push A, let the optimizer handle B) *is* real and costed (enumerate_
-# decisions below) -- it lands exactly on all-push's cost at every candidate
-# node (verified in test_factory_example.py
-# test_push_a_costs_like_all_push_but_adds_latency): with sigma(B|A) = 1.0,
+# decisions below) -- it lands exactly on all-push's cost and latency at
+# every candidate node (verified in test_factory_example.py
+# test_push_a_is_all_push_in_cost_and_latency): with sigma(B|A) = 1.0,
 # pulling B on demand is never cheaper than just publishing it, so the
 # search falls back to pushing everything. Pushing B and pulling A is the
 # *only* direction that wins, because sigma(A|B) = 0.1 makes pulling the
@@ -393,16 +393,16 @@ def paper_cost_model(node: int, scheme: str) -> Dict:
     push-pull: <(∅,{B}), ({B},{A})>
       V_req(a2) = r(B) * dist(node, A)           (predicate tuples to A)
       V_res(a2) = r(A) * sigma(A|B) * dist(A, node)
-    push_a: the ALL_SCHEMES comment explains why the *cost* is always plain
-      all-push's (sigma(B|A) = 1.0 makes pulling B never cheaper than
-      publishing it). The *latency* is not, though: the exact-plan search
-      still realizes it as two sequential push steps -- <(∅,{A}),({},{B})>
-      -- A fully arriving before B is even requested, rather than all-push's
-      single parallel step, so it pays dist(node,A) + dist(node,B) instead
-      of max of the two.
+    push_a: the ALL_SCHEMES comment explains why it is always plain
+      all-push (sigma(B|A) = 1.0 makes pulling B never cheaper than
+      publishing it). The exact-plan search realizes it as two push steps
+      -- <(∅,{A}),({},{B})> -- but neither waits for a request, so both
+      streams arrive in parallel: max(dist(node,A), dist(node,B)), the same
+      latency as all-push's single step.
     egress:    r_out * dist(node, c), r_out = s_AB * r(A) * r(B)
-    latency:   sum over steps of (max provider dist [+ same again if pull])
-               + dist(node, c)
+    latency:   pushed streams arrive in parallel (max provider dist); a pull
+               leg starts once its pushed trigger has arrived (+ request
+               + response), then + dist(node, c)
     """
     rA, rB, s = RATES["A"], RATES["B"], SELECTIVITY_AB
     dA, dB, dC = _dist(SRC_A, node), _dist(SRC_B, node), _dist(node, CLOUD)
@@ -412,7 +412,7 @@ def paper_cost_model(node: int, scheme: str) -> Dict:
         lat_ing = max(dA, dB)
     elif scheme == "push_a":
         ingress = rA * dA + rB * dB            # same volume as all-push
-        lat_ing = dA + dB                      # ...but two sequential steps
+        lat_ing = max(dA, dB)                  # both pushed, in parallel
     elif scheme == "push_pull":
         a1 = rB * dB                         # push B
         a2_req = rB * 1.0 * dA               # sigma(Psi) = 1 for the raw B stream

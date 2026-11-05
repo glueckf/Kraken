@@ -178,6 +178,10 @@ impl Scenario {
             };
         }
 
+        // Inputs travel in parallel: each arrives at ready(input) + hops, a
+        // primitive being ready at 0 at its sources and a sub-projection once
+        // its own inputs are in (sink egress is not part of `ready`).
+        let mut ready: HashMap<&str, f64> = HashMap::new();
         let mut e2e: HashMap<&str, f64> = HashMap::new();
         let mut total_cost = 0.0;
         let mut per: HashMap<String, PerPlacement> = HashMap::new();
@@ -187,6 +191,7 @@ impl Scenario {
             let n = placement[name];
             let mut cost = 0.0;
             let mut tlat: f64 = 0.0;
+            let mut arrival: f64 = 0.0;
 
             for dep in &proj.deps {
                 let mut dep_lat: f64 = 0.0;
@@ -196,21 +201,23 @@ impl Scenario {
                         cost += dist[src][n] * rate;
                         dep_lat = dep_lat.max(dist[src][n]);
                     }
+                    arrival = arrival.max(dep_lat);
                 } else {
                     // already-placed sub-projection: single source = its node
                     let src = placement[dep];
                     let out_rate = by_name[dep.as_str()].output_rate;
                     cost += dist[src][n] * out_rate;
                     dep_lat = dist[src][n];
+                    arrival = arrival.max(ready[dep.as_str()] + dep_lat);
                 }
                 tlat = tlat.max(dep_lat);
             }
 
             // egress to sink(s), only for workload roots placed off-sink
+            let mut egress_lat: f64 = 0.0;
             if proj.is_workload && !sinks.contains(&n) {
                 let out_rate = proj.output_rate;
                 let mut egress_cost = 0.0;
-                let mut egress_lat: f64 = 0.0;
                 for &s in sinks {
                     egress_cost += dist[n][s] * out_rate;
                     egress_lat = egress_lat.max(dist[n][s]);
@@ -222,12 +229,9 @@ impl Scenario {
             let proc = proj.output_rate;
             total_cost += cost;
 
-            let latest = proj
-                .deps
-                .iter()
-                .filter_map(|d| e2e.get(d.as_str()).copied())
-                .fold(0.0_f64, f64::max);
-            e2e.insert(proj.name.as_str(), xi * proc + tlat + latest);
+            let done = xi * proc + arrival;
+            ready.insert(proj.name.as_str(), done);
+            e2e.insert(proj.name.as_str(), done + egress_lat);
 
             per.insert(
                 proj.name.clone(),

@@ -309,13 +309,13 @@ function renderUnscorable(stagePicker: string): string {
  * per node, see ALL_SCHEMES in factory_example.py) with tuple volume,
  * critical-path latency and the score F at the current stage — the evidence
  * behind the ranking, readable at the booth. Deliberately not just the
- * paper's own two: seeing push_a tie all-push's volume but still lose on
- * latency is itself the "I tried it, here's why it doesn't help" answer to
+ * paper's own two: seeing push_a land exactly on all-push (volume and
+ * latency) is itself the "I tried it, here's why it doesn't help" answer to
  * the hint above the chips. */
 const SCHEME_ORDER: CommScheme[] = ["all_push", "push_pull", "push_a"];
 // The two schemes the paper actually names vs. the one that only ever ties
-// all-push's volume and loses on latency (see factory_example.py's
-// ALL_SCHEMES comment) -- muted in the table so the one real win (push_pull)
+// all-push (see factory_example.py's ALL_SCHEMES comment) -- muted in the
+// table so the one real win (push_pull)
 // reads clearly against the two ways of not winning, instead of all three
 // schemes competing for attention equally.
 const SCHEME_DOMINATED: Partial<Record<CommScheme, boolean>> = { push_a: true };
