@@ -115,7 +115,8 @@ interface Strings {
   scoringTitle: string;
   scoringSub: string;
   timerAria: string;
-  timerYouVsKraken: (time: string) => string;
+  /** `kraken`: the current stage's measured search time (KrakenStage.solve_seconds). */
+  timerYouVsKraken: (time: string, kraken: number | undefined) => string;
 
   // ---- scorecard: results ----
   verdictMatched: string;
@@ -179,6 +180,14 @@ interface Strings {
   scoringFine: string;
   linkPaper: string;
   linkRepo: string;
+}
+
+// Kraken's search time: whole milliseconds below a second, else seconds
+// with one decimal.
+function solveTime(seconds: number, decimal: "." | ","): string {
+  if (seconds < 0.0005) return "< 1 ms";
+  if (seconds < 1) return `${Math.round(seconds * 1000)} ms`;
+  return `${seconds.toFixed(1).replace(".", decimal)} s`;
 }
 
 const EN: Strings = {
@@ -245,8 +254,9 @@ const EN: Strings = {
   confirmBtn: "Confirm plan",
   scoringTitle: "Kraken is crunching the numbers…",
   scoringSub: "Optimising push/pull for your placement.",
-  timerAria: "Your decision time, running from your first placement to Confirm plan — Kraken decides instantly",
-  timerYouVsKraken: (time) => `You: ${time} · Kraken: instant`,
+  timerAria: "Your decision time, running from your first placement to Confirm plan",
+  timerYouVsKraken: (time, kraken) =>
+    kraken == null ? `You: ${time}` : `You: ${time} · Kraken: ${solveTime(kraken, ".")}`,
 
   verdictMatched: "You matched Kraken.",
   verdictMid: (n, total) => `You beat ${n} of ${total} baselines — Kraken still wins.`,
@@ -382,8 +392,9 @@ const DE: Strings = {
   confirmBtn: "Plan bestätigen",
   scoringTitle: "Kraken knackt die Zahlen …",
   scoringSub: "Optimiert Push/Pull für deine Platzierung.",
-  timerAria: "Deine Entscheidungszeit, läuft von deiner ersten Platzierung bis Plan bestätigen — Kraken entscheidet sofort",
-  timerYouVsKraken: (time) => `Du: ${time} · Kraken: sofort`,
+  timerAria: "Deine Entscheidungszeit, läuft von deiner ersten Platzierung bis Plan bestätigen",
+  timerYouVsKraken: (time, kraken) =>
+    kraken == null ? `Du: ${time}` : `Du: ${time} · Kraken: ${solveTime(kraken, ",")}`,
 
   verdictMatched: "Du hast mit Kraken gleichgezogen.",
   verdictMid: (n, total) => `Du schlägst ${n} von ${total} Baselines — Kraken gewinnt noch.`,

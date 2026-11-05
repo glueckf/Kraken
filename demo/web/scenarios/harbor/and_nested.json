@@ -774,7 +774,8 @@
       "AND(SEQ(A, B), SEQ(E, F))": "push"
      }
     }
-   }
+   },
+   "solve_seconds": 0.2558426856994629
   },
   {
    "alpha": 0.6,
@@ -848,7 +849,8 @@
       "AND(SEQ(A, B), SEQ(E, F))": "push"
      }
     }
-   }
+   },
+   "solve_seconds": 0.16054797172546387
   },
   {
    "alpha": 0.9,
@@ -922,7 +924,8 @@
       "AND(SEQ(A, B), SEQ(E, F))": "push"
      }
     }
-   }
+   },
+   "solve_seconds": 0.24483752250671387
   }
  ],
  "norm_anchors": {

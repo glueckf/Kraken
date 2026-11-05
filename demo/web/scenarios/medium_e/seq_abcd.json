@@ -698,7 +698,8 @@
       "SEQ(A, B, D)": "push"
      }
     }
-   }
+   },
+   "solve_seconds": 0.018234729766845703
   },
   {
    "alpha": 0.6,
@@ -758,7 +759,8 @@
       "SEQ(A, B, D)": "push"
      }
     }
-   }
+   },
+   "solve_seconds": 0.01780843734741211
   },
   {
    "alpha": 0.9,
@@ -818,7 +820,8 @@
       "SEQ(A, B, D)": "push"
      }
     }
-   }
+   },
+   "solve_seconds": 0.018337011337280273
   }
  ],
  "norm_anchors": {

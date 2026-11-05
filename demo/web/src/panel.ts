@@ -477,11 +477,15 @@ export function renderScorecard(state: AppState): string {
     `</div>`;
 
   // Decision-time note, not another win/lose tile (there's no meaningful
-  // "beat Kraken" framing for speed -- it decides instantly by construction)
-  // -- see state.ts's planStartedAt/planConfirmedAt.
+  // "beat Kraken" framing for speed -- its search takes milliseconds):
+  // the player's time (state.ts's planStartedAt/planConfirmedAt) next to
+  // the current stage's measured search time.
   const timerNote =
     state.planStartedAt != null && state.planConfirmedAt != null
-      ? `<div class="sc-timer-note">${t().timerYouVsKraken(formatElapsed(state.planConfirmedAt - state.planStartedAt))}</div>`
+      ? `<div class="sc-timer-note">${t().timerYouVsKraken(
+          formatElapsed(state.planConfirmedAt - state.planStartedAt),
+          state.currentStage?.solve_seconds,
+        )}</div>`
       : "";
 
   // leaderboard: baselines + You, sorted by score asc

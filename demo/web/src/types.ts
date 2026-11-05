@@ -80,6 +80,9 @@ export interface KrakenStage extends Strategy {
   analysis?: StageAnalysis;
   /** Paper-example round only: Kraken's greedy plan == enumeration optimum? */
   matches_reference?: boolean;
+  /** Measured wall time of Kraken's search for this stage at export
+   * (export_scenario.py), shown against the player's decision time. */
+  solve_seconds?: number;
 }
 
 // "push_a" always equals all_push (see factory_example.py's

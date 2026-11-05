@@ -100,8 +100,8 @@ export class AppState {
    * round (first call into placeActiveAt that actually places something —
    * not on load, not on an attempt the placement-validity check rejects),
    * and frozen in confirm(). Timing the player against Kraken's own
-   * (effectively instant) decision is the point of the stopwatch in the
-   * header — see renderTimer() in main.ts. */
+   * decision (its measured search time, KrakenStage.solve_seconds) is the
+   * point of the stopwatch in the header — see renderTimer() in main.ts. */
   planStartedAt: number | null = null;
   planConfirmedAt: number | null = null;
   private descendants: Map<number, Set<number>> = new Map();

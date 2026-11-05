@@ -294,6 +294,11 @@ def build_scenario(spec, topology):
             "latency": float(stage_g["metrics"]["max_latency"]),
             "processing_latency": float(stage_g["metrics"]["cumulative_processing_latency"]),
             "per_placement": stage_per,
+            # Wall time of Kraken's search on the export machine (the engine's
+            # own execution_time_seconds: strategy.solve() only), shown
+            # against the player's decision time. Measured, so every
+            # re-export changes it slightly.
+            "solve_seconds": float(stage_g["execution_time_seconds"]),
         })
     sim.config.cost_weight = COST_WEIGHT
 
@@ -469,6 +474,7 @@ def build_factory_scenario(topology):
             "latency": float(g["metrics"]["max_latency"]),
             "processing_latency": float(g["metrics"]["cumulative_processing_latency"]),
             "per_placement": per,
+            "solve_seconds": float(g["execution_time_seconds"]),  # see build_scenario
         }
 
     def analysis(alpha):

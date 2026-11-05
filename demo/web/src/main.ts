@@ -30,10 +30,11 @@ function formatElapsed(ms: number): string {
 
 /** Decision-time stopwatch in the header: starts on the player's first
  * placement (state.ts's planStartedAt), freezes at Confirm plan
- * (planConfirmedAt) -- "you vs Kraken", since Kraken's own pick is
- * effectively instant. Kept as its own cheap DOM touch, called both from
- * render() and from the ticking interval below, instead of running the
- * full render() every tick just to keep a clock moving. */
+ * (planConfirmedAt) -- "you vs Kraken", the tooltip naming Kraken's
+ * measured search time for the current stage. Kept as its own cheap DOM
+ * touch, called both from render() and from the ticking interval below,
+ * instead of running the full render() every tick just to keep a clock
+ * moving. */
 function renderTimer(): void {
   const el = $("timer");
   if (!state.scenario || state.planStartedAt == null) {
@@ -44,7 +45,7 @@ function renderTimer(): void {
   const end = state.planConfirmedAt ?? Date.now();
   const text = formatElapsed(Math.max(0, end - state.planStartedAt));
   el.textContent = `⏱ ${text}`;
-  el.title = t().timerYouVsKraken(text);
+  el.title = t().timerYouVsKraken(text, state.currentStage?.solve_seconds);
   el.setAttribute("aria-label", t().timerAria);
 }
 
