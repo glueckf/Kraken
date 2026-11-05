@@ -9,8 +9,9 @@ Design goals checked (see demo/BACKLOG.md item 35):
     more than one sensible plan to choose from;
   - not too complex: a bounded number of valid hosts per operator, so a
     newcomer can finish a round in reasonable time;
-  - trade-offs: Fast / Balanced / Cheap genuinely differ -- ideally in *where*
-    operators go, not only in push vs pull -- and no single rule of thumb
+  - trade-offs: Fast / Balanced / Cheap genuinely differ in every query --
+    in push vs pull at least, ideally (scored, not required) in *where*
+    operators go -- and no single rule of thumb
     ("all at the cloud", "as close to the sources as possible", "just below
     the cloud") is best for every goal;
   - multiple sources: half of the six letters (3) have more than one producer.
@@ -421,11 +422,11 @@ def verdict(per_query):
             fails.append(f"{sid}: only {m['n_plans']} plans")
         if m["max_hosts"] > 8:
             fails.append(f"{sid}: {m['max_hosts']} hosts for one operator")
+    # A different push/pull choice counts as a different plan. Different
+    # placements show the change best, but that's a preference (the search
+    # scores it, topo_search.score), not a gate.
     q = len(per_query)
-    nodes_differ = sum(1 for m in per_query.values() if m["stage_distinct_nodes"] >= 2)
     plans_differ = sum(1 for m in per_query.values() if m["stage_distinct_plans"] >= 2)
-    if nodes_differ < 2:
-        fails.append(f"Fast/Balanced/Cheap place differently in only {nodes_differ}/{q} queries")
     if plans_differ < q:
         fails.append(f"stages identical (nodes and push/pull) in {q - plans_differ}/{q} queries")
     one_rule = [h for h in ("all_cloud", "near_sources", "below_cloud")

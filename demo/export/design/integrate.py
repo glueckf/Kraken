@@ -14,13 +14,20 @@ PY = sys.executable
 STATE = os.path.join(SCR, "designed_state.json")
 CURATED = ["forge", "medium", "medium_b", "medium_c", "medium_d", "medium_e", "large", "large_b", "large_c", "large_d"]
 MIN_SHOWN = 3
+MIN_WT = 4   # Kraken's Forge, the minimal example, has 4 watchtowers; nothing simpler
+# One topology-bar button per family; "try again" rotates within it.
+FAMILIES = [(4, "lagoon", "Lagoon", "Lagune"), (99, "barrier", "Barrier Reef", "Barriereriff")]  # by max watchtowers
 VISIBLE = ["seq_abc", "seq_abcd", "seq_abcde", "and_nested"]
 NAMES = [("atoll", "Atoll", "Atoll"), ("delta", "Delta", "Delta"), ("fjord", "Fjord", "Fjord"),
          ("kelp", "Kelp Forest", "Kelpwald"), ("estuary", "Estuary", "Mündung"), ("seamount", "Seamount", "Tiefseeberg"),
          ("shoal", "Shoal", "Sandbank"), ("bay", "Bay", "Bucht"), ("strait", "Strait", "Meerenge"),
          ("cove", "Cove", "Grotte"), ("tidepool", "Tide Pool", "Priel"), ("trench", "Trench", "Graben"),
          ("cape", "Cape", "Kap"), ("isle", "Isle", "Insel"), ("harbor", "Harbor", "Hafen"), ("gulf", "Gulf", "Golf"),
-         ("sound", "Sound", "Sund"), ("dunes", "Dunes", "Dünen"), ("cliffs", "Cliffs", "Klippen"), ("reefflat", "Reef Flat", "Riffdach")]
+         ("sound", "Sound", "Sund"), ("dunes", "Dunes", "Dünen"), ("cliffs", "Cliffs", "Klippen"), ("reefflat", "Reef Flat", "Riffdach"),
+         ("abyss", "Abyss", "Abgrund"), ("current", "Current", "Strömung"), ("seagrass", "Seagrass", "Seegras"),
+         ("wreck", "Wreck", "Wrack"), ("pearl", "Pearl Bank", "Perlenbank"), ("coral", "Coral Garden", "Korallengarten"),
+         ("whirlpool", "Whirlpool", "Strudel"), ("skerries", "Skerries", "Schären"), ("inlet", "Inlet", "Meeresarm"),
+         ("basin", "Basin", "Becken")]
 LEGACY = {"lagoon": ("Lagoon", "Lagune", ["seq_abc", "seq_abcd", "seq_abcde"]),
           "mangroves": ("Mangroves", "Mangroven", ["seq_abc", "seq_abcd", "seq_abcde", "and_nested"])}
 
@@ -51,6 +58,10 @@ def main():
                                      cp={k: (None if v == float("inf") else v) for k, v in getattr(rt, f"_{u}_CP").items()})
     entries = []
     for r in json.load(open(os.path.join(SCR, "pool.json"))):
+        wt = len(r["spec"]["edges"]) - 1
+        if wt < MIN_WT:
+            continue
+        fam = next(f for f in FAMILIES if wt <= f[0])
         h = key(r["spec"])
         if h not in st["names"]:
             used = set(st["names"].values())
@@ -58,12 +69,12 @@ def main():
         nid = st["names"][h]
         _, lab, lab_de = next(x for x in NAMES if x[0] == nid)
         scen = [s for s in VISIBLE if s in r["per_query"] and 2 <= r["per_query"][s]["subq"] <= 5]
-        entries.append(dict(id=nid, label=lab, label_de=lab_de, spec=norm(r["spec"]), scenarios=scen, hash=h))
+        entries.append(dict(id=nid, name=lab_de, family=fam[1], label=fam[2], label_de=fam[3], spec=norm(r["spec"]), scenarios=scen, hash=h))
     for lid, (lab, lab_de, scen) in LEGACY.items():
         if len(entries) >= MIN_SHOWN:
             break
         spec = st["legacy"][lid]
-        entries.append(dict(id=lid, label=lab, label_de=lab_de, spec=norm(spec), scenarios=scen, hash=key(spec)))
+        entries.append(dict(id=lid, name=lab_de, family=lid, label=lab, label_de=lab_de, spec=norm(spec), scenarios=scen, hash=key(spec)))
     entries.sort(key=lambda e: n_nodes(e["spec"]))
 
     # ---- code generation
@@ -80,7 +91,7 @@ def main():
     open(p, "w").write(src)
     topo = ["    # BEGIN designed (generated)"]
     for e in entries:
-        topo += [f'    dict(id="{e["id"]}", family="{e["id"]}", label="{e["label"]}", label_de="{e["label_de"]}",',
+        topo += [f'    dict(id="{e["id"]}", family="{e["family"]}", label="{e["label"]}", label_de="{e["label_de"]}",',
                  f'         network_size={n_nodes(e["spec"])}, seed=None, kind="hand_curated",',
                  f'         scenarios={e["scenarios"]}),']
     topo.append("    # END designed")
@@ -110,6 +121,8 @@ def main():
         frags[e["id"]] = json.load(open(fp))
         os.remove(fp)
         st["exported"][e["id"]] = e["hash"]
+    for e in entries:   # family/label can change without the spec changing
+        frags[e["id"]].update(family=e["family"], label=e["label"], label_de=e["label_de"])
     keep = {e["id"] for e in entries}
     for tid in old:
         if tid not in CURATED and tid not in keep:
@@ -122,7 +135,7 @@ def main():
     r = subprocess.run(["npm", "run", "build"], cwd=WEB, capture_output=True, text=True)
     print("build:", "ok" if r.returncode == 0 else r.stdout[-500:] + r.stderr[-500:])
     for e in entries:
-        print(f"  {e['id']:10s} {n_nodes(e['spec']):2d}n  {e['label_de']:12s} {e['scenarios']}")
+        print(f"  {e['family']:8s} {e['id']:10s} {n_nodes(e['spec']):2d}n  {e['name']:12s} {e['scenarios']}")
 
 
 if __name__ == "__main__":

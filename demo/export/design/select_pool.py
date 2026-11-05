@@ -98,7 +98,14 @@ def main():
         import topology_lab as lab
         if lab.verdict(r["per_query"]):
             continue
+        # The verdict accepts goals that differ only in push/pull; a topology
+        # we show should also move an operator in at least one query, since
+        # a different placement shows the trade-off best.
+        if not any(m["stage_distinct_nodes"] >= 2 for m in lab.playable(r["per_query"]).values()):
+            continue
         sp = r["spec"]
+        if len(sp["edges"]) - 1 < 4:   # fewer watchtowers than Kraken's Forge
+            continue
         issues = lab.layout_issues(sp["edges"], sp["leaves"], min_visible=10)
         behind = {i.split(" runs")[0] for i in issues if "runs behind" in i}
         if len(issues) != sum("runs behind" in i for i in issues) or len(behind) > 0.15 * sum(len(v) for v in sp["edges"].values()):
