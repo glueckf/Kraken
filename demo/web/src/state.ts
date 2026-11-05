@@ -77,8 +77,9 @@ export class AppState {
    * the player chose to push; any decidable dep not in the array is pulled.
    * An operator only appears here once the player has made at least one
    * push/pull call on it — absence means "let the optimizer decide" (only
-   * offered when there's at most one decidable dep, so there's no real
-   * combinatorial choice to make anyway). Pushing *every* decidable dep is
+   * allowed where there's no real call to make, see needsPushChoice). Deps
+   * already at the node are never listed here; refine() adds them to the
+   * push group itself (see buildPushSnapshot). Pushing *every* decidable dep is
    * sent to the backend as `ALL_PUSH` rather than the literal full list —
    * see refine() — since forcing a single group covering every dependency
    * hits a separate PrePP bug (cost off by a division-like factor). */
@@ -270,18 +271,29 @@ export class AppState {
     });
   }
 
-  /** Subqueries with 2+ *decidable* dependencies where the player hasn't
-   * made a push/pull call yet — that choice is required, not just an
-   * optional extra, so a placement isn't "done" while one of these is still
-   * unset. At most one decidable dep (or none — e.g. every dependency
-   * happens to already be free) has no real combinatorial choice to make,
-   * so the optimizer is left to decide instead of forcing a pointless call. */
+  /** Whether `name` has a real push-vs-pull call to make: 2+ decidable
+   * deps (which of them to push), or a single decidable dep next to one
+   * that's already at the node — that local dep is what a pull can filter
+   * with, so the decidable one can be pulled instead of pushed. Leaving
+   * that lone case to the optimizer hid a pull behind an "everything
+   * pushed" plan (medium_c Q1, both operators at the cloud: the player
+   * pushed all they could and still scored a 9-hop pull of C). Only a lone
+   * dep with nothing local beside it — push is the only option — or no
+   * decidable dep at all has nothing to choose. */
+  needsPushChoice(name: string): boolean {
+    const decidable = this.decidableDeps(name);
+    if (decidable.length > 1) return true;
+    const proj = this.scenario?.projections.find((p) => p.name === name);
+    return decidable.length === 1 && !!proj && proj.deps.length > 1;
+  }
+
+  /** Subqueries with a real push/pull call (see needsPushChoice) the player
+   * hasn't made yet — that choice is required, not just an optional extra,
+   * so a placement isn't "done" while one of these is still unset. */
   get pendingPushChoices(): string[] {
     const sc = this.scenario;
     if (!sc) return [];
-    return this.subqueries.filter(
-      (name) => this.decidableDeps(name).length > 1 && !(name in this.pushChoice)
-    );
+    return this.subqueries.filter((name) => this.needsPushChoice(name) && !(name in this.pushChoice));
   }
 
   /** True once every operator is placed AND every push/pull call is made —
@@ -543,9 +555,9 @@ export class AppState {
    * pushed at once (pushing 2 of 3 streams is just as valid as pushing 1).
    * First click on an undecided operator starts from "push nothing" and
    * pushes just that dep; toggling off the last pushed dep clears the whole
-   * entry back to "let the optimizer decide" instead of leaving an empty
-   * array around (an operator with 0 or 1 decidable deps was never asking
-   * for a call in the first place — see pendingPushChoices). */
+   * entry back to undecided (pending again — see pendingPushChoices)
+   * instead of leaving an empty array around; "push nothing" is the
+   * explicit pull-all chip. */
   setPushChoice(subqueryName: string, dep: string): void {
     if (this.confirmed) return;
     const current = this.pushChoice[subqueryName] ?? [];
@@ -680,12 +692,22 @@ export class AppState {
    * documented bug (cost off by a division-like factor); the explicit
    * all-push strategy is costed directly instead. Every other decided
    * operator (including an explicit, deliberate "push nothing") goes over
-   * as its literal array. */
+   * as its pushed deps plus every dep already at the node: those are there
+   * from the start and are what the pulls filter with. The backend's group
+   * covers all deps, so leaving them out pulled them too, and with nothing
+   * left to filter with the plan fell back to the all-push cost ("pull all"
+   * on large/seq_abcd, both operators at the cloud, scored 1804 instead of
+   * 1254.8). */
   private buildPushSnapshot(): Record<string, string | string[]> {
     const out: Record<string, string | string[]> = {};
     for (const [name, pushed] of Object.entries(this.pushChoice)) {
       const decidable = this.decidableDeps(name);
-      out[name] = pushed.length > 0 && pushed.length === decidable.length ? ALL_PUSH : pushed;
+      if (pushed.length > 0 && pushed.length === decidable.length) {
+        out[name] = ALL_PUSH;
+        continue;
+      }
+      const deps = this.scenario?.projections.find((p) => p.name === name)?.deps ?? [];
+      out[name] = [...deps.filter((dep) => !decidable.includes(dep)), ...pushed];
     }
     return out;
   }

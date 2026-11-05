@@ -27,9 +27,11 @@ function fmtRate(n: number): string {
 }
 
 /**
- * For an operator with 2+ *decidable* dependencies (see state.decidableDeps
- * — excludes ones the current placement already makes free either way, e.g.
- * a sub-query dependency sitting at the very same node), let the player
+ * For an operator with a real push/pull call (state.needsPushChoice: 2+
+ * *decidable* dependencies, or one next to a dependency that's already at
+ * the node — see state.decidableDeps, which excludes ones the current
+ * placement already makes free either way, e.g. a sub-query dependency
+ * sitting at the very same node), let the player
  * toggle each one independently between push and pull — pushing 2 of 3
  * streams is just as valid a choice as pushing exactly 1, so this is a
  * multi-select, not a single pick. A dependency is either a raw primitive
@@ -40,8 +42,8 @@ function fmtRate(n: number): string {
  * doesn't look incomplete, but it's inert — "already here" says why there's
  * nothing to choose. Trailing "push all"/"pull all" chips are quick-set
  * shortcuts for the two extremes, not the only two options.
- * Mandatory: state.readyToScore requires a call on any operator with 2+
- * decidable deps (state.pendingPushChoices).
+ * Mandatory: state.readyToScore requires a call on every such operator
+ * (state.pendingPushChoices).
  */
 function renderPushPullRow(state: AppState, name: string, proj: Projection): string {
   const sc = state.scenario!;
@@ -88,10 +90,9 @@ function renderPushPullRow(state: AppState, name: string, proj: Projection): str
       );
     })
     .join("");
-  if (decidable.size < 2) {
-    // A lone decidable dep (or none) has no real combinatorial choice —
-    // show the chips (including any "already here" ones) but no mandatory
-    // call, no quick-set buttons.
+  if (!state.needsPushChoice(name)) {
+    // A lone dep with nothing already here to pull it against can only be
+    // pushed — show the chip but no mandatory call, no quick-set buttons.
     return `<div class="pp-row done"><span class="pp-label">${t().ppLabel}</span>${chips}</div>`;
   }
   const allPushed = !!chosen && chosen.length === decidable.size;
