@@ -16,19 +16,31 @@
   "8b9d66f8ff89": "isle",
   "7ecb1236c8e9": "harbor",
   "52ecdfc6c13c": "gulf",
-  "14b73933a6cd": "sound"
+  "14b73933a6cd": "sound",
+  "872455fdc592": "dunes",
+  "488fecf96cb4": "cliffs",
+  "7a0e7dba1d1c": "reefflat",
+  "74ad6f0c2bdb": "abyss",
+  "db55a8a767bf": "current",
+  "467a7fc94f5e": "seagrass",
+  "21bc96aa5ef6": "wreck",
+  "d52130f76268": "pearl",
+  "ed13f582ff1d": "coral",
+  "de9a6242310f": "whirlpool"
  },
  "exported": {
   "seamount": "a659e6aedc38",
-  "shoal": "bf304ea483df",
-  "strait": "e4f050bdafbd",
   "tidepool": "29d0cf17a286",
-  "trench": "3f47d7558885",
-  "cape": "352f40080d48",
-  "isle": "8b9d66f8ff89",
-  "harbor": "7ecb1236c8e9",
-  "gulf": "52ecdfc6c13c",
-  "sound": "14b73933a6cd"
+  "dunes": "872455fdc592",
+  "cliffs": "488fecf96cb4",
+  "reefflat": "7a0e7dba1d1c",
+  "abyss": "74ad6f0c2bdb",
+  "current": "db55a8a767bf",
+  "seagrass": "467a7fc94f5e",
+  "wreck": "21bc96aa5ef6",
+  "pearl": "d52130f76268",
+  "coral": "ed13f582ff1d",
+  "whirlpool": "de9a6242310f"
  },
  "legacy": {
   "lagoon": {

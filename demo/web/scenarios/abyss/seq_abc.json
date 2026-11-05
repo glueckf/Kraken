@@ -1,0 +1,697 @@
+{
+ "schema_version": 2,
+ "scenario_id": "seq_abc",
+ "title": "SEQ(A, B, C)",
+ "emblem": "crab",
+ "difficulty": 1,
+ "blurb": "A short sequence over three streams. Warm-up.",
+ "query": "SEQ(A, B, C)",
+ "config": {
+  "cost_weight": 0.5,
+  "xi": 0.0,
+  "sink_nodes": [
+   0
+  ]
+ },
+ "topology": {
+  "num_nodes": 12,
+  "cloud_node_id": 0,
+  "event_letters": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E",
+   "F"
+  ],
+  "nodes": [
+   {
+    "id": 0,
+    "layer": 0,
+    "computational_power": null,
+    "is_cloud": true,
+    "is_leaf": false,
+    "parents": [],
+    "children": [
+     1,
+     2
+    ],
+    "events": {}
+   },
+   {
+    "id": 1,
+    "layer": 1,
+    "computational_power": 26,
+    "is_cloud": false,
+    "is_leaf": false,
+    "parents": [
+     0
+    ],
+    "children": [
+     5,
+     6
+    ],
+    "events": {}
+   },
+   {
+    "id": 2,
+    "layer": 1,
+    "computational_power": 26,
+    "is_cloud": false,
+    "is_leaf": false,
+    "parents": [
+     0
+    ],
+    "children": [
+     3,
+     11
+    ],
+    "events": {}
+   },
+   {
+    "id": 3,
+    "layer": 2,
+    "computational_power": 20,
+    "is_cloud": false,
+    "is_leaf": false,
+    "parents": [
+     2
+    ],
+    "children": [
+     4,
+     9,
+     10
+    ],
+    "events": {}
+   },
+   {
+    "id": 4,
+    "layer": 3,
+    "computational_power": 14,
+    "is_cloud": false,
+    "is_leaf": false,
+    "parents": [
+     3
+    ],
+    "children": [
+     5,
+     6,
+     7,
+     8,
+     11
+    ],
+    "events": {}
+   },
+   {
+    "id": 5,
+    "layer": 2,
+    "computational_power": 10,
+    "is_cloud": false,
+    "is_leaf": true,
+    "parents": [
+     1,
+     4
+    ],
+    "children": [],
+    "events": {
+     "D": 203,
+     "F": 5
+    }
+   },
+   {
+    "id": 6,
+    "layer": 2,
+    "computational_power": 10,
+    "is_cloud": false,
+    "is_leaf": true,
+    "parents": [
+     1,
+     4
+    ],
+    "children": [],
+    "events": {
+     "B": 2,
+     "C": 45
+    }
+   },
+   {
+    "id": 7,
+    "layer": 4,
+    "computational_power": 10,
+    "is_cloud": false,
+    "is_leaf": true,
+    "parents": [
+     4
+    ],
+    "children": [],
+    "events": {
+     "F": 5
+    }
+   },
+   {
+    "id": 8,
+    "layer": 4,
+    "computational_power": 10,
+    "is_cloud": false,
+    "is_leaf": true,
+    "parents": [
+     4
+    ],
+    "children": [],
+    "events": {
+     "F": 5
+    }
+   },
+   {
+    "id": 9,
+    "layer": 3,
+    "computational_power": 10,
+    "is_cloud": false,
+    "is_leaf": true,
+    "parents": [
+     3
+    ],
+    "children": [],
+    "events": {
+     "B": 2
+    }
+   },
+   {
+    "id": 10,
+    "layer": 3,
+    "computational_power": 10,
+    "is_cloud": false,
+    "is_leaf": true,
+    "parents": [
+     3
+    ],
+    "children": [],
+    "events": {
+     "E": 800
+    }
+   },
+   {
+    "id": 11,
+    "layer": 2,
+    "computational_power": 10,
+    "is_cloud": false,
+    "is_leaf": true,
+    "parents": [
+     2,
+     4
+    ],
+    "children": [],
+    "events": {
+     "A": 1000,
+     "D": 203
+    }
+   }
+  ],
+  "distance_matrix": [
+   [
+    0,
+    1,
+    1,
+    2,
+    3,
+    2,
+    2,
+    4,
+    4,
+    3,
+    3,
+    2
+   ],
+   [
+    1,
+    0,
+    2,
+    3,
+    4,
+    1,
+    1,
+    5,
+    5,
+    4,
+    4,
+    3
+   ],
+   [
+    1,
+    2,
+    0,
+    1,
+    2,
+    3,
+    3,
+    3,
+    3,
+    2,
+    2,
+    1
+   ],
+   [
+    2,
+    3,
+    1,
+    0,
+    1,
+    2,
+    2,
+    2,
+    2,
+    1,
+    1,
+    2
+   ],
+   [
+    3,
+    4,
+    2,
+    1,
+    0,
+    1,
+    1,
+    1,
+    1,
+    2,
+    2,
+    1
+   ],
+   [
+    2,
+    1,
+    3,
+    2,
+    1,
+    0,
+    2,
+    2,
+    2,
+    3,
+    3,
+    2
+   ],
+   [
+    2,
+    1,
+    3,
+    2,
+    1,
+    2,
+    0,
+    2,
+    2,
+    3,
+    3,
+    2
+   ],
+   [
+    4,
+    5,
+    3,
+    2,
+    1,
+    2,
+    2,
+    0,
+    2,
+    3,
+    3,
+    2
+   ],
+   [
+    4,
+    5,
+    3,
+    2,
+    1,
+    2,
+    2,
+    2,
+    0,
+    3,
+    3,
+    2
+   ],
+   [
+    3,
+    4,
+    2,
+    1,
+    2,
+    3,
+    3,
+    3,
+    3,
+    0,
+    2,
+    3
+   ],
+   [
+    3,
+    4,
+    2,
+    1,
+    2,
+    3,
+    3,
+    3,
+    3,
+    2,
+    0,
+    3
+   ],
+   [
+    2,
+    3,
+    1,
+    2,
+    1,
+    2,
+    2,
+    2,
+    2,
+    3,
+    3,
+    0
+   ]
+  ]
+ },
+ "event_map": {
+  "producers": {
+   "D": [
+    5,
+    11
+   ],
+   "F": [
+    5,
+    7,
+    8
+   ],
+   "B": [
+    6,
+    9
+   ],
+   "C": [
+    6
+   ],
+   "E": [
+    10
+   ],
+   "A": [
+    11
+   ]
+  },
+  "local_rate_lookup": {
+   "D": {
+    "5": 203.0,
+    "11": 203.0
+   },
+   "F": {
+    "5": 5.0,
+    "7": 5.0,
+    "8": 5.0
+   },
+   "B": {
+    "6": 2.0,
+    "9": 2.0
+   },
+   "C": {
+    "6": 45.0
+   },
+   "E": {
+    "10": 800.0
+   },
+   "A": {
+    "11": 1000.0
+   }
+  }
+ },
+ "projections": [
+  {
+   "name": "SEQ(A, B)",
+   "primitives": [
+    "A",
+    "B"
+   ],
+   "deps": [
+    "A",
+    "B"
+   ],
+   "selection_rate": 0.0013437,
+   "output_rate": 5.3748,
+   "is_workload": false,
+   "level": 0
+  },
+  {
+   "name": "SEQ(A, B, C)",
+   "primitives": [
+    "A",
+    "B",
+    "C"
+   ],
+   "deps": [
+    "SEQ(A, B)",
+    "C"
+   ],
+   "selection_rate": 6.839234086604956e-05,
+   "output_rate": 12.31062135588892,
+   "is_workload": true,
+   "level": 2
+  }
+ ],
+ "processing_order": [
+  "SEQ(A, B)",
+  "SEQ(A, B, C)"
+ ],
+ "strategies": {
+  "all_push": {
+   "label": "All-Push",
+   "placement": {
+    "SEQ(A, B)": 0,
+    "SEQ(A, B, C)": 0
+   },
+   "comm": "push",
+   "cost": 2100.0,
+   "latency": 4.0,
+   "processing_latency": 24.64471386784245
+  },
+  "inev": {
+   "label": "INEv",
+   "placement": {
+    "SEQ(A, B)": 2,
+    "SEQ(A, B, C)": 0
+   },
+   "comm": "push",
+   "cost": 1110.7496,
+   "latency": 4.0,
+   "processing_latency": 6.589275111248709
+  },
+  "sequential": {
+   "label": "Sequential",
+   "placement": {
+    "SEQ(A, B)": 2,
+    "SEQ(A, B, C)": 0
+   },
+   "comm": "push_pull",
+   "cost": 59.378137718696784,
+   "latency": 10.0,
+   "processing_latency": 0.5459585974727814
+  },
+  "prepp": {
+   "label": "PrePP",
+   "placement": {
+    "SEQ(A, B)": 0,
+    "SEQ(A, B, C)": 0
+   },
+   "comm": "push_pull",
+   "cost": 59.34703771869678,
+   "latency": 11.0,
+   "processing_latency": 0.571048975471503
+  },
+  "kraken": {
+   "label": "Kraken",
+   "placement": {
+    "SEQ(A, B)": 2,
+    "SEQ(A, B, C)": 0
+   },
+   "comm": "all_push",
+   "cost": 1105.3748,
+   "latency": 4.0,
+   "processing_latency": 17.68542135588892,
+   "per_placement": {
+    "SEQ(A, B)": {
+     "node": 2,
+     "strategy": "all_push",
+     "cost": 1010.0,
+     "lt": 3.0,
+     "lp": 5.3748,
+     "edges": {
+      "A": "push",
+      "B": "push"
+     }
+    },
+    "SEQ(A, B, C)": {
+     "node": 0,
+     "strategy": "all_push",
+     "cost": 95.3748,
+     "lt": 2.0,
+     "lp": 12.31062135588892,
+     "edges": {
+      "SEQ(A, B)": "push",
+      "C": "push"
+     }
+    }
+   }
+  }
+ },
+ "kraken_stages": [
+  {
+   "alpha": 0.2,
+   "label": "Fast",
+   "placement": {
+    "SEQ(A, B)": 2,
+    "SEQ(A, B, C)": 0
+   },
+   "comm": "all_push",
+   "cost": 1105.3748,
+   "latency": 4.0,
+   "processing_latency": 17.68542135588892,
+   "per_placement": {
+    "SEQ(A, B)": {
+     "node": 2,
+     "strategy": "all_push",
+     "cost": 1010.0,
+     "lt": 3.0,
+     "lp": 5.3748,
+     "edges": {
+      "A": "push",
+      "B": "push"
+     }
+    },
+    "SEQ(A, B, C)": {
+     "node": 0,
+     "strategy": "all_push",
+     "cost": 95.3748,
+     "lt": 2.0,
+     "lp": 12.31062135588892,
+     "edges": {
+      "SEQ(A, B)": "push",
+      "C": "push"
+     }
+    }
+   },
+   "solve_seconds": 0.0014119148254394531
+  },
+  {
+   "alpha": 0.6,
+   "label": "Balanced",
+   "placement": {
+    "SEQ(A, B)": 2,
+    "SEQ(A, B, C)": 0
+   },
+   "comm": "push_pull",
+   "cost": 59.378137718696784,
+   "latency": 10.0,
+   "processing_latency": 0.5459585974727814,
+   "per_placement": {
+    "SEQ(A, B)": {
+     "node": 2,
+     "strategy": "push_pull",
+     "cost": 15.3437,
+     "lt": 5.0,
+     "lp": 0.06072720992031872,
+     "edges": {
+      "B": "push",
+      "A": "pull"
+     }
+    },
+    "SEQ(A, B, C)": {
+     "node": 0,
+     "strategy": "push_pull",
+     "cost": 44.034437718696786,
+     "lt": 5.0,
+     "lp": 0.48523138755246265,
+     "edges": {
+      "SEQ(A, B)": "push",
+      "C": "pull"
+     }
+    }
+   },
+   "solve_seconds": 0.001371622085571289
+  },
+  {
+   "alpha": 0.9,
+   "label": "Cheap",
+   "placement": {
+    "SEQ(A, B)": 2,
+    "SEQ(A, B, C)": 0
+   },
+   "comm": "push_pull",
+   "cost": 59.378137718696784,
+   "latency": 10.0,
+   "processing_latency": 0.5459585974727814,
+   "per_placement": {
+    "SEQ(A, B)": {
+     "node": 2,
+     "strategy": "push_pull",
+     "cost": 15.3437,
+     "lt": 5.0,
+     "lp": 0.06072720992031872,
+     "edges": {
+      "B": "push",
+      "A": "pull"
+     }
+    },
+    "SEQ(A, B, C)": {
+     "node": 0,
+     "strategy": "push_pull",
+     "cost": 44.034437718696786,
+     "lt": 5.0,
+     "lp": 0.48523138755246265,
+     "edges": {
+      "SEQ(A, B)": "push",
+      "C": "pull"
+     }
+    }
+   },
+   "solve_seconds": 0.0013742446899414062
+  }
+ ],
+ "norm_anchors": {
+  "cost_min": 59.34703771869678,
+  "cost_max": 2100.0,
+  "latency_min": 4.0,
+  "latency_max": 11.0
+ },
+ "goldens": [
+  {
+   "name": "all_at_cloud",
+   "placement": {
+    "SEQ(A, B)": 0,
+    "SEQ(A, B, C)": 0
+   },
+   "all_push_cost": 2100.0,
+   "all_push_latency": 3.0
+  },
+  {
+   "name": "inev_placement",
+   "placement": {
+    "SEQ(A, B)": 2,
+    "SEQ(A, B, C)": 0
+   },
+   "all_push_cost": 1105.3748,
+   "all_push_latency": 4.0
+  },
+  {
+   "name": "kraken_placement",
+   "placement": {
+    "SEQ(A, B)": 2,
+    "SEQ(A, B, C)": 0
+   },
+   "all_push_cost": 1105.3748,
+   "all_push_latency": 4.0
+  }
+ ]
+}

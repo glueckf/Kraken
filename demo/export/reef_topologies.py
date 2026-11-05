@@ -320,55 +320,67 @@ build_large_d = _build(_LARGE_D_EDGES, _LARGE_D_LEAVES, _LARGE_D_CP)
 # --------------------------------------------------------------------------
 
 # BEGIN designed (generated -- regenerate, don't hand-edit)
-_TRENCH_EDGES = {0: [1], 1: [2, 3, 9], 2: [5, 6], 3: [4, 9], 4: [5, 6, 7, 8, 9]}
-_TRENCH_LEAVES = {5: [2], 7: [1, 4], 8: [0, 5], 6: [2, 5], 9: [0, 3]}
-_TRENCH_CP = {0: math.inf, 1: 26, 2: 20, 3: 20, 4: 14, 5: 10, 6: 10, 7: 10, 8: 10, 9: 10}
-build_trench = _build(_TRENCH_EDGES, _TRENCH_LEAVES, _TRENCH_CP)
+_DUNES_EDGES = {0: [1, 2], 1: [3, 5], 2: [8, 9], 3: [4, 7], 4: [6, 8, 9]}
+_DUNES_LEAVES = {8: [3], 5: [2], 6: [4, 5], 9: [2, 5], 7: [0, 1, 4]}
+_DUNES_CP = {0: math.inf, 1: 26, 2: 26, 3: 20, 4: 14, 5: 10, 6: 10, 7: 10, 8: 10, 9: 10}
+build_dunes = _build(_DUNES_EDGES, _DUNES_LEAVES, _DUNES_CP)
 
-_SHOAL_EDGES = {0: [1, 2], 1: [3, 5], 2: [8, 9], 3: [4, 7], 4: [6, 7, 8, 9]}
-_SHOAL_LEAVES = {8: [3], 5: [2], 6: [1, 5], 9: [2, 5], 7: [0, 1, 4]}
-_SHOAL_CP = {0: math.inf, 1: 26, 2: 26, 3: 20, 4: 14, 5: 10, 6: 10, 7: 10, 8: 10, 9: 10}
-build_shoal = _build(_SHOAL_EDGES, _SHOAL_LEAVES, _SHOAL_CP)
+_CLIFFS_EDGES = {0: [1, 2], 1: [3, 5], 2: [8, 9], 3: [4, 7], 4: [6, 8, 9]}
+_CLIFFS_LEAVES = {8: [0, 2, 3], 5: [4], 6: [3, 5], 9: [4, 5], 7: [1]}
+_CLIFFS_CP = {0: math.inf, 1: 26, 2: 26, 3: 20, 4: 14, 5: 10, 6: 10, 7: 10, 8: 10, 9: 10}
+build_cliffs = _build(_CLIFFS_EDGES, _CLIFFS_LEAVES, _CLIFFS_CP)
 
-_CAPE_EDGES = {0: [1, 2, 3], 1: [5, 6], 2: [4, 8, 9], 3: [4, 10, 11], 4: [5, 6, 7, 8, 9]}
-_CAPE_LEAVES = {5: [4], 7: [1, 5], 6: [0, 2], 8: [1, 3], 10: [2], 9: [5], 11: [5]}
-_CAPE_CP = {0: math.inf, 1: 26, 2: 26, 3: 26, 4: 20, 5: 10, 6: 10, 7: 10, 8: 10, 9: 10, 10: 10, 11: 10}
-build_cape = _build(_CAPE_EDGES, _CAPE_LEAVES, _CAPE_CP)
+_REEFFLAT_EDGES = {0: [1, 2], 1: [3, 5, 6], 2: [8, 9, 10, 11], 3: [4, 10, 11], 4: [5, 6, 7, 8, 9]}
+_REEFFLAT_LEAVES = {8: [3, 4], 7: [4], 9: [1, 2], 5: [4], 10: [1], 6: [0, 3], 11: [5]}
+_REEFFLAT_CP = {0: math.inf, 1: 26, 2: 26, 3: 20, 4: 14, 5: 10, 6: 10, 7: 10, 8: 10, 9: 10, 10: 10, 11: 10}
+build_reefflat = _build(_REEFFLAT_EDGES, _REEFFLAT_LEAVES, _REEFFLAT_CP)
 
-_ISLE_EDGES = {0: [1, 2, 3], 1: [5, 6], 2: [4, 9], 3: [10, 11], 4: [5, 6, 7, 8, 10, 11]}
-_ISLE_LEAVES = {5: [4], 7: [3, 5], 6: [2], 10: [1, 3], 8: [0, 2], 11: [5], 9: [5]}
-_ISLE_CP = {0: math.inf, 1: 26, 2: 26, 3: 26, 4: 20, 5: 10, 6: 10, 7: 10, 8: 10, 9: 10, 10: 10, 11: 10}
-build_isle = _build(_ISLE_EDGES, _ISLE_LEAVES, _ISLE_CP)
+_ABYSS_EDGES = {0: [1, 2], 1: [5, 6], 2: [3, 11], 3: [4, 9, 10], 4: [5, 6, 7, 8, 11]}
+_ABYSS_LEAVES = {5: [3, 5], 7: [5], 6: [1, 2], 8: [5], 9: [1], 11: [0, 3], 10: [4]}
+_ABYSS_CP = {0: math.inf, 1: 26, 2: 26, 3: 20, 4: 14, 5: 10, 6: 10, 7: 10, 8: 10, 9: 10, 10: 10, 11: 10}
+build_abyss = _build(_ABYSS_EDGES, _ABYSS_LEAVES, _ABYSS_CP)
 
-_STRAIT_EDGES = {0: [1, 2], 1: [6, 7], 2: [3, 8, 11], 3: [4, 5, 9, 10], 4: [6, 8], 5: [7, 9, 10, 11, 12]}
-_STRAIT_LEAVES = {6: [0, 2], 9: [5], 7: [3], 8: [0, 1], 10: [1], 11: [1, 4], 12: [5]}
-_STRAIT_CP = {0: math.inf, 1: 26, 2: 26, 3: 20, 4: 14, 5: 14, 6: 10, 7: 10, 8: 10, 9: 10, 10: 10, 11: 10, 12: 10}
-build_strait = _build(_STRAIT_EDGES, _STRAIT_LEAVES, _STRAIT_CP)
+_CURRENT_EDGES = {0: [1, 2], 1: [6, 7], 2: [3, 8, 11], 3: [4, 5, 9, 10], 4: [6, 8], 5: [7, 9, 10, 11, 12]}
+_CURRENT_LEAVES = {6: [3, 4], 9: [2], 7: [5], 8: [1, 3], 10: [1], 11: [0, 1], 12: [5]}
+_CURRENT_CP = {0: math.inf, 1: 26, 2: 26, 3: 20, 4: 14, 5: 14, 6: 10, 7: 10, 8: 10, 9: 10, 10: 10, 11: 10, 12: 10}
+build_current = _build(_CURRENT_EDGES, _CURRENT_LEAVES, _CURRENT_CP)
 
-_HARBOR_EDGES = {0: [1, 2], 1: [3, 6, 7, 10], 2: [10, 11], 3: [4, 5, 8], 4: [8, 9], 5: [9, 10, 11, 12]}
-_HARBOR_LEAVES = {9: [1], 10: [2, 4], 8: [1, 5], 6: [4], 11: [4, 5], 12: [0], 7: [3]}
-_HARBOR_CP = {0: math.inf, 1: 26, 2: 26, 3: 20, 4: 14, 5: 14, 6: 10, 7: 10, 8: 10, 9: 10, 10: 10, 11: 10, 12: 10}
-build_harbor = _build(_HARBOR_EDGES, _HARBOR_LEAVES, _HARBOR_CP)
+_SEAGRASS_EDGES = {0: [1, 2], 1: [6, 8], 2: [3, 9, 11], 3: [4, 5, 7, 10], 4: [6, 9], 5: [8, 10, 11, 12]}
+_SEAGRASS_LEAVES = {6: [0], 7: [3], 8: [3], 9: [0, 1], 10: [1], 11: [1, 4], 12: [2, 5]}
+_SEAGRASS_CP = {0: math.inf, 1: 26, 2: 26, 3: 20, 4: 14, 5: 14, 6: 10, 7: 10, 8: 10, 9: 10, 10: 10, 11: 10, 12: 10}
+build_seagrass = _build(_SEAGRASS_EDGES, _SEAGRASS_LEAVES, _SEAGRASS_CP)
 
-_GULF_EDGES = {0: [1, 2, 3], 1: [4], 2: [5, 10], 3: [13, 14, 15], 4: [6, 7, 8, 9, 10], 5: [6, 12, 14, 15], 6: [7, 8, 9, 10, 11, 12, 13]}
-_GULF_LEAVES = {7: [4], 11: [0, 3], 10: [3], 12: [1], 8: [2, 5], 14: [3], 13: [2], 9: [2, 5], 15: [3, 5]}
-_GULF_CP = {0: math.inf, 1: 26, 2: 26, 3: 26, 4: 20, 5: 20, 6: 14, 7: 10, 8: 10, 9: 10, 10: 10, 11: 10, 12: 10, 13: 10, 14: 10, 15: 10}
-build_gulf = _build(_GULF_EDGES, _GULF_LEAVES, _GULF_CP)
+_WRECK_EDGES = {0: [1, 2, 3], 1: [4, 5], 2: [5, 8], 3: [13, 14, 15], 4: [6, 7, 8, 9], 5: [6, 12, 14, 15], 6: [7, 9, 10, 11, 12, 13]}
+_WRECK_LEAVES = {7: [0, 1], 10: [4], 8: [3], 12: [5], 11: [0, 1], 14: [0], 13: [3], 9: [2, 3], 15: [1, 3]}
+_WRECK_CP = {0: math.inf, 1: 26, 2: 26, 3: 26, 4: 20, 5: 20, 6: 14, 7: 10, 8: 10, 9: 10, 10: 10, 11: 10, 12: 10, 13: 10, 14: 10, 15: 10}
+build_wreck = _build(_WRECK_EDGES, _WRECK_LEAVES, _WRECK_CP)
 
-_SOUND_EDGES = {0: [1, 2, 3], 1: [4], 2: [5, 8, 12], 3: [12, 14, 15], 4: [6, 7, 8, 9], 5: [6, 13, 14, 15], 6: [7, 9, 10, 11, 12, 13]}
-_SOUND_LEAVES = {7: [4], 10: [5], 8: [5], 13: [3], 11: [1, 2], 14: [0, 5], 12: [2], 9: [1, 2], 15: [1, 5]}
-_SOUND_CP = {0: math.inf, 1: 26, 2: 26, 3: 26, 4: 20, 5: 20, 6: 14, 7: 10, 8: 10, 9: 10, 10: 10, 11: 10, 12: 10, 13: 10, 14: 10, 15: 10}
-build_sound = _build(_SOUND_EDGES, _SOUND_LEAVES, _SOUND_CP)
+_PEARL_EDGES = {0: [1, 2, 3], 1: [4], 2: [4, 5, 8], 3: [13, 14, 15], 4: [6, 7, 8, 9, 10], 5: [6, 14, 15], 6: [7, 9, 10, 11, 12, 13]}
+_PEARL_LEAVES = {7: [2], 11: [4], 8: [3], 12: [5], 9: [1, 2], 14: [0, 3], 13: [3], 10: [1, 2], 15: [1, 3]}
+_PEARL_CP = {0: math.inf, 1: 26, 2: 26, 3: 26, 4: 20, 5: 20, 6: 14, 7: 10, 8: 10, 9: 10, 10: 10, 11: 10, 12: 10, 13: 10, 14: 10, 15: 10}
+build_pearl = _build(_PEARL_EDGES, _PEARL_LEAVES, _PEARL_CP)
+
+_CORAL_EDGES = {0: [1, 2, 3], 1: [7], 2: [10, 15], 3: [4, 13], 4: [5, 6, 11, 12, 14, 16], 5: [7, 8, 9, 10, 11, 13], 6: [14, 15, 16, 17]}
+_CORAL_LEAVES = {10: [0], 7: [0], 8: [5], 14: [0], 9: [5], 11: [2], 17: [2, 5], 15: [1, 3], 12: [0, 5], 16: [2], 13: [0, 4]}
+_CORAL_CP = {0: math.inf, 1: 26, 2: 26, 3: 26, 4: 20, 5: 14, 6: 14, 7: 10, 8: 10, 9: 10, 10: 10, 11: 10, 12: 10, 13: 10, 14: 10, 15: 10, 16: 10, 17: 10}
+build_coral = _build(_CORAL_EDGES, _CORAL_LEAVES, _CORAL_CP)
+
+_WHIRLPOOL_EDGES = {0: [1, 2, 3], 1: [7, 10], 2: [4, 8, 16], 3: [10, 14], 4: [5, 6, 9, 11, 12, 13, 14, 15], 5: [7, 8, 9, 13, 14], 6: [13, 15, 16, 17]}
+_WHIRLPOOL_LEAVES = {8: [2], 7: [5], 10: [3], 15: [2, 4], 11: [3, 4], 9: [2], 17: [4], 16: [3], 12: [2, 3], 13: [1], 14: [0, 2]}
+_WHIRLPOOL_CP = {0: math.inf, 1: 26, 2: 26, 3: 26, 4: 20, 5: 14, 6: 14, 7: 10, 8: 10, 9: 10, 10: 10, 11: 10, 12: 10, 13: 10, 14: 10, 15: 10, 16: 10, 17: 10}
+build_whirlpool = _build(_WHIRLPOOL_EDGES, _WHIRLPOOL_LEAVES, _WHIRLPOOL_CP)
 
 _DESIGNED = {
-    "trench": build_trench,
-    "shoal": build_shoal,
-    "cape": build_cape,
-    "isle": build_isle,
-    "strait": build_strait,
-    "harbor": build_harbor,
-    "gulf": build_gulf,
-    "sound": build_sound,
+    "dunes": build_dunes,
+    "cliffs": build_cliffs,
+    "reefflat": build_reefflat,
+    "abyss": build_abyss,
+    "current": build_current,
+    "seagrass": build_seagrass,
+    "wreck": build_wreck,
+    "pearl": build_pearl,
+    "coral": build_coral,
+    "whirlpool": build_whirlpool,
 }
 # END designed
 

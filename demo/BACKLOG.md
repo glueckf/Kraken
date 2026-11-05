@@ -6,12 +6,17 @@ does.
 
 ## Functional (current priority)
 
-35. **Ten designed topologies, 2026-11-05 — DONE.** Goal: variety in what
-    each network *teaches*, not just in its shape. Every topology must make
-    Fast/Balanced/Cheap place subqueries differently (not only push vs
-    pull), have no single rule of thumb that is always optimal, offer >=4
-    valid plans, keep the cloud out of every stage's sole choice, and play
-    >=3 queries with 2-5 subqueries each (queries outside that range are
+35. **Ten designed topologies, 2026-11-05, re-run 2026-11-06 — DONE.**
+    Goal: variety in what each network *teaches*, not just in its shape.
+    In every query of a topology, Fast/Balanced/Cheap must differ, in
+    placement or in push/pull (a different push/pull choice counts; the
+    verdict demanded placement differences in >=2 queries until
+    2026-11-06). Different placements show the change best, so the search
+    scores them higher and the pool only takes topologies that move an
+    operator in at least one query. Also: no single rule of thumb that is
+    always optimal, >=4 valid plans, the cloud never every stage's sole
+    choice, >=4 watchtowers (like Kraken's Forge), and >=3 playable
+    queries with 2-5 subqueries each (queries outside that range are
     dropped per topology via `scenarios` in topologies.py). Trees can't do
     this (every common ancestor lies on the path to the cloud); dual-homed
     sources -- a fast direct uplink plus a slower local aggregation route --
@@ -25,12 +30,22 @@ does.
     topologies as anchors), at most 2 per node count. Tooling in
     export/design/ (search, selection, integrate.py regenerates the
     BEGIN/END designed blocks in reef_topologies.py + topologies.py and
-    re-exports). Result: 9, 9, 10, 10, 12, 12, 13, 13, 16, 16 nodes.
-    Open: nothing >16 nodes passes the drawing gates on the 1000x640
-    canvas; no topology yet splits all three stages (F|B|C); most teach
-    "Fast differs" (F|BC), a few "Cheap differs" (FB|C) / "Balanced
-    differs" (FC|B). Grand Reef B-D and Reef E fail the same drawing gates
-    (stacked towers overlap) -- not touched.
+    re-exports; families by watchtower count: 4 -> Lagoon, more ->
+    Barrier Reef). First result (trench ... sound) was selected under the
+    old, summing latency model; after the critical-path fix only strait
+    still passed. Re-run 2026-11-06 under the fixed model (old archive
+    kept as the gitignored archive.prelatencyfix.jsonl, its per-cell
+    elites re-evaluated as seeds; 22 generations, ~2,900 evaluations,
+    81 min): Lagoon gets dunes 10, cliffs 10, reefflat 12, abyss 12;
+    Barrier Reef gets current 13, seagrass 13, wreck 16, pearl 16,
+    coral 18, whirlpool 18. 18 of the 33 shown queries differ in
+    placement, 15 in push/pull only. reefflat's seq_abcde is the first
+    query that splits all three stages (F|B|C); the rest teach "Fast
+    differs" (F|BC) or "Balanced differs" (FC|B), wreck "Cheap differs"
+    (FB|C). Open (cosmetic): on the 16-18 node ones n2's spire touches
+    the "King Cloud" label, and wreck/pearl stack n1/n4 and n3/n5 close
+    together. Grand Reef B-D and Reef E fail the drawing gates (stacked
+    towers overlap) -- not touched.
 
 34. **Follow-up to item 33, same day — all DONE.** `medium_e` restructured
     (C "travels" on the left side, +3 watchtowers) and the 3-of-6

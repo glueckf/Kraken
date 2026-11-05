@@ -505,7 +505,7 @@
    ]
   },
   {
-   "id": "trench",
+   "id": "dunes",
    "family": "lagoon",
    "label": "Lagoon",
    "label_de": "Lagune",
@@ -518,7 +518,7 @@
      "difficulty": 1,
      "blurb": "A short sequence over three streams. Warm-up.",
      "num_subqueries": 2,
-     "file": "trench/seq_abc.json"
+     "file": "dunes/seq_abc.json"
     },
     {
      "id": "seq_abcd",
@@ -526,8 +526,8 @@
      "emblem": "turtle",
      "difficulty": 2,
      "blurb": "A longer chain — one more operator to place.",
-     "num_subqueries": 2,
-     "file": "trench/seq_abcd.json"
+     "num_subqueries": 4,
+     "file": "dunes/seq_abcd.json"
     },
     {
      "id": "seq_abcde",
@@ -535,22 +535,13 @@
      "emblem": "shark",
      "difficulty": 3,
      "blurb": "Branches that share a common sub-result.",
-     "num_subqueries": 4,
-     "file": "trench/seq_abcde.json"
-    },
-    {
-     "id": "and_nested",
-     "title": "AND(SEQ(A,B,C), D, SEQ(E,F))",
-     "emblem": "seedling",
-     "difficulty": 4,
-     "blurb": "A rich nested query touching all six streams.",
      "num_subqueries": 5,
-     "file": "trench/and_nested.json"
+     "file": "dunes/seq_abcde.json"
     }
    ]
   },
   {
-   "id": "shoal",
+   "id": "cliffs",
    "family": "lagoon",
    "label": "Lagoon",
    "label_de": "Lagune",
@@ -563,7 +554,7 @@
      "difficulty": 1,
      "blurb": "A short sequence over three streams. Warm-up.",
      "num_subqueries": 2,
-     "file": "shoal/seq_abc.json"
+     "file": "cliffs/seq_abc.json"
     },
     {
      "id": "seq_abcd",
@@ -571,8 +562,8 @@
      "emblem": "turtle",
      "difficulty": 2,
      "blurb": "A longer chain — one more operator to place.",
-     "num_subqueries": 3,
-     "file": "shoal/seq_abcd.json"
+     "num_subqueries": 4,
+     "file": "cliffs/seq_abcd.json"
     },
     {
      "id": "seq_abcde",
@@ -580,22 +571,13 @@
      "emblem": "shark",
      "difficulty": 3,
      "blurb": "Branches that share a common sub-result.",
-     "num_subqueries": 4,
-     "file": "shoal/seq_abcde.json"
-    },
-    {
-     "id": "and_nested",
-     "title": "AND(SEQ(A,B,C), D, SEQ(E,F))",
-     "emblem": "seedling",
-     "difficulty": 4,
-     "blurb": "A rich nested query touching all six streams.",
      "num_subqueries": 5,
-     "file": "shoal/and_nested.json"
+     "file": "cliffs/seq_abcde.json"
     }
    ]
   },
   {
-   "id": "cape",
+   "id": "reefflat",
    "family": "lagoon",
    "label": "Lagoon",
    "label_de": "Lagune",
@@ -608,7 +590,7 @@
      "difficulty": 1,
      "blurb": "A short sequence over three streams. Warm-up.",
      "num_subqueries": 2,
-     "file": "cape/seq_abc.json"
+     "file": "reefflat/seq_abc.json"
     },
     {
      "id": "seq_abcd",
@@ -616,8 +598,8 @@
      "emblem": "turtle",
      "difficulty": 2,
      "blurb": "A longer chain — one more operator to place.",
-     "num_subqueries": 3,
-     "file": "cape/seq_abcd.json"
+     "num_subqueries": 4,
+     "file": "reefflat/seq_abcd.json"
     },
     {
      "id": "seq_abcde",
@@ -625,22 +607,13 @@
      "emblem": "shark",
      "difficulty": 3,
      "blurb": "Branches that share a common sub-result.",
-     "num_subqueries": 4,
-     "file": "cape/seq_abcde.json"
-    },
-    {
-     "id": "and_nested",
-     "title": "AND(SEQ(A,B,C), D, SEQ(E,F))",
-     "emblem": "seedling",
-     "difficulty": 4,
-     "blurb": "A rich nested query touching all six streams.",
      "num_subqueries": 5,
-     "file": "cape/and_nested.json"
+     "file": "reefflat/seq_abcde.json"
     }
    ]
   },
   {
-   "id": "isle",
+   "id": "abyss",
    "family": "lagoon",
    "label": "Lagoon",
    "label_de": "Lagune",
@@ -653,7 +626,7 @@
      "difficulty": 1,
      "blurb": "A short sequence over three streams. Warm-up.",
      "num_subqueries": 2,
-     "file": "isle/seq_abc.json"
+     "file": "abyss/seq_abc.json"
     },
     {
      "id": "seq_abcd",
@@ -662,7 +635,7 @@
      "difficulty": 2,
      "blurb": "A longer chain — one more operator to place.",
      "num_subqueries": 4,
-     "file": "isle/seq_abcd.json"
+     "file": "abyss/seq_abcd.json"
     },
     {
      "id": "seq_abcde",
@@ -671,7 +644,7 @@
      "difficulty": 3,
      "blurb": "Branches that share a common sub-result.",
      "num_subqueries": 5,
-     "file": "isle/seq_abcde.json"
+     "file": "abyss/seq_abcde.json"
     },
     {
      "id": "and_nested",
@@ -680,12 +653,12 @@
      "difficulty": 4,
      "blurb": "A rich nested query touching all six streams.",
      "num_subqueries": 5,
-     "file": "isle/and_nested.json"
+     "file": "abyss/and_nested.json"
     }
    ]
   },
   {
-   "id": "strait",
+   "id": "current",
    "family": "barrier",
    "label": "Barrier Reef",
    "label_de": "Barriereriff",
@@ -698,52 +671,7 @@
      "difficulty": 1,
      "blurb": "A short sequence over three streams. Warm-up.",
      "num_subqueries": 2,
-     "file": "strait/seq_abc.json"
-    },
-    {
-     "id": "seq_abcd",
-     "title": "SEQ(A, B, C, D)",
-     "emblem": "turtle",
-     "difficulty": 2,
-     "blurb": "A longer chain — one more operator to place.",
-     "num_subqueries": 2,
-     "file": "strait/seq_abcd.json"
-    },
-    {
-     "id": "seq_abcde",
-     "title": "SEQ(A, B, C, D, E)",
-     "emblem": "shark",
-     "difficulty": 3,
-     "blurb": "Branches that share a common sub-result.",
-     "num_subqueries": 4,
-     "file": "strait/seq_abcde.json"
-    },
-    {
-     "id": "and_nested",
-     "title": "AND(SEQ(A,B,C), D, SEQ(E,F))",
-     "emblem": "seedling",
-     "difficulty": 4,
-     "blurb": "A rich nested query touching all six streams.",
-     "num_subqueries": 5,
-     "file": "strait/and_nested.json"
-    }
-   ]
-  },
-  {
-   "id": "harbor",
-   "family": "barrier",
-   "label": "Barrier Reef",
-   "label_de": "Barriereriff",
-   "network_size": 13,
-   "scenarios": [
-    {
-     "id": "seq_abc",
-     "title": "SEQ(A, B, C)",
-     "emblem": "crab",
-     "difficulty": 1,
-     "blurb": "A short sequence over three streams. Warm-up.",
-     "num_subqueries": 2,
-     "file": "harbor/seq_abc.json"
+     "file": "current/seq_abc.json"
     },
     {
      "id": "seq_abcd",
@@ -752,7 +680,7 @@
      "difficulty": 2,
      "blurb": "A longer chain — one more operator to place.",
      "num_subqueries": 3,
-     "file": "harbor/seq_abcd.json"
+     "file": "current/seq_abcd.json"
     },
     {
      "id": "seq_abcde",
@@ -760,8 +688,8 @@
      "emblem": "shark",
      "difficulty": 3,
      "blurb": "Branches that share a common sub-result.",
-     "num_subqueries": 5,
-     "file": "harbor/seq_abcde.json"
+     "num_subqueries": 4,
+     "file": "current/seq_abcde.json"
     },
     {
      "id": "and_nested",
@@ -770,12 +698,48 @@
      "difficulty": 4,
      "blurb": "A rich nested query touching all six streams.",
      "num_subqueries": 5,
-     "file": "harbor/and_nested.json"
+     "file": "current/and_nested.json"
     }
    ]
   },
   {
-   "id": "gulf",
+   "id": "seagrass",
+   "family": "barrier",
+   "label": "Barrier Reef",
+   "label_de": "Barriereriff",
+   "network_size": 13,
+   "scenarios": [
+    {
+     "id": "seq_abc",
+     "title": "SEQ(A, B, C)",
+     "emblem": "crab",
+     "difficulty": 1,
+     "blurb": "A short sequence over three streams. Warm-up.",
+     "num_subqueries": 2,
+     "file": "seagrass/seq_abc.json"
+    },
+    {
+     "id": "seq_abcd",
+     "title": "SEQ(A, B, C, D)",
+     "emblem": "turtle",
+     "difficulty": 2,
+     "blurb": "A longer chain — one more operator to place.",
+     "num_subqueries": 2,
+     "file": "seagrass/seq_abcd.json"
+    },
+    {
+     "id": "seq_abcde",
+     "title": "SEQ(A, B, C, D, E)",
+     "emblem": "shark",
+     "difficulty": 3,
+     "blurb": "Branches that share a common sub-result.",
+     "num_subqueries": 2,
+     "file": "seagrass/seq_abcde.json"
+    }
+   ]
+  },
+  {
+   "id": "wreck",
    "family": "barrier",
    "label": "Barrier Reef",
    "label_de": "Barriereriff",
@@ -788,16 +752,7 @@
      "difficulty": 1,
      "blurb": "A short sequence over three streams. Warm-up.",
      "num_subqueries": 2,
-     "file": "gulf/seq_abc.json"
-    },
-    {
-     "id": "seq_abcd",
-     "title": "SEQ(A, B, C, D)",
-     "emblem": "turtle",
-     "difficulty": 2,
-     "blurb": "A longer chain — one more operator to place.",
-     "num_subqueries": 4,
-     "file": "gulf/seq_abcd.json"
+     "file": "wreck/seq_abc.json"
     },
     {
      "id": "seq_abcde",
@@ -805,8 +760,8 @@
      "emblem": "shark",
      "difficulty": 3,
      "blurb": "Branches that share a common sub-result.",
-     "num_subqueries": 5,
-     "file": "gulf/seq_abcde.json"
+     "num_subqueries": 3,
+     "file": "wreck/seq_abcde.json"
     },
     {
      "id": "and_nested",
@@ -815,12 +770,12 @@
      "difficulty": 4,
      "blurb": "A rich nested query touching all six streams.",
      "num_subqueries": 5,
-     "file": "gulf/and_nested.json"
+     "file": "wreck/and_nested.json"
     }
    ]
   },
   {
-   "id": "sound",
+   "id": "pearl",
    "family": "barrier",
    "label": "Barrier Reef",
    "label_de": "Barriereriff",
@@ -833,7 +788,7 @@
      "difficulty": 1,
      "blurb": "A short sequence over three streams. Warm-up.",
      "num_subqueries": 2,
-     "file": "sound/seq_abc.json"
+     "file": "pearl/seq_abc.json"
     },
     {
      "id": "seq_abcd",
@@ -841,8 +796,8 @@
      "emblem": "turtle",
      "difficulty": 2,
      "blurb": "A longer chain — one more operator to place.",
-     "num_subqueries": 2,
-     "file": "sound/seq_abcd.json"
+     "num_subqueries": 3,
+     "file": "pearl/seq_abcd.json"
     },
     {
      "id": "seq_abcde",
@@ -850,8 +805,35 @@
      "emblem": "shark",
      "difficulty": 3,
      "blurb": "Branches that share a common sub-result.",
-     "num_subqueries": 4,
-     "file": "sound/seq_abcde.json"
+     "num_subqueries": 3,
+     "file": "pearl/seq_abcde.json"
+    }
+   ]
+  },
+  {
+   "id": "coral",
+   "family": "barrier",
+   "label": "Barrier Reef",
+   "label_de": "Barriereriff",
+   "network_size": 18,
+   "scenarios": [
+    {
+     "id": "seq_abcd",
+     "title": "SEQ(A, B, C, D)",
+     "emblem": "turtle",
+     "difficulty": 2,
+     "blurb": "A longer chain — one more operator to place.",
+     "num_subqueries": 2,
+     "file": "coral/seq_abcd.json"
+    },
+    {
+     "id": "seq_abcde",
+     "title": "SEQ(A, B, C, D, E)",
+     "emblem": "shark",
+     "difficulty": 3,
+     "blurb": "Branches that share a common sub-result.",
+     "num_subqueries": 3,
+     "file": "coral/seq_abcde.json"
     },
     {
      "id": "and_nested",
@@ -860,7 +842,43 @@
      "difficulty": 4,
      "blurb": "A rich nested query touching all six streams.",
      "num_subqueries": 5,
-     "file": "sound/and_nested.json"
+     "file": "coral/and_nested.json"
+    }
+   ]
+  },
+  {
+   "id": "whirlpool",
+   "family": "barrier",
+   "label": "Barrier Reef",
+   "label_de": "Barriereriff",
+   "network_size": 18,
+   "scenarios": [
+    {
+     "id": "seq_abc",
+     "title": "SEQ(A, B, C)",
+     "emblem": "crab",
+     "difficulty": 1,
+     "blurb": "A short sequence over three streams. Warm-up.",
+     "num_subqueries": 2,
+     "file": "whirlpool/seq_abc.json"
+    },
+    {
+     "id": "seq_abcd",
+     "title": "SEQ(A, B, C, D)",
+     "emblem": "turtle",
+     "difficulty": 2,
+     "blurb": "A longer chain — one more operator to place.",
+     "num_subqueries": 4,
+     "file": "whirlpool/seq_abcd.json"
+    },
+    {
+     "id": "seq_abcde",
+     "title": "SEQ(A, B, C, D, E)",
+     "emblem": "shark",
+     "difficulty": 3,
+     "blurb": "Branches that share a common sub-result.",
+     "num_subqueries": 5,
+     "file": "whirlpool/seq_abcde.json"
     }
    ]
   }
