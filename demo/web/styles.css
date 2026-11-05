@@ -93,6 +93,10 @@ body {
 .tag { font-size: 12px; color: var(--ink-soft); }
 .top-right { display: flex; align-items: center; gap: 12px; }
 .status { font-size: 12px; color: var(--ink-soft); font-variant: tabular-nums; }
+.timer {
+  font-size: 13px; font-weight: 700; font-variant: tabular-nums;
+  color: var(--accent); min-width: 44px; text-align: right;
+}
 .icon-btn {
   /* 40px, not the 44px touch-target guideline, to stay visually in scale
      with the rest of a fairly compact topbar -- still a meaningful jump
@@ -381,6 +385,10 @@ body {
 .tile-s { font-size: 12.5px; margin-top: 3px; }
 .tile.good .tile-s { color: var(--good); }
 .tile.bad .tile-s { color: var(--bad); }
+.sc-timer-note {
+  font-size: 12.5px; font-variant: tabular-nums; color: var(--ink-soft);
+  text-align: center; margin: -4px 0 10px;
+}
 
 /* Win celebration: a one-off burst of bubbles rising from the Kraken-score
  * tile, fired from main.ts the moment a freshly-scored placement beats

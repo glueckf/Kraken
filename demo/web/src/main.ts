@@ -21,6 +21,33 @@ let layoutFor: Scenario | null = null;
 // resolves, so identity alone is a reliable "this is new" signal.
 let lastOfficial: OfficialScore | null = null;
 
+function formatElapsed(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000);
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+/** Decision-time stopwatch in the header: starts on the player's first
+ * placement (state.ts's planStartedAt), freezes at Confirm plan
+ * (planConfirmedAt) -- "you vs Kraken", since Kraken's own pick is
+ * effectively instant. Kept as its own cheap DOM touch, called both from
+ * render() and from the ticking interval below, instead of running the
+ * full render() every tick just to keep a clock moving. */
+function renderTimer(): void {
+  const el = $("timer");
+  if (!state.scenario || state.planStartedAt == null) {
+    el.textContent = "";
+    el.removeAttribute("title");
+    return;
+  }
+  const end = state.planConfirmedAt ?? Date.now();
+  const text = formatElapsed(Math.max(0, end - state.planStartedAt));
+  el.textContent = `⏱ ${text}`;
+  el.title = t().timerYouVsKraken(text);
+  el.setAttribute("aria-label", t().timerAria);
+}
+
 function reefView(): ReefView {
   return {
     placement: state.placement,
@@ -75,6 +102,7 @@ function render(): void {
   $("tray").classList.toggle("locked", state.confirmed);
   $("scorecard").innerHTML = renderScorecard(state) + renderServiceBadge(state);
   status.textContent = state.scenario.title;
+  renderTimer();
 
   if (state.official !== lastOfficial) {
     lastOfficial = state.official;
@@ -244,3 +272,10 @@ wire();
 applyStaticI18n();
 render();
 state.init();
+
+// Ticks the header stopwatch while it's running (started, not yet
+// confirmed) -- cheap (one textContent write), skipped entirely once
+// confirmed since the time is frozen by then.
+setInterval(() => {
+  if (state.scenario && state.planStartedAt != null && !state.confirmed) renderTimer();
+}, 500);

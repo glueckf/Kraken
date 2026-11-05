@@ -114,6 +114,8 @@ interface Strings {
   confirmBtn: string;
   scoringTitle: string;
   scoringSub: string;
+  timerAria: string;
+  timerYouVsKraken: (time: string) => string;
 
   // ---- scorecard: results ----
   verdictMatched: string;
@@ -243,6 +245,8 @@ const EN: Strings = {
   confirmBtn: "Confirm plan",
   scoringTitle: "Kraken is crunching the numbers…",
   scoringSub: "Optimising push/pull for your placement.",
+  timerAria: "Your decision time, running from your first placement to Confirm plan — Kraken decides instantly",
+  timerYouVsKraken: (time) => `You: ${time} · Kraken: instant`,
 
   verdictMatched: "You matched Kraken.",
   verdictMid: (n, total) => `You beat ${n} of ${total} baselines — Kraken still wins.`,
@@ -378,6 +382,8 @@ const DE: Strings = {
   confirmBtn: "Plan bestätigen",
   scoringTitle: "Kraken knackt die Zahlen …",
   scoringSub: "Optimiert Push/Pull für deine Platzierung.",
+  timerAria: "Deine Entscheidungszeit, läuft von deiner ersten Platzierung bis Plan bestätigen — Kraken entscheidet sofort",
+  timerYouVsKraken: (time) => `Du: ${time} · Kraken: sofort`,
 
   verdictMatched: "Du hast mit Kraken gleichgezogen.",
   verdictMid: (n, total) => `Du schlägst ${n} von ${total} Baselines — Kraken gewinnt noch.`,

@@ -95,6 +95,14 @@ export class AppState {
    * score update live while still rearranging the plan, which turns scoring
    * into a search tool instead of a one-shot decision. */
   confirmed = false;
+  /** Decision-time clock: set on the first successful placement of the
+   * round (first call into placeActiveAt that actually places something —
+   * not on load, not on an attempt the placement-validity check rejects),
+   * and frozen in confirm(). Timing the player against Kraken's own
+   * (effectively instant) decision is the point of the stopwatch in the
+   * header — see renderTimer() in main.ts. */
+  planStartedAt: number | null = null;
+  planConfirmedAt: number | null = null;
   private descendants: Map<number, Set<number>> = new Map();
 
   clientScore: ScoreResult | null = null;
@@ -207,6 +215,8 @@ export class AppState {
       this.autoPlacedReason = {};
       this.reveal = false;
       this.confirmed = false;
+      this.planStartedAt = null;
+      this.planConfirmedAt = null;
       this.clientScore = null;
       this.official = null;
       this.scoring = false;
@@ -394,6 +404,7 @@ export class AppState {
     }
     this.placementError = null;
     this.placement[this.activeSubquery] = node;
+    if (this.planStartedAt == null) this.planStartedAt = Date.now();
     this.reconcileForcedCloudPlacements();
     // auto-advance to the next unplaced subquery (skips anything the
     // reconcile above just placed for the player)
@@ -504,6 +515,8 @@ export class AppState {
     this.activeSubquery = this.subqueries[0] ?? null;
     this.reveal = false;
     this.confirmed = false;
+    this.planStartedAt = null;
+    this.planConfirmedAt = null;
     this.clientScore = null;
     this.official = null;
     this.scoring = false;
@@ -554,6 +567,7 @@ export class AppState {
   confirm(): void {
     if (!this.readyToScore || this.confirmed) return;
     this.confirmed = true;
+    this.planConfirmedAt = Date.now();
     this.rescore();
   }
 

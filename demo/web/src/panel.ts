@@ -475,6 +475,14 @@ export function renderScorecard(state: AppState): string {
     tile(t().krakenScoreLabel, o.norm.score.toFixed(3), `Kraken ${krakenScore.toFixed(3)}`, beatKraken, "krakenScoreTile") +
     `</div>`;
 
+  // Decision-time note, not another win/lose tile (there's no meaningful
+  // "beat Kraken" framing for speed -- it decides instantly by construction)
+  // -- see state.ts's planStartedAt/planConfirmedAt.
+  const timerNote =
+    state.planStartedAt != null && state.planConfirmedAt != null
+      ? `<div class="sc-timer-note">${t().timerYouVsKraken(formatElapsed(state.planConfirmedAt - state.planStartedAt))}</div>`
+      : "";
+
   // leaderboard: baselines + You, sorted by score asc
   const rows: { id: string; label: string; score: number; cost: number; latency: number; you?: boolean }[] =
     ids.map((id) => ({ id, label: sc.strategies[id]!.label, score: bl[id]!.score, cost: bl[id]!.cost, latency: bl[id]!.latency }));
@@ -506,6 +514,7 @@ export function renderScorecard(state: AppState): string {
   return (
     `<div class="sc-head">${verdict}${modeTag}</div>` +
     tiles +
+    timerNote +
     `<div class="lb-title">${t().leaderboardTitle} <span class="lb-hint">${t().leaderboardHint}</span></div>` +
     stagePicker +
     `<div class="leaderboard">${board}</div>` +
@@ -530,6 +539,13 @@ function tile(label: string, value: string, sub: string, good: boolean, id?: str
     `<div class="tile-s">${sub}</div>` +
     `</div>`
   );
+}
+
+function formatElapsed(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000);
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
 }
 
 function deltaLabel(d: number, cost: boolean): string {
