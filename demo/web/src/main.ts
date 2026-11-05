@@ -68,6 +68,11 @@ function render(): void {
   $("topologyBar").innerHTML = renderTopologyBar(state);
   $("queryBar").innerHTML = renderQueryBar(state);
   $("tray").innerHTML = renderTray(state);
+  // Placement + push/pull are frozen once confirmed (state.ts no-ops the
+  // mutators either way) -- this just makes that visible before a tap finds
+  // out the hard way.
+  $("reef").classList.toggle("locked", state.confirmed);
+  $("tray").classList.toggle("locked", state.confirmed);
   $("scorecard").innerHTML = renderScorecard(state) + renderServiceBadge(state);
   status.textContent = state.scenario.title;
 
@@ -150,10 +155,28 @@ function wire(): void {
     }
   });
 
+  // Hover a node -> highlight just its own edge(s) up to its parent(s), so
+  // tracing a bigger topology (Grand Reef) by eye is easier. relatedTarget
+  // is checked against the same ancestor so moving between a node's own
+  // children (dot, label, chip) doesn't flicker the highlight off and on.
+  $("reef").addEventListener("mouseover", (e) => {
+    const node = closestAttr(e.target, "data-node");
+    if (node == null) return;
+    if (closestAttr((e as MouseEvent).relatedTarget, "data-node") === node) return;
+    for (const edge of $("reef").querySelectorAll(`.edge[data-from="${node}"]`)) edge.classList.add("hl");
+  });
+  $("reef").addEventListener("mouseout", (e) => {
+    const node = closestAttr(e.target, "data-node");
+    if (node == null) return;
+    if (closestAttr((e as MouseEvent).relatedTarget, "data-node") === node) return;
+    for (const edge of $("reef").querySelectorAll(`.edge[data-from="${node}"]`)) edge.classList.remove("hl");
+  });
+
   $("scorecard").addEventListener("click", (e) => {
     const action = closestAttr(e.target, "data-action");
     if (action === "reveal") state.toggleReveal();
     else if (action === "clear") state.clear();
+    else if (action === "confirm") state.confirm();
     else if (action === "stage") {
       const idx = closestAttr(e.target, "data-stage");
       if (idx != null) state.setStage(Number(idx));

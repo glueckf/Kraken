@@ -109,6 +109,9 @@ interface Strings {
   choosePushPullFor: (n: number) => string;
   placeAllToScore: (subqueries: string) => string;
   scEmptySub: string;
+  confirmTitle: string;
+  confirmSub: string;
+  confirmBtn: string;
   scoringTitle: string;
   scoringSub: string;
 
@@ -235,6 +238,9 @@ const EN: Strings = {
   placeAllToScore: (subqueries) => `Place all ${subqueries} to score your plan`,
   scEmptySub:
     "You choose where each subquery runs, and — for push-pull scoring — which stream it pushes. We compute the network cost and latency, then pit it against Kraken and the baselines.",
+  confirmTitle: "Your plan is ready",
+  confirmSub: "Confirm to lock in your placement and push/pull choices and see how you scored. You can still change anything until you confirm.",
+  confirmBtn: "Confirm plan",
   scoringTitle: "Kraken is crunching the numbers…",
   scoringSub: "Optimising push/pull for your placement.",
 
@@ -367,6 +373,9 @@ const DE: Strings = {
   placeAllToScore: (subqueries) => `Platziere alle ${subqueries}, um deinen Plan zu bewerten`,
   scEmptySub:
     "Du entscheidest, wo jede Teilabfrage läuft und — für die Push-Pull-Bewertung — welchen Stream sie pusht. Wir berechnen die Netzwerkkosten und die Latenz und vergleichen sie mit Kraken und den Baselines.",
+  confirmTitle: "Dein Plan ist fertig",
+  confirmSub: "Bestätige, um Platzierung und Push/Pull-Wahl festzulegen und dein Ergebnis zu sehen. Bis dahin kannst du noch alles ändern.",
+  confirmBtn: "Plan bestätigen",
   scoringTitle: "Kraken knackt die Zahlen …",
   scoringSub: "Optimiert Push/Pull für deine Platzierung.",
 

@@ -87,6 +87,14 @@ export class AppState {
    * clicking a node — see reconcileForcedCloudPlacements(). */
   autoPlacedReason: Record<string, string> = {};
   reveal = false;
+  /** True from confirm() until clear() ("try again") — freezes placement and
+   * push/pull choices (placeActiveAt/pickUp/setPushChoice/setAllPushChoice
+   * all no-op while this is true) and is the only thing that lets rescore()
+   * actually score: a complete plan sits idle, not auto-scoring, until the
+   * player deliberately locks it in. Without this a player could watch the
+   * score update live while still rearranging the plan, which turns scoring
+   * into a search tool instead of a one-shot decision. */
+  confirmed = false;
   private descendants: Map<number, Set<number>> = new Map();
 
   clientScore: ScoreResult | null = null;
@@ -198,6 +206,7 @@ export class AppState {
       this.pushChoice = {};
       this.autoPlacedReason = {};
       this.reveal = false;
+      this.confirmed = false;
       this.clientScore = null;
       this.official = null;
       this.scoring = false;
@@ -376,7 +385,7 @@ export class AppState {
   }
 
   placeActiveAt(node: number): void {
-    if (this.activeSubquery == null) return;
+    if (this.confirmed || this.activeSubquery == null) return;
     const issue = this.placementIssue(this.activeSubquery, node);
     if (issue) {
       this.placementError = issue;
@@ -455,6 +464,7 @@ export class AppState {
   }
 
   pickUp(name: string): void {
+    if (this.confirmed) return;
     delete this.placement[name];
     delete this.autoPlacedReason[name];
     this.activeSubquery = name;
@@ -465,19 +475,26 @@ export class AppState {
   }
 
   clear(): void {
-    // If the plan was revealed, retrying the identical topology/query is a
-    // non-challenge -- jump to a sibling topology instead (same query where
-    // it exists there, via selectTopology) so "try again" is a fresh puzzle,
-    // not a replay of the one whose answer was just shown. The pool is
-    // restricted to the *same family* as the current topology (topologies.py
-    // has several per family, each a different hand-curated or random
-    // shape) -- Reef stays Reef, Grand Reef stays Grand Reef, so "try again"
-    // never surprises a visitor mid-round with a totally different node
-    // count or label; the family buttons already offer the cross-family
-    // jump explicitly. The paper's fixed "Kraken's Forge" example is
-    // excluded regardless: it's a deliberate separate round a visitor taps
-    // into on purpose, not something "try again" should pick.
-    const jumpToOtherTopology = this.reveal && this.manifest && this.topology
+    // If the plan was revealed OR confirmed (confirming already shows a
+    // real score, even without the separate "show Kraken's plan" reveal --
+    // the player has seen their own outcome either way), retrying the
+    // identical topology/query is a non-challenge -- jump to a sibling
+    // topology instead (same query where it exists there, via
+    // selectTopology) so "try again" is a fresh puzzle, not a replay of the
+    // one whose answer was just shown. Gating on reveal alone (the original
+    // condition, from before the confirm/freeze mechanic existed) left a
+    // gap: confirm, see the score, hit "try again" without ever touching
+    // reveal, and you'd get the exact same topology every time -- reported
+    // 2026-11-05 ("try again gave me 3 times the same topology"). The pool
+    // is restricted to the *same family* as the current topology
+    // (topologies.py has several per family, each a different hand-curated
+    // or random shape) -- Reef stays Reef, Grand Reef stays Grand Reef, so
+    // "try again" never surprises a visitor mid-round with a totally
+    // different node count or label; the family buttons already offer the
+    // cross-family jump explicitly. The paper's fixed "Kraken's Forge"
+    // example is excluded regardless: it's a deliberate separate round a
+    // visitor taps into on purpose, not something "try again" should pick.
+    const jumpToOtherTopology = (this.reveal || this.confirmed) && this.manifest && this.topology
       ? this.manifest.topologies.filter((t) => t.id !== this.topologyId && t.family === this.topology!.family)
       : [];
 
@@ -486,6 +503,7 @@ export class AppState {
     this.autoPlacedReason = {};
     this.activeSubquery = this.subqueries[0] ?? null;
     this.reveal = false;
+    this.confirmed = false;
     this.clientScore = null;
     this.official = null;
     this.scoring = false;
@@ -507,6 +525,7 @@ export class AppState {
    * array around (an operator with 0 or 1 decidable deps was never asking
    * for a call in the first place — see pendingPushChoices). */
   setPushChoice(subqueryName: string, dep: string): void {
+    if (this.confirmed) return;
     const current = this.pushChoice[subqueryName] ?? [];
     const next = current.includes(dep) ? current.filter((d) => d !== dep) : [...current, dep];
     if (next.length === 0) delete this.pushChoice[subqueryName];
@@ -518,6 +537,7 @@ export class AppState {
   /** Quick-set every decidable dep of `subqueryName` to push (or, if
    * `push` is false, to pull) in one call, instead of clicking each chip. */
   setAllPushChoice(subqueryName: string, push: boolean): void {
+    if (this.confirmed) return;
     this.pushChoice[subqueryName] = push ? this.decidableDeps(subqueryName) : [];
     this.reveal = false;
     this.rescore();
@@ -526,6 +546,15 @@ export class AppState {
   toggleReveal(): void {
     this.reveal = !this.reveal;
     this.emit();
+  }
+
+  /** Locks in the plan (placement + every push/pull call) and is the one
+   * thing that starts real scoring — see `confirmed`. No-ops if the plan
+   * isn't complete yet or is already confirmed. */
+  confirm(): void {
+    if (!this.readyToScore || this.confirmed) return;
+    this.confirmed = true;
+    this.rescore();
   }
 
   /** Re-normalize every already-known cost/latency (baselines + the
@@ -565,7 +594,10 @@ export class AppState {
 
   private rescore(): void {
     this.unscorable = null;
-    if (!this.engine || !this.readyToScore) {
+    // A complete-but-not-yet-confirmed plan sits idle instead of auto-scoring
+    // — see `confirmed` and `confirm()` — so this only ever actually scores
+    // once the player has locked the plan in.
+    if (!this.engine || !this.readyToScore || !this.confirmed) {
       this.clientScore = null;
       this.official = null;
       this.scoring = false;

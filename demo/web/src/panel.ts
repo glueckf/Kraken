@@ -290,11 +290,17 @@ export function renderServiceBadge(state: AppState): string {
 }
 
 function renderUnscorable(stagePicker: string): string {
+  // The plan is confirmed (frozen) by the time this can ever show -- without
+  // its own Try Again, a visitor stuck here (pull chosen, backend down)
+  // would have no way back into an editable plan.
   return (
     `<div class="sc-unscorable" role="alert">` +
     `<div class="sc-unscorable-title">${t().unscorableTitle}</div>` +
     `<div class="sc-unscorable-sub">${t().unscorableBody}</div>` +
     stagePicker +
+    `<div class="sc-actions">` +
+    `<button class="btn" data-action="clear">${t().tryAgain}</button>` +
+    `</div>` +
     `</div>`
   );
 }
@@ -387,10 +393,6 @@ export function renderScorecard(state: AppState): string {
   if (!sc || !bl) return "";
   const stagePicker = renderStagePicker(state);
 
-  if (state.readyToScore && state.unscorable) {
-    return renderUnscorable(stagePicker);
-  }
-
   if (!state.readyToScore) {
     const pending = state.pendingPushChoices;
     const pct = Math.round((state.placedCount / sc.processing_order.length) * 100);
@@ -406,6 +408,26 @@ export function renderScorecard(state: AppState): string {
       stagePicker +
       `</div>`
     );
+  }
+
+  // Plan complete but not yet locked in: nothing has been scored yet, and
+  // placement/push-pull stay fully editable (see AppState.confirmed) --
+  // Confirm is the one action that starts scoring and freezes the plan.
+  if (!state.confirmed) {
+    return (
+      `<div class="sc-empty">` +
+      `<div class="sc-empty-title">${t().confirmTitle}</div>` +
+      `<div class="sc-empty-sub">${t().confirmSub}</div>` +
+      stagePicker +
+      `<div class="sc-actions">` +
+      `<button class="btn" data-action="confirm">${t().confirmBtn}</button>` +
+      `</div>` +
+      `</div>`
+    );
+  }
+
+  if (state.unscorable) {
+    return renderUnscorable(stagePicker);
   }
 
   if (state.scoring || !state.official) {

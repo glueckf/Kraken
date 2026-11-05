@@ -134,9 +134,12 @@ body {
 
 /* ---------- reef graph ---------- */
 .coral-decor path { fill: color-mix(in srgb, var(--sea-deep) 55%, #000 10%); opacity: 0.55; pointer-events: none; }
-.edge { fill: none; stroke: var(--edge); stroke-width: 1.6; opacity: 0.85; }
+.edge { fill: none; stroke: var(--edge); stroke-width: 1.6; opacity: 0.85; transition: stroke 0.1s, stroke-width 0.1s, opacity 0.1s; }
+.edge.hl { stroke: var(--accent); stroke-width: 3; opacity: 1; }
 .node { cursor: pointer; }
 .node:focus { outline: none; }
+#reef.locked .node { cursor: default; }
+#reef.locked .node .node-dot { opacity: 0.7; }
 .node-dot { fill: var(--node-fill); stroke: var(--node-stroke); stroke-width: 1.5; }
 .node.fog .node-dot { fill: var(--tower-fill); stroke: var(--tower-stroke); opacity: 0.55; }
 /* Neutral seabed base — color now comes entirely from the per-event petals
@@ -183,6 +186,7 @@ body {
 
 .chip { cursor: pointer; }
 .chip rect { stroke: color-mix(in srgb, #000 12%, transparent); stroke-width: 0.75; }
+#reef.locked .chip { cursor: default; }
 .chip-tx { fill: var(--chip-tx); font-size: 12.5px; font-weight: 700; text-anchor: middle; pointer-events: none; }
 
 /* ---------- query selector — compact: pills + one active-query line ---------- */
@@ -231,6 +235,7 @@ body {
 .tray-row:hover { border-color: var(--line-strong); }
 .tray-row.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
 .tray-row.placed { opacity: 0.62; }
+#tray.locked .tray-row { cursor: default; opacity: 0.62; }
 .tray-row .tag { color: #fff; font-size: 13.5px; font-weight: 700; border-radius: 6px; padding: 2px 7px; min-width: 28px; text-align: center; }
 .tray-body { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .tray-name { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-flex; align-items: center; gap: 2px; }
@@ -284,6 +289,7 @@ body {
 .pp-chip.free { cursor: default; opacity: 0.55; border-style: dotted; }
 .pp-chip.free:hover { border-color: var(--line-strong); }
 .pp-chip.free .pp-role { color: var(--ink-soft); font-style: italic; font-weight: 600; }
+#tray.locked .pp-chip { cursor: default; opacity: 0.6; }
 .pp-sub-tag { color: #fff; font-size: 12.5px; font-weight: 700; border-radius: 4px; padding: 1px 5px; }
 .pp-chip-all { border-style: dashed; margin-left: 3px; }
 .pp-all-label { font-style: italic; color: var(--ink-soft); }

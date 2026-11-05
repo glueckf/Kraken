@@ -186,12 +186,16 @@ export function renderReef(scenario: Scenario, layout: Layout, subMeta: Map<stri
   }
 
   // --- edges (behind nodes) ---
+  // data-from names the lower (child) end of this one hop, so a hover on
+  // that node can highlight just its own edges up to its parent(s) -- the
+  // "next level up" a visitor is trying to trace, not the whole plan-edges
+  // overlay above (which is about a *placement*, not exploring the shape).
   let edges = "";
   for (const n of nodes) {
     for (const p of n.parents) {
       const a = pos(n.id);
       const b = pos(p);
-      edges += `<path class="edge" d="${edgePath(a, b)}" />`;
+      edges += `<path class="edge" data-from="${n.id}" d="${edgePath(a, b)}" />`;
     }
   }
 
