@@ -408,7 +408,7 @@
    },
    "comm": "push_pull",
    "cost": 185.40874706856044,
-   "latency": 8.0,
+   "latency": 7.0,
    "processing_latency": 0.38926338791384946
   },
   "prepp": {
@@ -433,9 +433,9 @@
     "SEQ(A, B, C, D)": 1
    },
    "comm": "mixed",
-   "cost": 236.71531590542438,
-   "latency": 7.0,
-   "processing_latency": 2.0144163090753455,
+   "cost": 262.38549704607595,
+   "latency": 5.0,
+   "processing_latency": 8.063986634135635,
    "per_placement": {
     "SEQ(A, B)": {
      "node": 2,
@@ -450,13 +450,13 @@
     },
     "SEQ(A, B, C)": {
      "node": 2,
-     "strategy": "push_pull",
-     "cost": 19.329818859348393,
-     "lt": 2.0,
-     "lp": 0.10574035288416944,
+     "strategy": "all_push",
+     "cost": 45.0,
+     "lt": 1.0,
+     "lp": 6.15531067794446,
      "edges": {
       "SEQ(A, B)": "push",
-      "C": "pull"
+      "C": "push"
      }
     },
     "SEQ(A, B, D)": {
@@ -496,7 +496,7 @@
    },
    "comm": "mixed",
    "cost": 1259.041797046076,
-   "latency": 4.0,
+   "latency": 3.0,
    "processing_latency": 10.742418710602701,
    "per_placement": {
     "SEQ(A, B)": {
@@ -556,7 +556,7 @@
    },
    "comm": "push_pull",
    "cost": 177.57400192993643,
-   "latency": 8.0,
+   "latency": 7.0,
    "processing_latency": 0.36161012478658006,
    "per_placement": {
     "SEQ(A, B)": {
@@ -616,7 +616,7 @@
    },
    "comm": "push_pull",
    "cost": 177.57400192993643,
-   "latency": 8.0,
+   "latency": 7.0,
    "processing_latency": 0.36161012478658006,
    "per_placement": {
     "SEQ(A, B)": {
@@ -682,7 +682,7 @@
     "SEQ(A, B, C, D)": 0
    },
    "all_push_cost": 3547.0,
-   "all_push_latency": 6.0
+   "all_push_latency": 3.0
   },
   {
    "name": "inev_placement",
@@ -693,7 +693,7 @@
     "SEQ(A, B, C, D)": 0
    },
    "all_push_cost": 1266.8765421847,
-   "all_push_latency": 4.0
+   "all_push_latency": 3.0
   },
   {
    "name": "kraken_placement",
@@ -704,7 +704,7 @@
     "SEQ(A, B, C, D)": 1
    },
    "all_push_cost": 1263.145337498039,
-   "all_push_latency": 4.0
+   "all_push_latency": 3.0
   }
  ]
 }

@@ -6,6 +6,158 @@ does.
 
 ## Functional (current priority)
 
+35. **Ten designed topologies, 2026-11-05 — DONE.** Goal: variety in what
+    each network *teaches*, not just in its shape. Every topology must make
+    Fast/Balanced/Cheap place subqueries differently (not only push vs
+    pull), have no single rule of thumb that is always optimal, offer >=4
+    valid plans, keep the cloud out of every stage's sole choice, and play
+    >=3 queries with 2-5 subqueries each (queries outside that range are
+    dropped per topology via `scenarios` in topologies.py). Trees can't do
+    this (every common ancestor lies on the path to the cloud); dual-homed
+    sources -- a fast direct uplink plus a slower local aggregation route --
+    can. Drawing gates mirror web/src/reef.ts: no overlapping artwork, no
+    hidden edges, no watchtower in the leaf row, <=15% of edges passing
+    behind an unrelated tower; >=35% of leaves emit two event types.
+    Method: MAP-Elites over a lesson descriptor (stage partition per query,
+    which heuristic wins for Fast/Cheap, cloud share), each candidate
+    evaluated in a fresh process by topology_lab.py, then farthest-point
+    selection (0.6 lesson + 0.25 WL-graph + 0.15 size distance, curated
+    topologies as anchors), at most 2 per node count. Tooling in
+    export/design/ (search, selection, integrate.py regenerates the
+    BEGIN/END designed blocks in reef_topologies.py + topologies.py and
+    re-exports). Result: 9, 9, 10, 10, 12, 12, 13, 13, 16, 16 nodes.
+    Open: nothing >16 nodes passes the drawing gates on the 1000x640
+    canvas; no topology yet splits all three stages (F|B|C); most teach
+    "Fast differs" (F|BC), a few "Cheap differs" (FB|C) / "Balanced
+    differs" (FC|B). Grand Reef B-D and Reef E fail the same drawing gates
+    (stacked towers overlap) -- not touched.
+
+34. **Follow-up to item 33, same day — all DONE.** `medium_e` restructured
+    (C "travels" on the left side, +3 watchtowers) and the 3-of-6
+    letter-duplication standard extended to `medium` (the original
+    hardcoded 12-node tree), the one topology item 33 explicitly left
+    untouched as future work.
+    1. **`medium_e`: C now has a second producer three hops down the left
+       branch, and the left side grew from 1 watchtower to 4 (6 total, was
+       3) to give it somewhere to travel through.** Fully renumbered
+       (bridge=3, left-trunk=9, +4 new nodes 4/5/8/10 for the deeper left
+       branch); right side (bridge -> hub -> E/F) untouched in shape. The
+       *first* renumbering attempt (reusing ids 1/2 for bridge/left-trunk,
+       closest to the old shape) reintroduced the exact root-placement
+       collision problem `medium_e` exists to avoid -- Q2-Q4's root landed
+       on node 1 (same as `medium_b`'s bridge) and Q1's on node 2 (same as
+       `medium_b` and `medium_d`). Caught by re-running the same
+       root-collision check immediately after re-exporting, not assumed
+       safe because the original medium_e redesign was. Picked 3/9 instead,
+       re-checked, collision-free against `medium`/`_b`/`_c`/`_d` on all
+       four story queries. (One *pre-existing*, unrelated collision
+       remains: `medium_b` and `medium_d` both land Q1's root on node 2 --
+       predates this round, not introduced by it, not touched.) See
+       [reef_topologies.py](export/reef_topologies.py)'s `_MEDIUM_E_*`
+       comment for the exact reasoning and the node map.
+    2. **`medium`'s leaf-letter assignment redesigned to 3-of-6, down from
+       every letter being duplicated.** Before: A:{6,8,10}, B:{7,10},
+       C:{7,8,11}, D:{7,9,11}, E:{6,11}, F:{10,11} -- every single letter
+       had 2-3 producers, which is exactly why the Q5 investigation
+       (BACKLOG item #31.2) found this topology collapsing almost every
+       subquery's valid placement down to node 1, the one node that
+       happens to be a common ancestor of everything duplicated. Now: A
+       (2), D (3) and F (2) keep multiple producers, each still sharing a
+       real non-cloud common ancestor (checked by walking `Node.Parent`
+       from each producer, same check as `state.ts`'s `placementIssue()`);
+       B, C, E go back to one producer each. This is engine code
+       (`simulation_environment.py`'s `create_hardcoded_tree()`, INES-demo's
+       own `src/` fork, not the sibling INES repo) rather than the demo's
+       own `reef_topologies.py` -- touched this time because the user asked
+       explicitly, unlike the n2-n5 edge investigation (item #31.2), which
+       stays flagged-not-applied.
+    3. **Regression test fallout from (2), fixed, not papered over.**
+       `demo/export/tests/test_score_one.py` hardcoded `medium/seq_abcd`'s
+       exact pre-redesign decomposition and cost numbers; both changed.
+       Rather than re-target the same query with new numbers, moved the
+       test to `medium/and_nested`'s `AND(SEQ(A, B), SEQ(E, F))`
+       projection, whose 3 deps (one sub-query, two primitives) with
+       actually-different forcing costs (892.16 default/F, 896.19 forcing
+       the sub-query dep, 1620.0 forcing the bad primitive E or ALL_PUSH)
+       give the test something concrete to tell apart -- `seq_abcd`'s new
+       shape ties *exactly* regardless of which of its root's two
+       dependencies gets forced (checked, not assumed: forcing either one,
+       or neither, produces the identical cost to 15 decimal places), which
+       would make a forcing-regression test pass even if forcing silently
+       broke again. Every number in the new test file came from a real
+       `score_one.py` run, not a guess.
+    Verified (all three): re-exported everything (0 mismatches), the
+    candidate-host probe script confirms no letterless leaves and every
+    duplicated letter has a real non-cloud host on both `medium` and
+    `medium_e`, `unittest discover` 23/23, frontend typecheck/build/tests
+    all clean, live in the browser (medium's new letters confirmed via
+    rendered aria-labels; medium_e's node/watchtower count and C's two
+    producers confirmed via its exported scenario data), no console errors.
+
+33. **Four small requests, 2026-11-05 — all DONE.**
+    1. Grand Reef's n12 rendered a row above the other source pods, among
+       the watchtowers, instead of with its fellow leaves on the seabed.
+       Root cause: [`export_scenario.py`](export/export_scenario.py)'s
+       `"layer"` field is shortest-path distance from the cloud (`dist[0][n.id]`)
+       -- correct for cost/latency, but n12 has two parents (n6 and n10) at
+       different depths, so it inherits the *shorter* one and lands one row
+       early. Fixed in the frontend only, not the engine field: in
+       [reef.ts](web/src/reef.ts)'s `computeLayout()`, every leaf is now
+       grouped into the deepest row regardless of its own `layer`, and leaf
+       radius shrinks (`Math.min(24, (span/(count-1))*0.42)`) if a row gets
+       crowded by the move -- a no-op at the current leaf counts, future-
+       proofing for a denser topology. Verified: n12's rendered `cy`/`r` now
+       match the other leaves exactly (was one row up, `r=30` fog-tower
+       size); no console errors.
+    2. **Every source now has at least one letter, on every topology.**
+       Audited all 9 hand-curated/hardcoded topologies (`medium`,
+       `medium_b/c/d/e`, `large`, `large_b/c/d`) plus the paper's "forge" --
+       only `large` had letterless leaves (15, 17, 19, 20, 23 -- a
+       deliberate round-3 trade-off, see the old comment this replaced in
+       [reef_topologies.py](export/reef_topologies.py)). Fixed by extending
+       A down into node 11's isolated leaves (15/17/19/20) via node 3, the
+       one real non-cloud ancestor they share with A's existing producer
+       (18) -- picked over C/D/E because those already live in the *other*
+       top-level branch and would collapse to a cloud-only placement if
+       paired with anything under node 3. D got a second, purely local
+       producer on leaf 23 (sibling of 13 under node 10).
+    3. **`large_b`/`large_c` had zero letter duplication (6 letters, 6
+       leaves, one each) -- "give n6 another A or B".** Redesigned both,
+       plus `large_d` for family consistency (it had duplicate letters
+       *within* a leaf but none *across* leaves): each gets 3 of its 6
+       letters duplicated onto a sibling leaf that shares a real, verified
+       non-cloud ancestor -- not just reusing a letter and hoping. Full
+       reasoning and the exact pairings are in the updated comments in
+       [reef_topologies.py](export/reef_topologies.py). `medium_b/c/d/e`
+       were deliberately **not** touched this round: they already have no
+       letterless leaves, and retrofitting cross-leaf duplication risks the
+       root-placement collision problem `medium_e`'s own comment documents
+       fixing (two variants landing a query's root on the same raw node id
+       makes "try again" repeat in a different, subtler way) -- that needs
+       the same per-query root-collision verification `medium_e` got, not a
+       quick pass. Flagged here as explicit future work, not forgotten.
+       Verified (all of 2 and 3): re-exported everything (0 mismatches),
+       `unittest discover` 23/23, and a candidate-host probe script
+       (mirrors `state.ts`'s `placementIssue()`) confirming every
+       duplicated letter has >=2 real placement candidates including at
+       least one non-cloud node, and no story query collapsed to a single
+       subquery on any touched topology.
+    4. **"Try again" on Grand Reef Q2 gave the same topology 3 times in a
+       row -- what's changing?** Answer: nothing was supposed to, by
+       design -- but the design was stale. `clear()`'s topology rotation
+       (jump to a sibling in the same family) was gated on `this.reveal`
+       only, a condition written before this session's confirm/freeze
+       mechanic existed, back when revealing Kraken's own plan was the only
+       "this round is over" signal. Now that confirming already shows a
+       real score without necessarily revealing anything, a player who
+       confirms, reads their score, and hits "try again" straight away hit
+       the gap: `reveal` was still false, so the topology never rotated.
+       Fixed in [state.ts](web/src/state.ts) by widening the condition to
+       `this.reveal || this.confirmed`. Verified live: confirmed a Grand
+       Reef Q2 plan without revealing, hit "try again" -- rotated from the
+       24-node `large` to a 13-node sibling on the first click (was stuck
+       at 24 every time before the fix).
+
 1. **Extend communication** — DONE: a local push-pull scoring backend
    ([backend/server.py](backend/server.py)) reuses Kraken's own
    `CostCalculator`/`PlacementProblem` ([cost_calculator.py](../src/kraken/components/cost_calculator.py),
@@ -1520,7 +1672,231 @@ in the demo now. Two concrete asks:
        still shows all 3 subqueries (s1/s2/s3) live in the browser on
        Grand Reef.
 
+    5. **Follow-up (2026-11-04), round 3: the real fix was leaf letters, not
+       edges, and the exclusion from point 4 is gone.** Asked to find more
+       query shapes that split into more subqueries, for more placement
+       decisions per round. Tried a dozen AND/SEQ nestings beyond the four
+       shipped queries (`AND(SEQ(A,B),SEQ(C,D),SEQ(E,F))`, `AND(AND(A,B),
+       AND(C,D),AND(E,F))`, etc.) against every topology; subquery *count*
+       alone turned out to be the wrong metric -- traced the frontend's
+       actual rule instead (`state.ts`'s `placementIssue()`: a node can host
+       an operator only if every one of its dependencies' producers sits in
+       that node's own subtree), and measured the real thing a player
+       experiences: how many nodes are valid for a given operator, not how
+       many operators there are.
+
+       That measurement found the real bug: `large` gave exactly **1**
+       valid candidate node for *every* operator of *every* query --
+       `and_nested`'s 3 subqueries (point 4) were 3 forced placements at
+       node 0, not 3 decisions. Root cause was never the edges point 4
+       tuned: `large`'s leaf-rate assignment was inherited unchanged from
+       the original random generator, where each letter is produced by
+       3-7 leaves scattered across unrelated branches (e.g. A alone by
+       nodes 15,16,17,18,21,22,23) -- unlike every other hand-curated
+       topology, which single-sources each letter at exactly one leaf.
+       Scattering a letter across branches that don't share a deep common
+       ancestor collapses its valid-node set to "the cloud, nothing else,"
+       which cascades (`reconcileForcedCloudPlacements`) into forcing
+       everything downstream to the cloud too.
+
+       Mapped `large`'s own shape by hand: node 6 is the only branch that
+       bridges the other two top-level branches (directly, plus via the
+       two shared-parent leaves 12 and 13, and the shared-parent leaf pair
+       under node 8), so any letter assignment confined to the 7 leaves
+       reachable through node 6 (12, 13, 14, 16, 18, 21, 22) keeps at
+       least `{6, 1, 0}` valid for *any* combination drawn from it --
+       verified this arithmetic in a throwaway script before touching
+       `reef_topologies.py`. Node 11's own leaves (15, 17, 19, 20) and leaf
+       23 bridge nothing, so they're left without letters entirely instead
+       of risking the same collapse -- same trade-off as an unproductive
+       relay node elsewhere in the tree.
+
+       Per the explicit request, not fully single-sourced: A, C, D, E each
+       sit on exactly one leaf; B and F -- the two rarest event rates
+       (B=2/s, F=5/s), which the engine's own combination search pairs
+       together first regardless of query -- each get a second producer on
+       leaf 12, specifically because the B+F pairing was the one combo that
+       still collapsed to size 1 with every other arrangement tried.
+       Verified directly against the real exported `h_mycombi` projections
+       (not assumed): every leaf-level projection across all five story
+       queries now has >=2 valid candidates, several at 3 -- confirmed live
+       by placing `AND(SEQ(A,B),F)` at node 1 on Grand Reef's default
+       network without a placement error, something no operator on `large`
+       could do before this change. `seq_abc`/`seq_abcd`, excluded in point
+       4, now decompose into 2 and 3 real subqueries respectively, so the
+       exclusion (and the `exclude_scenarios` mechanism it was the only
+       user of) was removed.
+
+       Also added a fifth story query, `seq_and_pairs` = `SEQ(AND(A,B), C,
+       AND(D,E), F)` (🐙 "Octopus pulse" / "Oktopus-Puls", difficulty 5):
+       of a dozen AND/SEQ nestings tried, this and one other
+       (`SEQ(A,AND(B,C),AND(D,E),F)`) gave the most subqueries found (7 on
+       the curated Reef siblings, one more than `and_nested`'s 6; 5 on
+       `large` after the leaf fix above); picked this one because its
+       leaf-level decomposition produces more distinct multi-candidate
+       projections than the alternative, not just a longer chain off a
+       single base pair.
+
+       Verified: re-export (0 mismatches, 10 topologies/46 scenarios),
+       `unittest tests.test_factory_example tests.test_score_one` (23/23),
+       `npm run typecheck` clean, `npm test` (3/3), `npm run build`
+       succeeds. Live in the browser on Grand Reef's default network: the
+       query picker shows all 5 pills including the new octopus one;
+       `seq_abc`/`seq_abcd` show 2/3 subqueries instead of being absent;
+       `and_nested` now shows 5 subqueries (up from 3); placed
+       `AND(SEQ(A,B),F)` at node 1 with no error; no console errors.
+
+31. **Five small requests, 2026-11-05 — four DONE, one investigated and
+    flagged.**
+
+    1. **Confirm-to-score, freeze until Try Again — DONE.** Until now a
+       complete plan auto-scored on the spot (`rescore()` fired from every
+       `placeActiveAt`/`pickUp`/`setPushChoice`/`setAllPushChoice` call)
+       and stayed fully editable afterward — a player could watch the score
+       update live while rearranging the plan, turning scoring into a
+       search tool instead of a one-shot decision. Added
+       `AppState.confirmed` ([state.ts](web/src/state.ts)): the four
+       mutators above now no-op while it's true, and `rescore()` itself
+       won't actually score (`!this.confirmed` added to its early-return,
+       right alongside the existing `!this.readyToScore`) until
+       `confirm()` sets it. A complete-but-unconfirmed plan instead shows a
+       new scorecard state (`renderScorecard`'s `!state.confirmed` branch
+       in [panel.ts](web/src/panel.ts), new `confirmTitle`/`confirmSub`/
+       `confirmBtn` i18n strings) with a "Confirm plan" button
+       (`data-action="confirm"`, wired in [main.ts](web/src/main.ts)
+       alongside the existing reveal/clear/stage actions). `clear()`
+       ("Try Again") and `loadScenario()` (switching topology/query) both
+       reset `confirmed = false`. `render()` toggles a `.locked` class on
+       `#reef`/`#tray` from `state.confirmed` so the frozen chips/nodes/
+       pp-chips visibly dim (`cursor: default`, lower opacity — see
+       [styles.css](web/styles.css)) instead of just silently refusing
+       clicks. One knock-on fix: `renderUnscorable()` had no Try Again
+       button of its own — harmless before (placement was never frozen, so
+       a player could just pick a chip back up), but now unscorable can
+       only ever be reached *after* confirm, i.e. while frozen, so it
+       needed its own exit; added one. Verified: `npm run typecheck` clean,
+       `npm test` (3/3), `npm run build` succeeds, and live in the browser
+       on both a Reef round and Kraken's Forge (table-mode scoring) —
+       empty → "plan ready, confirm" → tap Confirm → scores, chip/push
+       chips visibly dim and a tap on the placed chip no longer picks it
+       up → Try Again clears it and un-dims everything.
+
+    2. **Medium topology + edge n2–n5 — investigated, not applied.**
+       `create_hardcoded_tree()` ([simulation_environment.py:700](../../src/simulation_environment.py:700))
+       gives node 5 a single parent (node 1); node 2's children are only
+       3 and 4. Patched in a probe (not committed) to also make 5 a child
+       of 2. Effect, measured the same way as item #30's leaf-set fix (real
+       `h_mycombi` output, ancestor-intersection candidate sets): node 5
+       itself is unaffected (its existing parent 4 already has 2 as an
+       ancestor), but node 11 (parent 5 only; produces D and F) gains node
+       2 as a new ancestor, since 11's only route to 2 goes through 5.
+       That grows D's candidate set from `{0,1}` to `{0,1,2}` for every one
+       of the 5 story queries (all touch D directly or via a shared
+       rarity-pair), and correspondingly `AND(SEQ(A,B),F)`/`SEQ(B,D)`-style
+       leaf projections from size-2 to size-3 candidate sets. Side effect:
+       `seq_and_pairs` drops from 6 to 5 subqueries (the engine's own
+       combination search finds a cheaper decomposition once the extra
+       route exists) — richer per-operator choice, one fewer operator
+       overall, for that one query. Kraken's own Balanced-stage greedy pick
+       also shifted from node 1 to node 2 for every query with the edge
+       present (not evidence of a problem — same single-stage-concentration
+       behavior already noted for `medium` pre-existing in item... see the
+       stages/placements probes from item #30 round 3). No crash across 10
+       runs (5 queries × with/without) covering the full `Simulation.run()`
+       + `run_kraken_solver()` path. Not applied to
+       [simulation_environment.py](../../src/simulation_environment.py) —
+       `medium` is the one hand-written-not-hand_curated topology kind and
+       several things key off its exact current shape (tests, the "same
+       Kraken plan across all three stages" note above); flagging for a
+       deliberate decision rather than changing the shared `create_hardcoded_tree()`
+       in passing.
+
+    3. **Hover a node → highlight its own edge(s) up to its parent(s) —
+       DONE.** For tracing a bigger topology (Grand Reef, up to 24 nodes)
+       by eye. Each edge `<path>` now carries `data-from="<child id>"`
+       ([reef.ts](web/src/reef.ts)); `main.ts` delegates `mouseover`/
+       `mouseout` on `#reef`, matching a hovered node's `data-node` against
+       edges' `data-from` and toggling a `.hl` class
+       (`.edge.hl { stroke: var(--accent); stroke-width: 3; opacity: 1; }`
+       in [styles.css](web/styles.css)). `relatedTarget` is checked against
+       the same ancestor node so moving between a node's own children (dot,
+       label, chip) doesn't flicker the highlight. Only the edge(s) one hop
+       up light up, not the full ancestor chain to the cloud — matches
+       "next higher level" as asked. Verified live: hovering a single-parent
+       node highlights one edge, hovering a 2-parent leaf highlights both.
+
+    4. **Leaderboard rank for tied scores — DONE, one-line fix.** Rows were
+       ranked by raw array index (`i + 1`) after the existing tie-*sort*
+       (`tieRank` in [panel.ts](web/src/panel.ts), unchanged — You, then
+       Kraken, then export order, for rows within 1e-9 of each other), so
+       two exactly-tied rows (e.g. a plan that reproduces All-Push exactly,
+       or Kraken tying Sequential) still showed back-to-back rank numbers
+       like 1/2 instead of a shared rank — misleading, since the numbers
+       next to them were identical. Fixed by computing each row's rank as
+       the position of the *first* row tied with its score instead of its
+       own index: `rows.findIndex((x) => Math.abs(x.score - r.score) <=
+       1e-9) + 1` in place of `i + 1` (dropped the now-unused `i` param,
+       `noUnusedParameters` caught it). O(n²) but n is at most ~8 rows.
+       Verified live: medium `seq_abc` placed at cloud with all-push ties
+       Kraken/Sequential at 0.268 (both now rank 1) and You/All-Push at
+       0.600 (both rank 5); Kraken's Forge similarly ties Kraken/PrePP at
+       rank 1 and You/All-Push at rank 4.
+
+    5. **Topology id `"factory"` renamed to `"forge"` — DONE.** Matches the
+       player-facing label ("Kraken's Forge") the id never did; the
+       underlying module/functions stay `factory_example.py`/
+       `factory_model()`/etc. unchanged — only the topology `id`/`family`
+       changed, in [topologies.py](export/topologies.py). Re-exporting
+       regenerates `web/scenarios/forge/` (the old `web/scenarios/factory/`
+       directory removed via `git rm`); the three other hardcoded
+       references to the old id — [test_factory_example.py](export/tests/test_factory_example.py)'s
+       `SCENARIO_JSON` path and its `score_one.py` subprocess call,
+       [factory_wasm.test.mjs](web/tests/factory_wasm.test.mjs)'s scenario
+       path and manifest-family assertion — updated to match, plus the
+       path/CLI-arg mentions in [FACTORY_ROUND.md](FACTORY_ROUND.md).
+       Verified: re-export (0 mismatches, 10 topologies/46 scenarios),
+       `unittest discover` (23/23), `npm run typecheck` clean, `npm test`
+       (3/3), `npm run build` succeeds, live in the browser (topology-bar
+       button still reads "Krakens Schmiede — 7 Knoten", the small
+       in-corner id tag on the reef now reads "forge").
+
 ## Engine (research code, not demo) — flagged, not scoped
+
+32. **Q5 (`seq_and_pairs`, "Oktopus-Puls") is unplayable via live push-pull
+    scoring, on every topology — combigen picks a different decomposition at
+    export time than at live-score time.** Reported 2026-11-05 ("does not
+    work for Q5"), reproduced and root-caused. The static scenario JSON
+    (written by [export_scenario.py](export/export_scenario.py), which
+    processes all 5 scenarios for a topology in one process) and the live
+    backend ([score_one.py](export/score_one.py), which processes exactly
+    one scenario per isolated subprocess, same config: `xi=0.0,
+    cost_weight=0.5`) compute genuinely different `h_mycombi` decompositions
+    for the *same* query + topology + config:
+    - exported (`medium/seq_and_pairs.json`, `large/seq_and_pairs.json`):
+      5 subqueries, e.g. `AND(SEQ(A, B), F)`.
+    - live (`score_one.py medium seq_and_pairs`, `score_one.py large
+      seq_and_pairs`): 6 subqueries, e.g. `SEQ(AND(A, B), F)` *and* a
+      separate `SEQ(B, F)` node.
+    Since the frontend always places by the exported `processing_order`
+    names, every live score request now fails with `"incomplete placement,
+    missing: [...]"` regardless of the player's placement or push/pull
+    choices — confirmed on both `medium` and `large`. Checked and ruled out
+    as the cause: stale `__pycache__` (cleared, no change), `PYTHONHASHSEED`
+    (both paths already run with it pinned to `0`), the `output_dataset_name`
+    config field (forced equal between the two paths, no change), and plain
+    run-to-run randomness (both paths are internally consistent/repeatable
+    across 3 runs each — this is a genuine fork in behavior between the two
+    call *contexts*, not noise). Q1–Q4 do **not** show this: `seq_abcde`'s
+    and `and_nested`'s live decompositions match their exported JSON
+    exactly, checked the same way. So this is specific to `seq_and_pairs`'s
+    shape (nested `AND` pairs inside a `SEQ`, `SEQ(AND(A,B), C, AND(D,E),
+    F)`) likely landing on a tied-cost decomposition where the engine's
+    choice happens to depend on something that differs between
+    "processed 5th in a per-topology loop" and "processed alone in a fresh
+    process" — not yet bisected to an exact line; that needs a proper
+    engine debugging pass (instrument the combination-generation step,
+    not guess-and-patch), not a demo-layer workaround. Until fixed, Q5 is
+    dead on arrival for push-pull scoring on every topology that has it.
 
 25. **INEv mutates `h_eventNodes`, shrinking Kraken's candidate set.**
     `Simulation.run()` runs INEv before Kraken; INEv's placement writes its

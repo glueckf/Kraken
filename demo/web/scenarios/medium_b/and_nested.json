@@ -481,9 +481,9 @@
     "AND(SEQ(A, B, C), D, SEQ(E, F))": 1
    },
    "comm": "mixed",
-   "cost": 1723.937494986211,
-   "latency": 9.0,
-   "processing_latency": 4.0374096208986145,
+   "cost": 1851.887494986211,
+   "latency": 7.0,
+   "processing_latency": 4.102480219845972,
    "per_placement": {
     "AND(B, F)": {
      "node": 1,
@@ -520,13 +520,13 @@
     },
     "AND(SEQ(A, B), D, F)": {
      "node": 1,
-     "strategy": "push_pull",
-     "cost": 75.05,
-     "lt": 2.0,
-     "lp": 0.004059235309021257,
+     "strategy": "all_push",
+     "cost": 203.0,
+     "lt": 1.0,
+     "lp": 0.0691298342563789,
      "edges": {
       "AND(SEQ(A, B), F)": "push",
-      "D": "pull"
+      "D": "push"
      }
     },
     "AND(SEQ(B, C), SEQ(E, F))": {
@@ -568,7 +568,7 @@
    },
    "comm": "all_push",
    "cost": 3907.000094986211,
-   "latency": 7.0,
+   "latency": 3.0,
    "processing_latency": 5.8110463055092145,
    "per_placement": {
     "AND(B, F)": {
@@ -826,7 +826,7 @@
     "AND(SEQ(A, B, C), D, SEQ(E, F))": 0
    },
    "all_push_cost": 5962.0,
-   "all_push_latency": 9.0
+   "all_push_latency": 3.0
   },
   {
    "name": "inev_placement",
@@ -839,7 +839,7 @@
     "AND(SEQ(A, B, C), D, SEQ(E, F))": 1
    },
    "all_push_cost": 3907.000094986211,
-   "all_push_latency": 7.0
+   "all_push_latency": 3.0
   },
   {
    "name": "kraken_placement",
@@ -852,7 +852,7 @@
     "AND(SEQ(A, B, C), D, SEQ(E, F))": 1
    },
    "all_push_cost": 3907.000094986211,
-   "all_push_latency": 7.0
+   "all_push_latency": 3.0
   }
  ]
 }

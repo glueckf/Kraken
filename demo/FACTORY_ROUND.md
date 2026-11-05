@@ -17,7 +17,7 @@ die *Form* des Netzwerks ist erweitert.
 
 Code: `demo/export/factory_example.py` (Eingaben, Enumeration, Planer,
 unabhängige Formel), Export in `export_scenario.py → build_factory_scenario`,
-Daten in `demo/web/scenarios/factory/factory_join.json`.
+Daten in `demo/web/scenarios/forge/factory_join.json`.
 
 ## 1. Eingaben
 
@@ -195,7 +195,7 @@ als All-Push am selben Knoten, da gleiches V aber höhere L.)
 - Die Fabrik-Runde wird aus `decision_table` bewertet (Modus „exakt —
   vorberechnete Tabelle"). Das ist Krakens CostCalculator für jede mögliche
   Wahl, daher braucht die Runde keinen Backend-Dienst. Das Backend
-  (`score_one.py factory factory_join …`) liefert identische Werte (Test).
+  (`score_one.py forge factory_join …`) liefert identische Werte (Test).
 - Beim Aufdecken zeigt das Spiel alle 9 Optionen (3 Kandidaten × 3
   Push/Pull-Kombinationen), nach Knoten gruppiert, mit V, L und F, markiert
   mit ★ (Optimum laut Enumeration), K (Kraken), S (Sequential) und „Du"; die
@@ -204,7 +204,7 @@ als All-Push am selben Knoten, da gleiches V aber höhere L.)
 ## 6. Reproduzieren
 
 ```bash
-# Szenarien neu erzeugen (schreibt auch factory/factory_join.json)
+# Szenarien neu erzeugen (schreibt auch forge/factory_join.json)
 uv run python demo/export/export_scenario.py
 # Tests
 cd demo/export && uv run python -m unittest tests.test_factory_example tests.test_score_one

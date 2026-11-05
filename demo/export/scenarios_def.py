@@ -1,6 +1,9 @@
 """Curated demo scenarios: one shared 12-node fog-cloud reef (the engine's
-`create_hardcoded_tree`), four queries forming a 2->3->4->5 subquery difficulty ramp.
-Each query's emblem matches the reference outreach artwork (crab/turtle/shark/seedling).
+`create_hardcoded_tree`), five queries forming a 2->3->4->5->6 subquery difficulty ramp.
+The first four queries' emblems match the reference outreach artwork
+(crab/turtle/shark/seedling); the fifth (octopus) has no reference artwork yet --
+see demo/BACKLOG.md item #30 for why it was added (more subqueries, more
+placement decisions per round, on top of the Grand Reef leaf-assignment fix).
 
 Imported by export_scenario.py *after* sys.path is set up, so importing core.tree here
 is safe.
@@ -39,5 +42,13 @@ SCENARIOS = [
         difficulty=4,
         blurb="A rich nested query touching all six streams.",
         build=lambda: AND(SEQ(P("A"), P("B"), P("C")), P("D"), SEQ(P("E"), P("F"))),
+    ),
+    dict(
+        id="seq_and_pairs",
+        title="SEQ(AND(A,B), C, AND(D,E), F)",
+        emblem="octopus",
+        difficulty=5,
+        blurb="Two paired branches, chained together -- the most operators yet.",
+        build=lambda: SEQ(AND(P("A"), P("B")), P("C"), AND(P("D"), P("E")), P("F")),
     ),
 ]

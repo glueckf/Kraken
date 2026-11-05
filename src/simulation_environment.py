@@ -793,16 +793,27 @@ def create_hardcoded_tree():
     nodes[11].Parent = [nodes[5]]  # Node 11: 1 parent (5)
 
     # Assign events to leaf nodes with varied distributions
-    # Event assignments with diverse event rate combinations
+    #
+    # Redesigned 2026-11-05 to the same "3 of 6 letters duplicated, smartly"
+    # standard as the demo's hand-curated topologies (see
+    # demo/export/reef_topologies.py): every letter used to have 2-3
+    # producers (A:{6,8,10}, B:{7,10}, C:{7,8,11}, D:{7,9,11}, E:{6,11},
+    # F:{10,11}), which is why the Q5 investigation (demo/BACKLOG.md item
+    # #31.2) found this topology collapsing almost every subquery's valid
+    # placement down to node 1, the only node that happens to be a common
+    # ancestor of everything that duplicated. A, D and F keep a second (or
+    # third) producer, each still sharing a real, non-cloud common ancestor
+    # with the others (A: nodes {1,2,4,5}; D: node 1; F: nodes {1,5} --
+    # checked by walking Node.Parent from each producer, same check as
+    # state.ts's placementIssue()); B, C and E go back to a single source
+    # each. Every leaf keeps at least one letter.
     event_assignments = {
         6: [0, 4],  # Node 6: Events A (1000), E (800)
-        7: [1, 2, 3],  # Node 7: Events B (2), C (45), D (203)
-        # 8: [0, 2, 4],          # Node 8: Events A (1000), C (45), E (800)
-        8: [0, 2],  # Node 8: Events A (1000), C (45)
-        # 9: [3,5]
-        9: [3],  # Node 9: Events D (203), F (5)
+        7: [3],  # Node 7: Event D (203)
+        8: [2],  # Node 8: Event C (45)
+        9: [3],  # Node 9: Event D (203)
         10: [0, 1, 5],  # Node 10: Events A (1000), B (2), F (5)
-        11: [2, 3, 4, 5],  # Node 11: Events C (45), D (203), E (800), F (5)
+        11: [3, 5],  # Node 11: Events D (203), F (5)
     }
 
     # Apply event assignments

@@ -42,7 +42,7 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 EXPORT_DIR = os.path.abspath(os.path.join(HERE, ".."))
 REPO = os.path.abspath(os.path.join(EXPORT_DIR, "..", ".."))
-SCENARIO_JSON = os.path.join(REPO, "demo", "web", "scenarios", "factory", "factory_join.json")
+SCENARIO_JSON = os.path.join(REPO, "demo", "web", "scenarios", "forge", "factory_join.json")
 for p in (EXPORT_DIR, REPO, os.path.join(REPO, "src")):
     if p not in sys.path:
         sys.path.insert(0, p)
@@ -250,7 +250,7 @@ class TestFactoryExample(unittest.TestCase):
 
 def run_score_one(placement, push_choice):
     r = subprocess.run(
-        [sys.executable, os.path.join(EXPORT_DIR, "score_one.py"), "factory", "factory_join",
+        [sys.executable, os.path.join(EXPORT_DIR, "score_one.py"), "forge", "factory_join",
          json.dumps(placement), json.dumps(push_choice)],
         capture_output=True, text=True, cwd=EXPORT_DIR,
     )

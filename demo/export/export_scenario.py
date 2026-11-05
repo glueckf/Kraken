@@ -654,9 +654,12 @@ def export_one_topology(topology):
         "network_size": topology["network_size"], "scenarios": [],
     }
     ok = True
-    excluded = set(topology.get("exclude_scenarios", ()))
+    # A topology may list the queries it offers (topologies.py `scenarios`):
+    # the designed ones keep only queries that decompose into 2-5 operators
+    # on that network (see topology_lab.py).
+    wanted = topology.get("scenarios")
     for spec in scenarios_def.SCENARIOS:
-        if spec["id"] in excluded:
+        if wanted is not None and spec["id"] not in wanted:
             continue
         print(f"--- exporting {topology['id']}/{spec['id']} ({spec['title']}) ---")
         try:

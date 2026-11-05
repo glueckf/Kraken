@@ -121,9 +121,10 @@ body {
      edge to edge instead of being letterboxed by preserveAspectRatio when
      the grid track's own shape doesn't match — that letterboxing was
      wasting most of the box on tall/narrow viewports. align-self: start
-     stops the grid from stretching this back to the full row height. */
+     stops the grid from stretching this back to the full row height, and
+     keeps its top edge level with the panel's query row beside it. */
   aspect-ratio: 1000 / 640;
-  align-self: center;
+  align-self: start;
 }
 .reef, .reef-svg { width: 100%; height: 100%; display: block; }
 .loading, .fatal { color: var(--ink-soft); padding: 24px; font-size: 13px; }
@@ -214,15 +215,17 @@ body {
 
 /* ---------- topology (reef size) selector — compact single-line pills ---------- */
 .tlist { display: flex; gap: 7px; }
+/* Name over size, name allowed to wrap: the panel lane is ~330px on a
+   1024px screen, too narrow for "Krakens Schmiede 7n" on one line. */
 .tcard {
-  flex: 1; display: flex; align-items: baseline; justify-content: center; gap: 6px;
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
   background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px;
-  padding: 9px 8px; min-height: 44px; cursor: pointer; color: var(--ink); min-width: 0;
+  padding: 6px 6px; min-height: 44px; cursor: pointer; color: var(--ink); min-width: 0;
 }
 .tcard:hover { border-color: var(--line-strong); }
 .tcard.on { border-color: var(--accent); background: var(--accent-soft); }
-.tname { font-size: 16px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tsize { font-size: 14px; color: var(--ink-soft); flex: none; }
+.tname { font-size: 15px; font-weight: 650; line-height: 1.15; text-align: center; overflow-wrap: anywhere; }
+.tsize { font-size: 12.5px; color: var(--ink-soft); flex: none; }
 .tcard.on .tsize { color: var(--accent); }
 
 /* ---------- cards ---------- */

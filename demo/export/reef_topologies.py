@@ -100,26 +100,52 @@ _MEDIUM_D_CP = {0: math.inf, 1: 30, 2: 25, 3: 20, 4: 20, 5: 10, 6: 10, 7: 10, 8:
 build_medium_d = _build(_MEDIUM_D_EDGES, _MEDIUM_D_LEAVES, _MEDIUM_D_CP)
 
 # medium_e: medium_b's own wing/bridge shape (A, B, C left; D on the
-# bridge; E, F right), but with the bridge and left hub -- the two nodes
-# that actually end up holding the root query -- renumbered to ids 8/7
-# instead of 1/2. Root-cause for why this exists: checked every query's
-# *root* placement (not just "which nodes are touched anywhere", which
-# masked this) across medium/_b/_c/_d, and two pairs collide on the exact
-# same raw id -- medium and medium_b both land Q2-Q4's root on node 1,
-# medium_b and medium_d both land Q1's root on node 2 -- so a visitor
+# bridge; E, F right). Root-cause for why this exists: checked every
+# query's *root* placement (not just "which nodes are touched anywhere",
+# which masked this) across medium/_b/_c/_d, and two pairs collide on the
+# exact same raw id -- medium and medium_b both land Q2-Q4's root on node
+# 1, medium_b and medium_d both land Q1's root on node 2 -- so a visitor
 # hitting "try again" a few times has better than even odds of seeing a
-# repeat, which is exactly what was reported (stuck on the same node after
-# two rounds). Reusing the proven wing shape rather than inventing a new
-# one is deliberate: every other shape tried that still resolves Q1 inside
-# a single A/B/C hub (required to keep its root off the bridge at all)
-# necessarily produces the same kind of bridge/hub split -- the only real
-# freedom left is which raw id that hub and bridge get, so this spends it
-# on ids neither collision pair uses. Verified empirically, not assumed:
-# root 7 for Q1, root 8 for Q2-Q4, colliding with none of medium/_b/_c/_d
-# on any query -- see demo/BACKLOG.md for the full per-query table.
-_MEDIUM_E_EDGES = {0: [8], 8: [7, 1, 6], 7: [2, 3], 1: [4, 5]}
-_MEDIUM_E_LEAVES = {2: [0], 3: [1, 2], 6: [3], 4: [4], 5: [5]}
-_MEDIUM_E_CP = {0: math.inf, 8: 25, 7: 20, 1: 20, 2: 10, 3: 10, 4: 10, 5: 10, 6: 10}
+# repeat. See demo/BACKLOG.md for the full original per-query table.
+#
+# Redesigned 2026-11-05 (fully renumbered -- roles, not the old ids):
+#   0 cloud -> 3 bridge -> {9 left trunk, 1 right hub, 2 D-leaf}
+#   9 -> {4 left-A sub-hub, 5 left-C sub-hub}
+#   4 -> 6 A-leaf
+#   5 -> {7 BC-leaf, 8 left-C-deep sub-hub} ; 8 -> 10 C-leaf (second producer)
+#   1 -> {11 E-leaf, 12 F-leaf}
+# Two asks: "let C travel on the left side" -- C used to live on exactly
+# one leaf (alongside B); it now has a second producer (10) three hops
+# further down the same left branch, through two more watchtowers (5, 8)
+# that exist only to carry it there, so C's valid hosts become {5, 9, 3, 0}
+# instead of just that one leaf. And "add at least 3 more watchtowers":
+# the old shape had 3 (bridge + 2 hubs); this one has 6 (1, 3, 4, 5, 8, 9)
+# -- the left branch alone grew from 1 hub to 4 (trunk + A sub-hub + C
+# sub-hub + C-deep sub-hub) to give C somewhere to travel through. Right
+# side (bridge -> hub -> E/F) is untouched in shape.
+#
+# The bridge and left-trunk ids (3, 9) are not arbitrary: the first attempt
+# reused 1 and 2 for those two roles (closest to the old shape) and
+# re-running the root-collision check this redesign is *for* immediately
+# caught a fresh collision it would have reintroduced -- Kraken's root
+# landed on node 1 for Q2-Q4, same as medium_b's bridge, and on node 2 for
+# Q1, same as both medium_b's and medium_d's hub. 3 and 9 were checked
+# against the *actual* exported root placement (not assumed from shape
+# alone) for every story query against medium/_b/_c/_d and land on neither
+# -- see demo/BACKLOG.md for the table. Every duplicated-letter candidate
+# set (C here, and the A/D/F ones from round 4 on Grand Reef) has a real
+# non-cloud host too, not just the cloud.
+_MEDIUM_E_EDGES = {0: [3], 3: [9, 1, 2], 9: [4, 5], 1: [11, 12], 4: [6], 5: [7, 8], 8: [10]}
+_MEDIUM_E_LEAVES = {
+    2: [3],        # D
+    6: [0],        # A
+    7: [1, 2],     # B, C (primary)
+    10: [2],       # C (secondary -- travels down the left branch)
+    11: [4],       # E
+    12: [5],       # F
+}
+_MEDIUM_E_CP = {0: math.inf, 3: 25, 9: 20, 1: 20, 2: 10,
+                4: 16, 5: 16, 8: 12, 6: 10, 7: 10, 10: 10, 11: 10, 12: 10}
 build_medium_e = _build(_MEDIUM_E_EDGES, _MEDIUM_E_LEAVES, _MEDIUM_E_CP)
 
 
@@ -151,19 +177,69 @@ build_medium_e = _build(_MEDIUM_E_EDGES, _MEDIUM_E_LEAVES, _MEDIUM_E_CP)
 # all), the same "no real choice" degeneracy the pruning above was meant to
 # avoid. Any *two* of {6->12, 6->8, 2->7} leaves and_nested's 3 subqueries
 # intact, so this keeps 6->12 and 6->8 (both anchored on node 6, closest to
-# the original ask) and drops 6->11 and 2->7. Verified: and_nested still 3
-# subqueries at every alpha; seq_abc/seq_abcd/seq_abcde unaffected (still 1
-# subquery, still cloud); only cost numbers shift slightly (e.g. seq_abc
-# Balanced: 777.5 -> 750.1), the "not much changes" outcome that was hoped
-# for -- see demo/BACKLOG.md for the full edge-combination table.
+# the original ask) and drops 6->11 and 2->7.
 _LARGE_EDGES = {
     0: [1, 2, 3], 1: [6], 2: [4], 3: [5, 7], 4: [10], 5: [8], 6: [9, 12, 8], 7: [11],
     8: [18, 21], 9: [13, 14, 16, 22], 10: [12, 13, 23], 11: [15, 17, 19, 20],
 }
+
+# Leaf letters, redesigned (demo/BACKLOG.md item #30, round 3): the edges
+# above were never the problem -- the ORIGINAL random leaf-rate assignment
+# was. It scattered every letter across 3-7 leaves spread all over the
+# tree (e.g. A alone was produced by nodes 15,16,17,18,21,22,23), unlike
+# every other hand-curated topology, which single-sources each letter at
+# one leaf. A player can only place an operator on a node whose subtree
+# reaches *every* producer of its inputs (state.ts's placementIssue()), so
+# scattering a letter across unrelated branches collapses that valid set
+# to "the cloud, nothing else" -- verified this was happening for every
+# one of the 4 story queries on this topology, not just seq_abc/seq_abcd
+# (which is why topologies.py used to exclude them here; that's gone now).
+#
+# This tree has exactly one branch that actually bridges the others:
+# node 6 reaches node 1's own leaves (9's children 13/14/16/22, plus 12
+# directly) *and*, via the two shared-parent leaves 12 and 13 (parents
+# {6,10} and {9,10} respectively) and the shared-parent leaf-group under 8
+# (parents {5,6}), node 2's and node 3's leaves too -- so letters placed
+# only on {12,13,14,16,18,21,22} always share at least nodes {6,1,0} as
+# valid hosts, however they're combined.
+#
+# Round 4 (2026-11-05): every leaf now gets a letter -- leaving 15,17,19,20
+# and 23 without one (the previous round's trade-off) means those five
+# source pods render with no letter badge at all, which reads as broken,
+# not "deliberately plain". Two more leaf-letter pairings, each picked the
+# same way as the B+F pair above -- by finding an actual shared, non-cloud
+# ancestor, not just reusing a letter and hoping:
+#   - 13 and 23 are both direct children of node 10, so D's second producer
+#     goes on 23: D's valid hosts become {10,...} instead of just leaf 13.
+#   - 15/17/19/20 (under node 11, itself only reachable via node 7 -> node
+#     3) share no ancestor below the cloud with any *other* already-lettered
+#     leaf except 18 and 21 -- both under node 8, which has two parents
+#     {5,6}, one of which (5) comes down through node 3 too. So node 3 is a
+#     real, non-cloud common ancestor of {18,21} and {15,17,19,20} -- A (18's
+#     letter, otherwise single-sourced) is the one extended down into all
+#     four, rather than C/D/E, whose existing producers (14/13/22) sit in
+#     the *other* top-level branch (under node 1) and would collapse to the
+#     cloud if paired with anything under node 3.
+# Verified directly against the real combigen output (not assumed, same
+# method as the B+F round): every leaf-level projection across all five
+# story queries (see scenarios_def.py) still has >=2 valid placement
+# candidates, several at 3-6, and none of the five collapses to a single
+# subquery. A ends up the "rich" letter (5 producers, node 3 as its one
+# non-trivial common host); B, D, F stay at 2 producers each; C and E stay
+# single-sourced, same as before.
 _LARGE_LEAVES = {
-    12: [2, 3, 5], 13: [1, 3, 5], 14: [3, 4], 15: [0, 2, 5], 16: [0, 2, 3, 5],
-    17: [0, 1, 4], 18: [0, 3], 19: [3, 4], 20: [2, 4], 21: [0, 1, 2, 4, 5],
-    22: [0, 3], 23: [0, 4],
+    18: [0],        # A (primary)
+    15: [0],        # A
+    17: [0],        # A
+    19: [0],        # A
+    20: [0],        # A
+    16: [1],        # B (primary)
+    12: [1, 5],     # B (secondary) + F (secondary) -- the rarity-pair fix
+    14: [2],        # C
+    13: [3],        # D (primary)
+    23: [3],        # D (secondary)
+    22: [4],        # E
+    21: [5],        # F (primary)
 }
 _LARGE_CP = {0: math.inf, 1: 4, 2: 4, 3: 4, 4: 3, 5: 3, 6: 3, 7: 3,
              8: 2, 9: 2, 10: 2, 11: 2,
@@ -174,22 +250,127 @@ build_large = _build(_LARGE_EDGES, _LARGE_LEAVES, _LARGE_CP)
 #   0 -> 1 -> 2 -> {3 left hub, 4 right hub, 10 D-leaf}
 #   3 -> {5 mid, 6 C-leaf}; 5 -> {7 A-leaf, 8 B-leaf}
 #   4 -> 9 mid -> {11 E-leaf, 12 F-leaf}
+# Letters, round 4 (2026-11-05): originally single-sourced -- 6 letters, 6
+# leaves, no duplication at all, so every placement was trivially "the leaf
+# itself, or anywhere above it" with no real decision in between. Each wing
+# gets one letter duplicated onto a sibling leaf that shares a genuine
+# non-cloud ancestor with its existing producer:
+#   - 6 is a direct sibling of 5 (7+8's parent) under node 3, so it also
+#     gets B (8's letter) -- B's hosts become {3, 2, 1, 0} instead of just
+#     leaf 8.
+#   - 7 is a sibling of 10 under node 2, so it also gets D (10's letter) --
+#     D's hosts become {2, 1, 0} instead of just leaf 10.
+#   - 11 and 12 are the only two leaves under node 9 (the right wing's own
+#     hub), so 12 also gets E (11's letter) -- a smaller, local bridge at
+#     node 9 itself.
+# A and C stay single-sourced. Verified the same way as the Grand Reef
+# redesign above: re-exported, all four story queries still decompose (no
+# collapse to one subquery), and every leaf-level projection keeps >=2
+# placement candidates where these pairs are actually used together.
 _LARGE_B_EDGES = {0: [1], 1: [2], 2: [3, 4, 10], 3: [5, 6], 5: [7, 8], 4: [9], 9: [11, 12]}
 _LARGE_B_CP = {0: math.inf, 1: 30, 2: 28, 3: 22, 4: 22, 5: 18, 9: 18,
                6: 15, 7: 15, 8: 15, 10: 15, 11: 15, 12: 15}
-_LARGE_B_LEAVES = {7: [0], 8: [1], 6: [2], 10: [3], 11: [4], 12: [5]}  # A,B,C left; D bridge; E,F right
+_LARGE_B_LEAVES = {
+    7: [0, 3],      # A (primary) + D (secondary, bridges at node 2 with 10)
+    8: [1],         # B (primary)
+    6: [2, 1],      # C (primary) + B (secondary, bridges at node 3 with 8)
+    10: [3],        # D (primary)
+    11: [4],        # E (primary)
+    12: [5, 4],      # F (primary) + E (secondary, bridges at node 9 with 11)
+}
 build_large_b = _build(_LARGE_B_EDGES, _LARGE_B_LEAVES, _LARGE_B_CP)
 
-# large_c: same shape, wings swapped.
-_LARGE_C_LEAVES = {7: [4], 8: [5], 6: [1], 10: [3], 11: [0], 12: [2]}
+# large_c: same shape, wings swapped -- same duplication pattern, carried
+# over letter-for-letter (6 pairs with 8's letter, 7 pairs with 10's
+# letter, 12 pairs with 11's letter), since the edges (and therefore every
+# ancestor relationship the pairing depends on) are identical to large_b.
+_LARGE_C_LEAVES = {
+    7: [4, 3],      # E (primary) + D (secondary, bridges at node 2 with 10)
+    8: [5],         # F (primary)
+    6: [1, 5],      # B (primary) + F (secondary, bridges at node 3 with 8)
+    10: [3],        # D (primary)
+    11: [0],        # A (primary)
+    12: [2, 0],      # C (primary) + A (secondary, bridges at node 9 with 11)
+}
 build_large_c = _build(_LARGE_B_EDGES, _LARGE_C_LEAVES, _LARGE_B_CP)
 
-# large_d: long branching chain, scaled up.
+# large_d: long branching chain, scaled up. Only 4 leaves for 6 letters, so
+# C+D and E+F were always doubled up *within* one leaf each -- but every
+# letter still had exactly one producer. Round 4 (2026-11-05): 10 and 11
+# share node 4 as a real common ancestor (10 under node 6, 11 under node 7,
+# both children of 4), and 9 and 12 share node 5 the same way -- so C and D
+# each also get a second producer on 10 (bridging at node 4), and E gets a
+# second producer on 9 (bridging at node 5). B and A stay single-sourced.
+# Verified the same way as the rest of this round's redesign: re-exported,
+# all four story queries still decompose, no collapse to one subquery.
 _LARGE_D_EDGES = {0: [1], 1: [2], 2: [3], 3: [4, 5], 4: [6, 7], 5: [8, 9], 6: [10], 7: [11], 8: [12]}
 _LARGE_D_CP = {0: math.inf, 1: 30, 2: 28, 3: 25, 4: 20, 5: 20,
                6: 15, 7: 15, 8: 15, 9: 15, 10: 15, 11: 15, 12: 15}
-_LARGE_D_LEAVES = {9: [0], 10: [1], 11: [2, 3], 12: [4, 5]}
+_LARGE_D_LEAVES = {9: [0, 4], 10: [1, 2, 3], 11: [2, 3], 12: [4, 5]}
 build_large_d = _build(_LARGE_D_EDGES, _LARGE_D_LEAVES, _LARGE_D_CP)
+
+
+# --------------------------------------------------------------------------
+# Designed topologies (one family each, their own topology-bar button).
+# Found by a quality-diversity search (MAP-Elites over what each network
+# *teaches*, then farthest-point sampling) and checked with topology_lab.py:
+# sources are dual-homed -- a fast direct uplink plus a slower local
+# aggregation route -- so Fast, Balanced and Cheap genuinely place operators
+# differently, not only push vs pull. See demo/BACKLOG.md item 35.
+# --------------------------------------------------------------------------
+
+# BEGIN designed (generated -- regenerate, don't hand-edit)
+_TRENCH_EDGES = {0: [1], 1: [2, 3, 9], 2: [5, 6], 3: [4, 9], 4: [5, 6, 7, 8, 9]}
+_TRENCH_LEAVES = {5: [2], 7: [1, 4], 8: [0, 5], 6: [2, 5], 9: [0, 3]}
+_TRENCH_CP = {0: math.inf, 1: 26, 2: 20, 3: 20, 4: 14, 5: 10, 6: 10, 7: 10, 8: 10, 9: 10}
+build_trench = _build(_TRENCH_EDGES, _TRENCH_LEAVES, _TRENCH_CP)
+
+_SHOAL_EDGES = {0: [1, 2], 1: [3, 5], 2: [8, 9], 3: [4, 7], 4: [6, 7, 8, 9]}
+_SHOAL_LEAVES = {8: [3], 5: [2], 6: [1, 5], 9: [2, 5], 7: [0, 1, 4]}
+_SHOAL_CP = {0: math.inf, 1: 26, 2: 26, 3: 20, 4: 14, 5: 10, 6: 10, 7: 10, 8: 10, 9: 10}
+build_shoal = _build(_SHOAL_EDGES, _SHOAL_LEAVES, _SHOAL_CP)
+
+_CAPE_EDGES = {0: [1, 2, 3], 1: [5, 6], 2: [4, 8, 9], 3: [4, 10, 11], 4: [5, 6, 7, 8, 9]}
+_CAPE_LEAVES = {5: [4], 7: [1, 5], 6: [0, 2], 8: [1, 3], 10: [2], 9: [5], 11: [5]}
+_CAPE_CP = {0: math.inf, 1: 26, 2: 26, 3: 26, 4: 20, 5: 10, 6: 10, 7: 10, 8: 10, 9: 10, 10: 10, 11: 10}
+build_cape = _build(_CAPE_EDGES, _CAPE_LEAVES, _CAPE_CP)
+
+_ISLE_EDGES = {0: [1, 2, 3], 1: [5, 6], 2: [4, 9], 3: [10, 11], 4: [5, 6, 7, 8, 10, 11]}
+_ISLE_LEAVES = {5: [4], 7: [3, 5], 6: [2], 10: [1, 3], 8: [0, 2], 11: [5], 9: [5]}
+_ISLE_CP = {0: math.inf, 1: 26, 2: 26, 3: 26, 4: 20, 5: 10, 6: 10, 7: 10, 8: 10, 9: 10, 10: 10, 11: 10}
+build_isle = _build(_ISLE_EDGES, _ISLE_LEAVES, _ISLE_CP)
+
+_STRAIT_EDGES = {0: [1, 2], 1: [6, 7], 2: [3, 8, 11], 3: [4, 5, 9, 10], 4: [6, 8], 5: [7, 9, 10, 11, 12]}
+_STRAIT_LEAVES = {6: [0, 2], 9: [5], 7: [3], 8: [0, 1], 10: [1], 11: [1, 4], 12: [5]}
+_STRAIT_CP = {0: math.inf, 1: 26, 2: 26, 3: 20, 4: 14, 5: 14, 6: 10, 7: 10, 8: 10, 9: 10, 10: 10, 11: 10, 12: 10}
+build_strait = _build(_STRAIT_EDGES, _STRAIT_LEAVES, _STRAIT_CP)
+
+_HARBOR_EDGES = {0: [1, 2], 1: [3, 6, 7, 10], 2: [10, 11], 3: [4, 5, 8], 4: [8, 9], 5: [9, 10, 11, 12]}
+_HARBOR_LEAVES = {9: [1], 10: [2, 4], 8: [1, 5], 6: [4], 11: [4, 5], 12: [0], 7: [3]}
+_HARBOR_CP = {0: math.inf, 1: 26, 2: 26, 3: 20, 4: 14, 5: 14, 6: 10, 7: 10, 8: 10, 9: 10, 10: 10, 11: 10, 12: 10}
+build_harbor = _build(_HARBOR_EDGES, _HARBOR_LEAVES, _HARBOR_CP)
+
+_GULF_EDGES = {0: [1, 2, 3], 1: [4], 2: [5, 10], 3: [13, 14, 15], 4: [6, 7, 8, 9, 10], 5: [6, 12, 14, 15], 6: [7, 8, 9, 10, 11, 12, 13]}
+_GULF_LEAVES = {7: [4], 11: [0, 3], 10: [3], 12: [1], 8: [2, 5], 14: [3], 13: [2], 9: [2, 5], 15: [3, 5]}
+_GULF_CP = {0: math.inf, 1: 26, 2: 26, 3: 26, 4: 20, 5: 20, 6: 14, 7: 10, 8: 10, 9: 10, 10: 10, 11: 10, 12: 10, 13: 10, 14: 10, 15: 10}
+build_gulf = _build(_GULF_EDGES, _GULF_LEAVES, _GULF_CP)
+
+_SOUND_EDGES = {0: [1, 2, 3], 1: [4], 2: [5, 8, 12], 3: [12, 14, 15], 4: [6, 7, 8, 9], 5: [6, 13, 14, 15], 6: [7, 9, 10, 11, 12, 13]}
+_SOUND_LEAVES = {7: [4], 10: [5], 8: [5], 13: [3], 11: [1, 2], 14: [0, 5], 12: [2], 9: [1, 2], 15: [1, 5]}
+_SOUND_CP = {0: math.inf, 1: 26, 2: 26, 3: 26, 4: 20, 5: 20, 6: 14, 7: 10, 8: 10, 9: 10, 10: 10, 11: 10, 12: 10, 13: 10, 14: 10, 15: 10}
+build_sound = _build(_SOUND_EDGES, _SOUND_LEAVES, _SOUND_CP)
+
+_DESIGNED = {
+    "trench": build_trench,
+    "shoal": build_shoal,
+    "cape": build_cape,
+    "isle": build_isle,
+    "strait": build_strait,
+    "harbor": build_harbor,
+    "gulf": build_gulf,
+    "sound": build_sound,
+}
+# END designed
 
 
 BUILDERS = {
@@ -201,6 +382,7 @@ BUILDERS = {
     "large_b": build_large_b,
     "large_c": build_large_c,
     "large_d": build_large_d,
+    **_DESIGNED,
 }
 
 

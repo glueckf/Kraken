@@ -153,6 +153,15 @@ export class AppState {
     this.emit();
     try {
       this.manifest = await fetchJson<Manifest>(`${base}manifest.json`);
+      // seq_and_pairs ("Oktopus-Puls", Q5) is hidden: the engine computes a
+      // different subquery decomposition at export time than at live-score
+      // time for this query, so every confirmed plan fails push-pull
+      // scoring with "incomplete placement" regardless of what the player
+      // does. Not a demo-layer bug -- see BACKLOG.md item 32. Remove this
+      // filter once that's fixed upstream.
+      for (const topo of this.manifest.topologies) {
+        topo.scenarios = topo.scenarios.filter((s) => s.id !== "seq_and_pairs");
+      }
       const defaultTopo = this.manifest.topologies.find((t) => t.id === "medium") ?? this.manifest.topologies[0];
       this.topologyId = defaultTopo.id;
       await this.loadScenario(defaultTopo.scenarios[0].id);

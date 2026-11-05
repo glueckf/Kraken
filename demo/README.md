@@ -6,7 +6,7 @@ against Kraken and the baselines. All-push scoring runs client-side via a Rust
 engine compiled to WebAssembly; push-pull scoring uses the local backend.
 
 Topologies: **Reef** (~9–13 nodes) and **Grand Reef** (~13–26 nodes) with
-four story queries each — each of those two is actually several networks
+five story queries each — each of those two is actually several networks
 (see `topologies.py`'s `family` grouping) so repeat visitors see different
 edges under the same query. Those networks are hand-curated, not randomly
 generated (`demo/export/reef_topologies.py`): a random network almost

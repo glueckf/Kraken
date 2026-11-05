@@ -389,7 +389,7 @@
    },
    "comm": "mixed",
    "cost": 110.34172135588891,
-   "latency": 7.0,
+   "latency": 6.0,
    "processing_latency": 6.164278601477394,
    "per_placement": {
     "SEQ(A, B)": {
@@ -427,7 +427,7 @@
    },
    "comm": "all_push",
    "cost": 1106.9980213558888,
-   "latency": 5.0,
+   "latency": 4.0,
    "processing_latency": 8.84271067794446,
    "per_placement": {
     "SEQ(A, B)": {
@@ -541,7 +541,7 @@
     "SEQ(A, B, C)": 0
    },
    "all_push_cost": 4188.0,
-   "all_push_latency": 8.0
+   "all_push_latency": 4.0
   },
   {
    "name": "inev_placement",
@@ -550,7 +550,7 @@
     "SEQ(A, B, C)": 2
    },
    "all_push_cost": 1106.9980213558888,
-   "all_push_latency": 5.0
+   "all_push_latency": 4.0
   },
   {
    "name": "kraken_placement",
@@ -559,7 +559,7 @@
     "SEQ(A, B, C)": 2
    },
    "all_push_cost": 1106.9980213558888,
-   "all_push_latency": 5.0
+   "all_push_latency": 4.0
   }
  ]
 }

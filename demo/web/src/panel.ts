@@ -496,12 +496,15 @@ export function renderScorecard(state: AppState): string {
   const maxScore = Math.max(...rows.map((r) => r.score), 0.001);
 
   const board = rows
-    .map((r, i) => {
+    .map((r) => {
       const w = Math.max(3, (r.score / maxScore) * 100);
       const cls = r.you ? "you" : r.id === "kraken" ? "kraken" : "";
       return (
+        // Rank = position of the first row tied with this score, not the row's
+        // own index -- so two rows that score the same (e.g. a plan that ties
+        // All-Push exactly) show the same rank instead of back-to-back numbers.
         `<div class="lb-row ${cls}">` +
-        `<span class="lb-rank">${i + 1}</span>` +
+        `<span class="lb-rank">${rows.findIndex((x) => Math.abs(x.score - r.score) <= 1e-9) + 1}</span>` +
         `<span class="lb-name">${escapeHtml(r.label)}</span>` +
         `<span class="lb-bar"><span class="lb-fill" style="width:${w}%"></span></span>` +
         `<span class="lb-score">${r.score.toFixed(3)}</span>` +
@@ -574,7 +577,9 @@ function titleWithIcons(title: string): string {
   );
 }
 
-const EMBLEM_EMOJI: Record<string, string> = { crab: "🦀", turtle: "🐢", shark: "🦈", seedling: "🌱", factory: "⚒️" };
+const EMBLEM_EMOJI: Record<string, string> = {
+  crab: "🦀", turtle: "🐢", shark: "🦈", seedling: "🌱", octopus: "🐙", factory: "⚒️",
+};
 
 // Short, story-flavored stand-in for the raw SEQ(...)/AND(...) expression as
 // the primary headline — reads as "spot the alarm," not programming syntax.
@@ -587,6 +592,7 @@ const QUERY_HEADLINE_EN: Record<string, string> = {
   seq_abcd: "Turtle trail",
   seq_abcde: "Shark alarm",
   and_nested: "Reef bloom",
+  seq_and_pairs: "Octopus pulse",
   factory_join: "Forge alarm (paper example)",
 };
 const QUERY_HEADLINE_DE: Record<string, string> = {
@@ -594,6 +600,7 @@ const QUERY_HEADLINE_DE: Record<string, string> = {
   seq_abcd: "Schildkröten-Spur",
   seq_abcde: "Hai-Alarm",
   and_nested: "Riff-Blüte",
+  seq_and_pairs: "Oktopus-Puls",
   factory_join: "Schmiede-Alarm (Paper-Beispiel)",
 };
 function queryHeadline(scenarioId: string): string | undefined {

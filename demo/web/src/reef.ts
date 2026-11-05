@@ -37,15 +37,22 @@ export function computeLayout(scenario: Scenario): Layout {
   const layout: Layout = new Map();
   const byLayer = new Map<number, number[]>();
   const nodeById = new Map(scenario.topology.nodes.map((n) => [n.id, n]));
+  // `n.layer` is shortest-path distance from the cloud -- right for cost/
+  // latency, but a leaf with two parents at different depths (e.g. Grand
+  // Reef's n12, reachable in 3 hops one way and 4 the other) gets the
+  // shorter one, stranding it a row above the rest of the source pods, in
+  // with the watchtowers. Leaves always belong on the seabed row -- the
+  // deepest row anything reaches -- regardless of which parent is closest.
+  const maxLayer = Math.max(...scenario.topology.nodes.map((n) => n.layer));
   for (const n of scenario.topology.nodes) {
-    if (!byLayer.has(n.layer)) byLayer.set(n.layer, []);
-    byLayer.get(n.layer)!.push(n.id);
+    const layer = n.is_leaf ? maxLayer : n.layer;
+    if (!byLayer.has(layer)) byLayer.set(layer, []);
+    byLayer.get(layer)!.push(n.id);
   }
   // Rows are spaced evenly across the whole canvas height, based on however
   // many layers THIS scenario actually has — different network sizes have
   // different depths (levels ≈ log2(node count)), so a fixed 4-row table
   // would overflow (or waste space) for other sizes.
-  const maxLayer = Math.max(...byLayer.keys());
   const step = maxLayer > 0 ? (VB_H - BOTTOM_MARGIN - TOP_Y) / maxLayer : 0;
   for (const [layer, ids] of byLayer) {
     ids.sort((a, b) => a - b);
@@ -53,9 +60,13 @@ export function computeLayout(scenario: Scenario): Layout {
     const count = ids.length;
     const margin = 96;
     const span = VB_W - margin * 2;
+    // Leaf radius shrinks once a row is crowded enough that the usual 24
+    // would start to overlap (e.g. a leaf moved down into an already-full
+    // seabed row) -- harmless no-op at the usual leaf counts per row.
+    const leafR = count > 1 ? Math.min(24, (span / (count - 1)) * 0.42) : 24;
     ids.forEach((id, i) => {
       const x = count === 1 ? VB_W / 2 : margin + (span * i) / (count - 1);
-      const r = layer === 0 ? 40 : nodeById.get(id)!.is_leaf ? 24 : 30;
+      const r = layer === 0 ? 40 : nodeById.get(id)!.is_leaf ? leafR : 30;
       layout.set(id, { x, y, r });
     });
   }

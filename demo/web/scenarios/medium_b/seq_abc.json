@@ -387,10 +387,10 @@
     "SEQ(A, B)": 2,
     "SEQ(A, B, C)": 2
    },
-   "comm": "push_pull",
-   "cost": 36.98414021523731,
-   "latency": 7.0,
-   "processing_latency": 0.11470827641710357,
+   "comm": "mixed",
+   "cost": 62.65432135588892,
+   "latency": 5.0,
+   "processing_latency": 6.164278601477394,
    "per_placement": {
     "SEQ(A, B)": {
      "node": 2,
@@ -405,13 +405,13 @@
     },
     "SEQ(A, B, C)": {
      "node": 2,
-     "strategy": "push_pull",
-     "cost": 31.640440215237312,
-     "lt": 4.0,
-     "lp": 0.10574035288416944,
+     "strategy": "all_push",
+     "cost": 57.31062135588892,
+     "lt": 3.0,
+     "lp": 6.15531067794446,
      "edges": {
       "SEQ(A, B)": "push",
-      "C": "pull"
+      "C": "push"
      }
     }
    }
@@ -427,7 +427,7 @@
    },
    "comm": "all_push",
    "cost": 1059.310621355889,
-   "latency": 4.0,
+   "latency": 3.0,
    "processing_latency": 8.84271067794446,
    "per_placement": {
     "SEQ(A, B)": {
@@ -541,7 +541,7 @@
     "SEQ(A, B, C)": 0
    },
    "all_push_cost": 3141.0,
-   "all_push_latency": 6.0
+   "all_push_latency": 3.0
   },
   {
    "name": "inev_placement",
@@ -550,7 +550,7 @@
     "SEQ(A, B, C)": 2
    },
    "all_push_cost": 1059.310621355889,
-   "all_push_latency": 4.0
+   "all_push_latency": 3.0
   },
   {
    "name": "kraken_placement",
@@ -559,7 +559,7 @@
     "SEQ(A, B, C)": 2
    },
    "all_push_cost": 1059.310621355889,
-   "all_push_latency": 4.0
+   "all_push_latency": 3.0
   }
  ]
 }

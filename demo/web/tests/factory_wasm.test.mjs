@@ -16,7 +16,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const web = path.resolve(here, "..");
 const mod = await import(path.join(web, "vendor/engine/kraken_engine.js"));
 await mod.default({ module_or_path: await readFile(path.join(web, "vendor/engine/kraken_engine_bg.wasm")) });
-const scenario = JSON.parse(await readFile(path.join(web, "scenarios/factory/factory_join.json"), "utf8"));
+const scenario = JSON.parse(await readFile(path.join(web, "scenarios/forge/factory_join.json"), "utf8"));
 const table = scenario.paper_round.decision_table;
 const sub = scenario.processing_order[0];
 
@@ -61,7 +61,7 @@ test("existing reef rounds still load in the scorer", async () => {
   // seed/size) per family over time, so only the families themselves --
   // the ones the topology bar actually shows a button for -- are pinned.
   const families = new Set(manifest.topologies.map((t) => t.family));
-  assert.deepEqual(families, new Set(["medium", "large", "factory"]));
+  assert.deepEqual(families, new Set(["forge", "lagoon", "barrier"]));
   for (const topo of manifest.topologies) {
     for (const s of topo.scenarios) {
       const sc = JSON.parse(await readFile(path.join(web, "scenarios", s.file), "utf8"));
