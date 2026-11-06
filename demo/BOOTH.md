@@ -8,15 +8,17 @@ bereitgestellt; beide Dienste lauschen nur auf `localhost`.
 | Dienst | Zweck | Start (aus dem Repo-Root `INES-demo/`) | Adresse |
 |---|---|---|---|
 | Frontend | Spiel im Browser | `cd demo/web && npm run serve` | http://localhost:5173 |
-| Push-Pull-Bewertung | bewertet Riff-Pläne mit Krakens Kostenmodell inkl. Push/Pull | `uv run python demo/backend/server.py` | http://localhost:8787 (`/health`) |
+| Push-Pull-Bewertung | bewertet Riff-Pläne mit Krakens Kostenmodell inkl. Push/Pull | `../INES/.venv/bin/python demo/backend/server.py` | http://localhost:8787 (`/health`) |
 
 - **Krakens Schmiede braucht keinen Bewertungsdienst** (alle Optionen sind vorberechnet).
 - Ohne Bewertungsdienst bewerten die Riff-Runden nur reine All-Push-Pläne.
   Pläne mit Pull bekommen dann bewusst **keine** Bewertung, statt einer falschen.
-- Python-Umgebung: networkx, numpy, pandas, pyarrow, flask (wie in der
-  `pyproject.toml` des Haupt-Worktrees `INES/`). Im Worktree `INES-demo/` liegt
-  keine eigene `pyproject.toml`; `uv run` dort also aus der bestehenden
-  Umgebung starten (oder deren `.venv` aktivieren).
+- Python-Umgebung: die `.venv` des Haupt-Worktrees `INES/` (networkx, numpy,
+  pandas, pyarrow, flask). Im Worktree `INES-demo/` liegt keine eigene
+  `pyproject.toml`. **Nicht `uv run` verwenden:** dort greift uv auf das
+  pyenv-Python 3.11 zurück, dessen pandas/numpy nicht zusammenpassen
+  („numpy.dtype size changed"), und der Dienst startet nicht (geprüft
+  2026-11-06).
 
 ## Einmalig vor dem Event
 
@@ -27,12 +29,12 @@ npm run build          # baut dist/ inkl. Szenarien
 # nur falls engine/src geändert wurde: npm run build:wasm && npm run build
 ```
 
-Wurden Szenarien neu exportiert (`uv run python demo/export/export_scenario.py`),
+Wurden Szenarien neu exportiert (`../INES/.venv/bin/python demo/export/export_scenario.py`),
 danach **immer** `npm run build`, sonst zeigt der Server die alten Daten.
 
 ## Start am Morgen
 
-1. Terminal 1: `uv run python demo/backend/server.py`
+1. Terminal 1 (im Repo-Root `INES-demo/`): `../INES/.venv/bin/python demo/backend/server.py`
 2. Terminal 2: `cd demo/web && npm run serve`
 3. Browser (Vollbild, F11): http://localhost:5173
 4. Unten im Bewertungsfeld steht die Statuszeile:
@@ -83,11 +85,11 @@ Beispiel in der Cloud. Der Vergleich, um den es geht, ist mit „Sequential".
 
 | Symptom | Ursache | Abhilfe |
 |---|---|---|
-| Statuszeile rot, „Dieser Plan kann gerade nicht bewertet werden" | Bewertungsdienst aus | Terminal 1: `uv run python demo/backend/server.py`. Die Seite merkt es binnen ~15 s und bewertet den offenen Plan automatisch, ohne Neuladen. Bis dahin: Krakens Schmiede spielen oder „alles pushen" wählen. |
+| Statuszeile rot, „Dieser Plan kann gerade nicht bewertet werden" | Bewertungsdienst aus | Terminal 1: `../INES/.venv/bin/python demo/backend/server.py`. Die Seite merkt es binnen ~15 s und bewertet den offenen Plan automatisch, ohne Neuladen. Bis dahin: Krakens Schmiede spielen oder „alles pushen" wählen. |
 | Seite leer / „Szenarien konnten nicht geladen werden" | Frontend-Server aus oder `dist/` fehlt | Terminal 2: `npm run build && npm run serve`, dann F5 |
 | Alte Zahlen nach Re-Export | `dist/` nicht neu gebaut | `npm run build`, F5 |
 | Rechner neu gestartet | — | Abschnitt „Start am Morgen" wiederholen |
-| Port belegt | alter Prozess läuft noch | `PORT=5174 npm run serve` bzw. `PORT=8788 uv run python demo/backend/server.py`. Achtung: `web/index.html` erwartet das Backend auf 8787. |
+| Port belegt | alter Prozess läuft noch | `PORT=5174 npm run serve` bzw. `PORT=8788 ../INES/.venv/bin/python demo/backend/server.py`. Achtung: `web/index.html` erwartet das Backend auf 8787. |
 
 ## Nicht tun
 
