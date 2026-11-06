@@ -719,6 +719,96 @@
      "file": "whirlpool/seq_abcd.json"
     }
    ]
+  },
+  {
+   "id": "skerries",
+   "family": "barrier",
+   "label": "Barrier Reef",
+   "label_de": "Barriereriff",
+   "network_size": 24,
+   "scenarios": [
+    {
+     "id": "seq_abc",
+     "title": "SEQ(A, B, C)",
+     "emblem": "crab",
+     "difficulty": 1,
+     "blurb": "A short sequence over three streams. Warm-up.",
+     "num_subqueries": 2,
+     "file": "skerries/seq_abc.json"
+    },
+    {
+     "id": "seq_abcde",
+     "title": "SEQ(A, B, C, D, E)",
+     "emblem": "shark",
+     "difficulty": 2,
+     "blurb": "Branches that share a common sub-result.",
+     "num_subqueries": 2,
+     "file": "skerries/seq_abcde.json"
+    },
+    {
+     "id": "seq_abcd",
+     "title": "SEQ(A, B, C, D)",
+     "emblem": "turtle",
+     "difficulty": 3,
+     "blurb": "A shorter chain than the shark's, but it plays harder.",
+     "num_subqueries": 2,
+     "file": "skerries/seq_abcd.json"
+    },
+    {
+     "id": "and_nested",
+     "title": "AND(SEQ(A,B,C), D, SEQ(E,F))",
+     "emblem": "seedling",
+     "difficulty": 4,
+     "blurb": "A rich nested query touching all six streams.",
+     "num_subqueries": 5,
+     "file": "skerries/and_nested.json"
+    }
+   ]
+  },
+  {
+   "id": "inlet",
+   "family": "barrier",
+   "label": "Barrier Reef",
+   "label_de": "Barriereriff",
+   "network_size": 26,
+   "scenarios": [
+    {
+     "id": "seq_abc",
+     "title": "SEQ(A, B, C)",
+     "emblem": "crab",
+     "difficulty": 1,
+     "blurb": "A short sequence over three streams. Warm-up.",
+     "num_subqueries": 2,
+     "file": "inlet/seq_abc.json"
+    },
+    {
+     "id": "seq_abcde",
+     "title": "SEQ(A, B, C, D, E)",
+     "emblem": "shark",
+     "difficulty": 2,
+     "blurb": "Branches that share a common sub-result.",
+     "num_subqueries": 3,
+     "file": "inlet/seq_abcde.json"
+    },
+    {
+     "id": "seq_abcd",
+     "title": "SEQ(A, B, C, D)",
+     "emblem": "turtle",
+     "difficulty": 3,
+     "blurb": "A shorter chain than the shark's, but it plays harder.",
+     "num_subqueries": 3,
+     "file": "inlet/seq_abcd.json"
+    },
+    {
+     "id": "and_nested",
+     "title": "AND(SEQ(A,B,C), D, SEQ(E,F))",
+     "emblem": "seedling",
+     "difficulty": 4,
+     "blurb": "A rich nested query touching all six streams.",
+     "num_subqueries": 5,
+     "file": "inlet/and_nested.json"
+    }
+   ]
   }
  ]
 }

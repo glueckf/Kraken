@@ -26,7 +26,9 @@
   "21bc96aa5ef6": "wreck",
   "d52130f76268": "pearl",
   "ed13f582ff1d": "coral",
-  "de9a6242310f": "whirlpool"
+  "de9a6242310f": "whirlpool",
+  "08c8c7123435": "skerries",
+  "34c4e9564691": "inlet"
  },
  "exported": {
   "seamount": "a659e6aedc38",
@@ -40,7 +42,9 @@
   "wreck": "21bc96aa5ef6",
   "pearl": "d52130f76268",
   "coral": "ed13f582ff1d",
-  "whirlpool": "de9a6242310f"
+  "whirlpool": "de9a6242310f",
+  "skerries": "08c8c7123435",
+  "inlet": "34c4e9564691"
  },
  "legacy": {
   "lagoon": {

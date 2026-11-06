@@ -2,8 +2,10 @@
 
 Regenerates the BEGIN/END designed blocks in reef_topologies.py and
 topologies.py, re-exports only topologies whose spec changed (child mode, one
-fresh process each), rebuilds manifest.json and dist/. Names stick to a spec
-across runs. Legacy picks (lagoon, mangroves) only fill up to MIN_SHOWN.
+fresh process per scenario), rebuilds manifest.json and dist/. Names stick to
+a spec across runs. Legacy picks (lagoon, mangroves) only fill up to
+MIN_SHOWN. pool_complex.json holds hand-picked complex_search.py designs
+(BACKLOG.md item 37); select_pool.py doesn't touch it.
 """
 import hashlib, json, os, re, shutil, subprocess, sys
 
@@ -19,7 +21,7 @@ MIN_WT = 4   # Kraken's Forge, the minimal example, has 4 watchtowers; nothing s
 # topologies (4-5 watchtowers) are the Lagoon, bigger ones the Barrier Reef;
 # topologies.py's curated entries follow the same rule.
 FAMILIES = [(5, "lagoon", "Lagoon", "Lagune"), (99, "barrier", "Barrier Reef", "Barriereriff")]  # by max watchtowers
-VISIBLE = ["seq_abc", "seq_abcd", "seq_abcde", "and_nested"]
+VISIBLE = ["seq_abc", "seq_abcde", "seq_abcd", "and_nested"]   # scenarios_def.SCENARIOS order (Q1-Q4)
 NAMES = [("atoll", "Atoll", "Atoll"), ("delta", "Delta", "Delta"), ("fjord", "Fjord", "Fjord"),
          ("kelp", "Kelp Forest", "Kelpwald"), ("estuary", "Estuary", "Mündung"), ("seamount", "Seamount", "Tiefseeberg"),
          ("shoal", "Shoal", "Sandbank"), ("bay", "Bay", "Bucht"), ("strait", "Strait", "Meerenge"),
@@ -59,7 +61,10 @@ def main():
             st["legacy"][lid] = dict(edges=getattr(rt, f"_{u}_EDGES"), leaves=getattr(rt, f"_{u}_LEAVES"),
                                      cp={k: (None if v == float("inf") else v) for k, v in getattr(rt, f"_{u}_CP").items()})
     entries = []
-    for r in json.load(open(os.path.join(SCR, "pool.json"))):
+    pool = json.load(open(os.path.join(SCR, "pool.json")))
+    if os.path.exists(os.path.join(SCR, "pool_complex.json")):
+        pool += json.load(open(os.path.join(SCR, "pool_complex.json")))
+    for r in pool:
         wt = len(r["spec"]["edges"]) - 1
         if wt < MIN_WT:
             continue
@@ -112,16 +117,23 @@ def main():
             frags[e["id"]] = old[e["id"]]
             continue
         print(f"exporting {e['id']} ({n_nodes(e['spec'])} nodes) ...", flush=True)
-        r = subprocess.run([PY, "export_scenario.py", e["id"]], cwd=EXP, capture_output=True, text=True)
-        bad = [l for l in (r.stdout + r.stderr).splitlines() if "mismatch" in l.lower() or "error" in l.lower()]
-        fp = os.path.join(out, f".manifest-{e['id']}.json")
-        if r.returncode != 0 or not os.path.exists(fp):
-            print(f"  !! export failed (exit {r.returncode})\n" + "\n".join((r.stdout + r.stderr).splitlines()[-15:]))
-            sys.exit(1)
-        if bad:
-            print("  !! " + "\n  !! ".join(bad[:10]))
-        frags[e["id"]] = json.load(open(fp))
-        os.remove(fp)
+        # one fresh process per scenario, like export_scenario.py's driver (it says why)
+        for sid in e["scenarios"]:
+            r = subprocess.run([PY, "export_scenario.py", e["id"], sid], cwd=EXP, capture_output=True, text=True)
+            bad = [l for l in (r.stdout + r.stderr).splitlines() if "mismatch" in l.lower() or "error" in l.lower()]
+            fp = os.path.join(out, f".manifest-{e['id']}-{sid}.json")
+            if r.returncode != 0 or not os.path.exists(fp):
+                print(f"  !! export of {sid} failed (exit {r.returncode})\n"
+                      + "\n".join((r.stdout + r.stderr).splitlines()[-15:]))
+                sys.exit(1)
+            if bad:
+                print("  !! " + "\n  !! ".join(bad[:10]))
+            part = json.load(open(fp))
+            os.remove(fp)
+            if e["id"] in frags:
+                frags[e["id"]]["scenarios"].extend(part["scenarios"])
+            else:
+                frags[e["id"]] = part
         st["exported"][e["id"]] = e["hash"]
     for e in entries:   # family/label can change without the spec changing
         frags[e["id"]].update(family=e["family"], label=e["label"], label_de=e["label_de"])

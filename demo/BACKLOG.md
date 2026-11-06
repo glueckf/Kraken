@@ -6,8 +6,8 @@ does.
 
 ## Functional (current priority)
 
-37. **Bigger designed topologies (19-25 nodes) — prototype, not shipped
-    (2026-11-06).** The item 35 search can't produce them: with only six
+37. **Bigger designed topologies (19-25 nodes) — prototype, two shipped
+    for BSW (2026-11-06).** The item 35 search can't produce them: with only six
     letters, a big network's duplicated letters sit on leaves all over
     the tree, so every operator needs the cloud (none of 269 candidates
     with 7+ watchtowers moved an operator between stages).
@@ -26,9 +26,17 @@ does.
     rule of thumb wins any of its stages. But copying Kraken loses all
     three turtle (seq_abcd) stages, via item 36 (a). 5 of the 14 designs
     have such stages (20 of the 147). Exhaustive play takes up to 13 min
-    per query at this size. Not for BSW. After item 36 (a) is fixed,
-    re-play, gate (no stage where copying Kraken loses, none unwinnable),
-    and add the survivors as Barrier Reef variants. The other designs,
+    per query at this size. Two designs without such stages, cx0 and dx4,
+    were added the same day as the Barrier Reef variants skerries (24
+    nodes) and inlet (26 nodes): `design/pool_complex.json`, which
+    integrate.py merges into the pool. Both show Q1-Q4, and in every query
+    Kraken's Balanced and Cheap plans are the same (F|BC). On skerries Fast
+    moves operators; on inlet it only changes push/pull. Copying Kraken's
+    plan through the live scoring service wins all 24 stages. A rule of
+    thumb wins 4 of them: skerries Q4 Fast and Cheap, inlet Q2 and Q4
+    Fast. For the rest,
+    after item 36 (a) is fixed: re-play, gate (no stage where copying
+    Kraken loses, none unwinnable), and add the survivors. The other designs,
     their play results and the exhaustive player stayed in a session
     scratchpad and are not in the repo. dx1, to rebuild it:
     `{"n":21,"parents":{"1":[0],"2":[0],"3":[2,1],"4":[0],"5":[0],"6":[5,1],"7":[6],"11":[3,1],"20":[3],"13":[3,1],"14":[3],"18":[7],"15":[7],"8":[6,4],"12":[7,4],"17":[7,4],"16":[6,4],"9":[7,4],"10":[6],"19":[7,4]},"letters":{"11":[1],"20":[0],"13":[2],"14":[0],"18":[3],"15":[4],"8":[3,4],"12":[3,4],"17":[3,4],"16":[4,5],"9":[3,4],"10":[4],"19":[4]}}`
