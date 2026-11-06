@@ -90,8 +90,7 @@ def get_all_query_components(query):
     query = re.sub(r"[0-9]+", "", query)
     query = query.replace(" ", "")
 
-    # current_pos += 4 jumps over the first L_PAREN -> 1
-    open_parentheses = 1
+    # current_pos = 4 jumps over the outer AND( / SEQ(
     current_pos = 4
     query_components = []
 
@@ -99,8 +98,10 @@ def get_all_query_components(query):
         if query[current_pos : current_pos + 3] in operators:
             first_pos = current_pos
 
-            # set to pos x in AND(x / SEQ(x
+            # set to pos x in AND(x / SEQ(x; its L_PAREN is open -> 1,
+            # reset for every nested operand
             current_pos += 4
+            open_parentheses = 1
             while open_parentheses >= 1:
                 if query[current_pos : current_pos + 3] in operators:
                     current_pos += 3
