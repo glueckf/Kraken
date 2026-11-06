@@ -777,10 +777,10 @@
      }
     }
    },
-   "solve_seconds": 0.0254976749420166
+   "solve_seconds": 0.05528092384338379
   },
   {
-   "alpha": 0.6,
+   "alpha": 0.5,
    "label": "Balanced",
    "placement": {
     "SEQ(B, F)": 5,
@@ -791,9 +791,9 @@
     "SEQ(AND(A, B), C, AND(D, E), F)": 1
    },
    "comm": "mixed",
-   "cost": 977.0461484363976,
-   "latency": 13.0,
-   "processing_latency": 1.9928735997958862,
+   "cost": 2124.1661484363976,
+   "latency": 5.0,
+   "processing_latency": 2.092886483888642,
    "per_placement": {
     "SEQ(B, F)": {
      "node": 5,
@@ -819,35 +819,35 @@
     },
     "SEQ(AND(A, B), E, F)": {
      "node": 5,
-     "strategy": "push_pull",
-     "cost": 436.0799999999999,
-     "lt": 2.0,
-     "lp": 0.008067892649718437,
+     "strategy": "all_push",
+     "cost": 800.0,
+     "lt": 1.0,
+     "lp": 0.05401646221668631,
      "edges": {
       "SEQ(AND(A, B), F)": "push",
-      "E": "pull"
+      "E": "push"
      }
     },
     "SEQ(AND(A, B), C, F)": {
      "node": 1,
-     "strategy": "push_pull",
-     "cost": 38.76372454146727,
-     "lt": 5.0,
-     "lp": 0.0002175130228643726,
+     "strategy": "all_push",
+     "cost": 90.26372454146727,
+     "lt": 2.0,
+     "lp": 0.01965514418420278,
      "edges": {
       "SEQ(AND(A, B), F)": "push",
-      "C": "pull"
+      "C": "push"
      }
     },
     "SEQ(AND(A, B), C, D, F)": {
      "node": 1,
-     "strategy": "push_pull",
-     "cost": 486.29999999999995,
-     "lt": 4.0,
-     "lp": 0.006590773370658932,
+     "strategy": "all_push",
+     "cost": 1218.0,
+     "lt": 2.0,
+     "lp": 0.041217456735108404,
      "edges": {
       "SEQ(AND(A, B), C, F)": "push",
-      "D": "pull"
+      "D": "push"
      }
     },
     "SEQ(AND(A, B), C, AND(D, E), F)": {
@@ -862,7 +862,7 @@
      }
     }
    },
-   "solve_seconds": 0.026369571685791016
+   "solve_seconds": 0.052254676818847656
   },
   {
    "alpha": 0.9,
@@ -947,7 +947,7 @@
      }
     }
    },
-   "solve_seconds": 0.02675604820251465
+   "solve_seconds": 0.051831960678100586
   }
  ],
  "norm_anchors": {

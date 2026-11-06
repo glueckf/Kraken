@@ -885,10 +885,10 @@
      }
     }
    },
-   "solve_seconds": 0.003999948501586914
+   "solve_seconds": 0.011829137802124023
   },
   {
-   "alpha": 0.6,
+   "alpha": 0.5,
    "label": "Balanced",
    "placement": {
     "SEQ(A, B)": 4,
@@ -923,7 +923,7 @@
      }
     }
    },
-   "solve_seconds": 0.004025936126708984
+   "solve_seconds": 0.009415388107299805
   },
   {
    "alpha": 0.9,
@@ -961,7 +961,7 @@
      }
     }
    },
-   "solve_seconds": 0.004138946533203125
+   "solve_seconds": 0.007987022399902344
   }
  ],
  "norm_anchors": {

@@ -797,10 +797,10 @@
      }
     }
    },
-   "solve_seconds": 0.08321046829223633
+   "solve_seconds": 0.0705099105834961
   },
   {
-   "alpha": 0.6,
+   "alpha": 0.5,
    "label": "Balanced",
    "placement": {
     "AND(B, F)": 3,
@@ -811,9 +811,9 @@
     "AND(SEQ(A, B, C), D, SEQ(E, F))": 3
    },
    "comm": "mixed",
-   "cost": 1059.711289972422,
-   "latency": 18.0,
-   "processing_latency": 1.989141276099592,
+   "cost": 2139.831289972422,
+   "latency": 10.0,
+   "processing_latency": 2.0705605657518094,
    "per_placement": {
     "AND(B, F)": {
      "node": 3,
@@ -839,35 +839,35 @@
     },
     "AND(SEQ(A, B, C), F)": {
      "node": 3,
-     "strategy": "push_pull",
-     "cost": 106.75,
-     "lt": 8.0,
-     "lp": 0.0007054888808140241,
+     "strategy": "all_push",
+     "cost": 315.0,
+     "lt": 4.0,
+     "lp": 0.00982757209210139,
      "edges": {
       "AND(SEQ(A, B), F)": "push",
-      "C": "pull"
+      "C": "push"
      }
     },
     "AND(SEQ(A, B), D, F)": {
      "node": 3,
-     "strategy": "push_pull",
-     "cost": 75.05,
-     "lt": 2.0,
-     "lp": 0.004059235309021257,
+     "strategy": "all_push",
+     "cost": 203.0,
+     "lt": 1.0,
+     "lp": 0.0691298342563789,
      "edges": {
       "AND(SEQ(A, B), F)": "push",
-      "D": "pull"
+      "D": "push"
      }
     },
     "AND(SEQ(A, B), SEQ(E, F))": {
      "node": 3,
-     "strategy": "push_pull",
-     "cost": 856.0799999999999,
-     "lt": 4.0,
-     "lp": 0.0062775080605999576,
+     "strategy": "all_push",
+     "cost": 1600.0,
+     "lt": 2.0,
+     "lp": 0.013504115554171577,
      "edges": {
       "AND(SEQ(A, B), F)": "push",
-      "E": "pull"
+      "E": "push"
      }
     },
     "AND(SEQ(A, B, C), D, SEQ(E, F))": {
@@ -883,7 +883,7 @@
      }
     }
    },
-   "solve_seconds": 0.07981634140014648
+   "solve_seconds": 0.06702971458435059
   },
   {
    "alpha": 0.9,
@@ -969,7 +969,7 @@
      }
     }
    },
-   "solve_seconds": 0.08466553688049316
+   "solve_seconds": 0.07578396797180176
   }
  ],
  "norm_anchors": {

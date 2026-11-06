@@ -730,10 +730,10 @@
      }
     }
    },
-   "solve_seconds": 0.01705479621887207
+   "solve_seconds": 0.03377127647399902
   },
   {
-   "alpha": 0.6,
+   "alpha": 0.5,
    "label": "Balanced",
    "placement": {
     "AND(SEQ(A, B), F)": 2,
@@ -743,9 +743,9 @@
     "AND(SEQ(A, B, C), D, SEQ(E, F))": 0
    },
    "comm": "mixed",
-   "cost": 1720.9992868122006,
-   "latency": 12.0,
-   "processing_latency": 0.24546614073976655,
+   "cost": 3360.7304604366027,
+   "latency": 6.0,
+   "processing_latency": 0.9630784884491145,
    "per_placement": {
     "AND(SEQ(A, B), F)": {
      "node": 2,
@@ -761,35 +761,35 @@
     },
     "AND(SEQ(A, B, C), F)": {
      "node": 0,
-     "strategy": "push_pull",
-     "cost": 46.8955868122009,
-     "lt": 5.0,
-     "lp": 0.0006344211371838446,
+     "strategy": "all_push",
+     "cost": 90.3955868122009,
+     "lt": 2.0,
+     "lp": 0.029482716276304173,
      "edges": {
       "AND(SEQ(A, B), F)": "push",
-      "C": "pull"
+      "C": "push"
      }
     },
     "AND(SEQ(A, B), D, F)": {
      "node": 0,
-     "strategy": "push_pull",
-     "cost": 332.2,
-     "lt": 4.0,
-     "lp": 0.1656761747067313,
+     "strategy": "all_push",
+     "cost": 812.3955868122009,
+     "lt": 2.0,
+     "lp": 0.8295580110765468,
      "edges": {
       "AND(SEQ(A, B), F)": "push",
-      "D": "pull"
+      "D": "push"
      }
     },
     "AND(SEQ(A, B), SEQ(E, F))": {
      "node": 0,
-     "strategy": "push_pull",
-     "cost": 1284.3599999999997,
-     "lt": 6.0,
-     "lp": 0.056142477124617424,
+     "strategy": "all_push",
+     "cost": 2400.3955868122007,
+     "lt": 3.0,
+     "lp": 0.08102469332502946,
      "edges": {
       "AND(SEQ(A, B), F)": "push",
-      "E": "pull"
+      "E": "push"
      }
     },
     "AND(SEQ(A, B, C), D, SEQ(E, F))": {
@@ -805,7 +805,7 @@
      }
     }
    },
-   "solve_seconds": 0.017365217208862305
+   "solve_seconds": 0.03444051742553711
   },
   {
    "alpha": 0.9,
@@ -880,7 +880,7 @@
      }
     }
    },
-   "solve_seconds": 0.017349720001220703
+   "solve_seconds": 0.03328418731689453
   }
  ],
  "norm_anchors": {

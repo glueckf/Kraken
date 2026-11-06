@@ -52,7 +52,18 @@ FLOAT_TOL = 1e-6
 # cost_weight at all -- see BACKLOG.md item #17), Kraken's own greedy search
 # genuinely chooses a different placement depending on this weight, so each
 # stage needs its own real Kraken run, not just a re-normalized score.
+#
+# Balanced was 0.6 until 2026-11-06. At 0.6 Kraken's Balanced plan was the
+# same as Cheap's in 45 of 65 reef queries, and players beat Kraken in 55 of
+# them; at 0.5 Balanced differs from Cheap everywhere (BACKLOG.md item 38).
 KRAKEN_STAGES = [
+    (0.2, "Fast"),
+    (0.5, "Balanced"),
+    (0.9, "Cheap"),
+]
+# Kraken's Forge (the paper example) keeps Balanced at 0.6 for now
+# (factory_example.DEFAULT_ALPHA) -- to be revisited, see item 38.
+FORGE_STAGES = [
     (0.2, "Fast"),
     (0.6, "Balanced"),
     (0.9, "Cheap"),
@@ -493,7 +504,7 @@ def build_factory_scenario(topology):
         }
 
     kraken_stages = []
-    for alpha, label in KRAKEN_STAGES:
+    for alpha, label in FORGE_STAGES:
         st = kraken_entry(alpha, label)
         st["analysis"] = analysis(alpha)
         opt = st["analysis"]["reference_optimum"]

@@ -802,10 +802,10 @@
      }
     }
    },
-   "solve_seconds": 0.09683609008789062
+   "solve_seconds": 0.07956099510192871
   },
   {
-   "alpha": 0.6,
+   "alpha": 0.5,
    "label": "Balanced",
    "placement": {
     "SEQ(B, F)": 2,
@@ -816,9 +816,9 @@
     "SEQ(AND(A, B), C, AND(D, E), F)": 2
    },
    "comm": "mixed",
-   "cost": 2932.073126372501,
-   "latency": 17.0,
-   "processing_latency": 3.274968813687141,
+   "cost": 5734.633126372502,
+   "latency": 11.0,
+   "processing_latency": 5.113350093667786,
    "per_placement": {
     "SEQ(B, F)": {
      "node": 2,
@@ -833,13 +833,13 @@
     },
     "SEQ(B, C, F)": {
      "node": 2,
-     "strategy": "push_pull",
-     "cost": 31.0,
-     "lt": 4.0,
-     "lp": 1.2065842782815157,
+     "strategy": "all_push",
+     "cost": 90.0,
+     "lt": 2.0,
+     "lp": 2.8958022678756374,
      "edges": {
       "SEQ(B, F)": "push",
-      "C": "pull"
+      "C": "push"
      }
     },
     "SEQ(AND(A, B), F)": {
@@ -855,24 +855,24 @@
     },
     "SEQ(AND(A, B), D, F)": {
      "node": 2,
-     "strategy": "push_pull",
-     "cost": 300.2,
-     "lt": 6.0,
-     "lp": 0.037025580957668565,
+     "strategy": "all_push",
+     "cost": 812.0,
+     "lt": 3.0,
+     "lp": 0.18434622468367706,
      "edges": {
       "SEQ(AND(A, B), F)": "push",
-      "D": "pull"
+      "D": "push"
      }
     },
     "SEQ(AND(A, B), E, F)": {
      "node": 2,
-     "strategy": "push_pull",
-     "cost": 2568.2399999999993,
-     "lt": 6.0,
-     "lp": 0.05217381555617074,
+     "strategy": "all_push",
+     "cost": 4800.0,
+     "lt": 3.0,
+     "lp": 0.05401646221668631,
      "edges": {
       "SEQ(AND(A, B), F)": "push",
-      "E": "pull"
+      "E": "push"
      }
     },
     "SEQ(AND(A, B), C, AND(D, E), F)": {
@@ -888,7 +888,7 @@
      }
     }
    },
-   "solve_seconds": 0.09683918952941895
+   "solve_seconds": 0.07587218284606934
   },
   {
    "alpha": 0.9,
@@ -974,7 +974,7 @@
      }
     }
    },
-   "solve_seconds": 0.09785914421081543
+   "solve_seconds": 0.09711456298828125
   }
  ],
  "norm_anchors": {

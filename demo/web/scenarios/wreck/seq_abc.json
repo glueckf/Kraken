@@ -779,19 +779,19 @@
      }
     }
    },
-   "solve_seconds": 0.00438237190246582
+   "solve_seconds": 0.008950948715209961
   },
   {
-   "alpha": 0.6,
+   "alpha": 0.5,
    "label": "Balanced",
    "placement": {
     "SEQ(A, B)": 5,
     "SEQ(A, B, C)": 1
    },
-   "comm": "push_pull",
-   "cost": 170.33733382019693,
-   "latency": 12.0,
-   "processing_latency": 1.2268384287539598,
+   "comm": "mixed",
+   "cost": 216.30289610150015,
+   "latency": 8.0,
+   "processing_latency": 55.532314954494154,
    "per_placement": {
     "SEQ(A, B)": {
      "node": 5,
@@ -806,17 +806,17 @@
     },
     "SEQ(A, B, C)": {
      "node": 1,
-     "strategy": "push_pull",
-     "cost": 123.61883382019693,
-     "lt": 6.0,
-     "lp": 1.0923195757599478,
+     "strategy": "all_push",
+     "cost": 169.58439610150015,
+     "lt": 3.0,
+     "lp": 55.39779610150014,
      "edges": {
-      "SEQ(A, B)": "push",
-      "C": "pull"
+      "C": "push",
+      "SEQ(A, B)": "push"
      }
     }
    },
-   "solve_seconds": 0.004673004150390625
+   "solve_seconds": 0.00890350341796875
   },
   {
    "alpha": 0.9,
@@ -853,7 +853,7 @@
      }
     }
    },
-   "solve_seconds": 0.003950595855712891
+   "solve_seconds": 0.00821995735168457
   }
  ],
  "norm_anchors": {

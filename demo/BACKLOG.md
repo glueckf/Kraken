@@ -6,6 +6,62 @@ does.
 
 ## Functional (current priority)
 
+38. **Balanced is α = 0.5, not 0.6 (2026-11-06 evening). Kraken's Forge
+    still uses 0.6: revisit after BSW.** A player on medium Q1 Balanced beat
+    Kraken with 116 tuples / 5 hops against Kraken's 54 / 7. That's correct by
+    the UI's formula, but Kraken and the UI measure "better" differently:
+    - The UI (`normalize_point` in `engine/src/lib.rs`) scores against the
+      whole scenario's range. Tuples run from Kraken's cheapest stage up to
+      All-Push at the cloud (54 to 6,141 on medium Q1), and hops from 3 to 15.
+      So at α = 0.6, 2 hops are worth about 680 tuples.
+    - Kraken (`src/kraken/problem.py`, ~206–235) normalizes only among the
+      options for the operator it is placing at that moment. On medium Q1 it
+      treated 24 extra tuples as about as bad as 2 hops. It played 78 / 5 at
+      α = 0.5 and 54 / 7 at 0.6, so by the UI's formula Kraken's own 0.5 plan
+      beat its 0.6 one.
+    - Kraken is also a one-operator-at-a-time greedy search. In 82 of the 195
+      visible stages (79 at α = 0.5), another plan is cheaper and at least as
+      fast.
+
+    Measured on the 65 visible Balanced stages by re-scoring the exhaustive
+    play, 0.6 → 0.5:
+    - Kraken's plan changes in 60.
+    - Balanced is the same plan as Cheap in 45 → 0 queries, and as Fast in
+      0 → 5 (abyss Q1/Q3, skerries Q1/Q3/Q4).
+    - A plan scores strictly better than Kraken in 55 → 44; Kraken is outright
+      beaten on both tuples and hops in 32 → 29.
+    - Median share of winning plans 14% → 2.7%; only Kraken's exact plan wins
+      in 3 → 10; a rule of thumb wins in 19 → 16.
+    - Mean difficulty 2.14 → 2.55.
+    - Copying Kraken loses in the same 5 stages; none is unwinnable.
+    - The other way round: skerries Q2 Balanced became easy. Every rule of
+      thumb wins there, and 140 of its 192 plans win.
+
+    Balanced is the stage visitors start on, so the first round is harder.
+    After the re-export the gate was re-run. It matched the prediction
+    exactly, and Fast and Cheap were unchanged. The live service scored all
+    207 stages with 0 errors (median 0.95 s, max 2.2 s). Copying loses in
+    the same stages as at 0.6, and the three hidden queries still lose at
+    every goal.
+
+    Done: `KRAKEN_STAGES` in `export/export_scenario.py` (Balanced 0.5, which
+    is `COST_WEIGHT`, so the stage reuses the scenario's default Kraken run),
+    a new `FORGE_STAGES` (0.2/0.6/0.9, matching
+    `factory_example.DEFAULT_ALPHA`), and the `state.ts` fallback. All 70
+    reef scenarios were re-exported: only the Balanced stage changed, plus
+    the anchors of current Q2. The Forge files were left as they were.
+    Item 37's "Kraken's Balanced and Cheap plans are the same (F|BC)" was
+    true at 0.6.
+
+    Open, after BSW:
+    - The Forge: move it to 0.5 too? Its paper analysis (Sec. 4.3.2) picks
+      α ≥ 0.6 as the intermediate range, so this needs its own look.
+    - The design tools still hard-code 0.2/0.6/0.9 (`topology_lab.py`,
+      `design/complex_search.py`, the `reef_topologies.py` docstring). The
+      shipped topologies were selected under 0.6.
+    - Should Kraken's search score candidates against the scenario's anchors,
+      the way the UI does? That's an engine change (via PR).
+
 37. **Bigger designed topologies (19-25 nodes) — prototype, two shipped
     for BSW (2026-11-06).** The item 35 search can't produce them: with only six
     letters, a big network's duplicated letters sit on leaves all over

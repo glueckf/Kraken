@@ -762,10 +762,10 @@
      }
     }
    },
-   "solve_seconds": 0.09268474578857422
+   "solve_seconds": 0.06935000419616699
   },
   {
-   "alpha": 0.6,
+   "alpha": 0.5,
    "label": "Balanced",
    "placement": {
     "SEQ(A, B)": 2,
@@ -775,9 +775,9 @@
     "AND(SEQ(A, B, C), D, SEQ(E, F))": 2
    },
    "comm": "mixed",
-   "cost": 1739.253719779376,
-   "latency": 22.0,
-   "processing_latency": 0.0631447319633515,
+   "cost": 3421.0637197793762,
+   "latency": 10.0,
+   "processing_latency": 0.1480325255314051,
    "per_placement": {
     "SEQ(A, B)": {
      "node": 2,
@@ -792,37 +792,37 @@
     },
     "AND(SEQ(A, B), SEQ(E, F))": {
      "node": 2,
-     "strategy": "push_pull",
-     "cost": 1333.2399999999998,
-     "lt": 9.0,
-     "lp": 0.024683909654495698,
+     "strategy": "all_push",
+     "cost": 2425.0,
+     "lt": 3.0,
+     "lp": 0.05401646221668631,
      "edges": {
-      "F": "push",
-      "SEQ(A, B)": "pull",
-      "E": "pull"
+      "SEQ(A, B)": "push",
+      "E": "push",
+      "F": "push"
      }
     },
     "AND(SEQ(A, B, C), F)": {
      "node": 2,
-     "strategy": "push_pull",
-     "cost": 57.75,
-     "lt": 6.0,
-     "lp": 0.000561370792815709,
+     "strategy": "all_push",
+     "cost": 160.0,
+     "lt": 3.0,
+     "lp": 0.01965514418420278,
      "edges": {
+      "SEQ(A, B)": "push",
       "F": "push",
-      "SEQ(A, B)": "pull",
-      "C": "pull"
+      "C": "push"
      }
     },
     "AND(SEQ(A, B, C), D, F)": {
      "node": 2,
-     "strategy": "push_pull",
-     "cost": 324.2,
-     "lt": 6.0,
-     "lp": 0.0047559891206324836,
+     "strategy": "all_push",
+     "cost": 812.0,
+     "lt": 3.0,
+     "lp": 0.041217456735108404,
      "edges": {
       "AND(SEQ(A, B, C), F)": "push",
-      "D": "pull"
+      "D": "push"
      }
     },
     "AND(SEQ(A, B, C), D, SEQ(E, F))": {
@@ -837,7 +837,7 @@
      }
     }
    },
-   "solve_seconds": 0.09527111053466797
+   "solve_seconds": 0.07046890258789062
   },
   {
    "alpha": 0.9,
@@ -912,7 +912,7 @@
      }
     }
    },
-   "solve_seconds": 0.09056472778320312
+   "solve_seconds": 0.07052969932556152
   }
  ],
  "norm_anchors": {

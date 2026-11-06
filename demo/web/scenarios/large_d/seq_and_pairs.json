@@ -803,10 +803,10 @@
      }
     }
    },
-   "solve_seconds": 0.16839051246643066
+   "solve_seconds": 0.12817025184631348
   },
   {
-   "alpha": 0.6,
+   "alpha": 0.5,
    "label": "Balanced",
    "placement": {
     "SEQ(B, F)": 3,
@@ -817,9 +817,9 @@
     "SEQ(AND(A, B), C, AND(D, E), F)": 3
    },
    "comm": "mixed",
-   "cost": 2706.8904395587515,
-   "latency": 16.0,
-   "processing_latency": 1.0401806729340861,
+   "cost": 5512.890439558752,
+   "latency": 10.0,
+   "processing_latency": 1.119020625424538,
    "per_placement": {
     "SEQ(B, F)": {
      "node": 3,
@@ -845,35 +845,35 @@
     },
     "SEQ(AND(A, B), C, F)": {
      "node": 3,
-     "strategy": "push_pull",
-     "cost": 91.5,
-     "lt": 6.0,
-     "lp": 0.0006047047549834493,
+     "strategy": "all_push",
+     "cost": 270.0,
+     "lt": 3.0,
+     "lp": 0.00982757209210139,
      "edges": {
       "SEQ(AND(A, B), F)": "push",
-      "C": "pull"
+      "C": "push"
      }
     },
     "SEQ(AND(A, B), D, F)": {
      "node": 3,
-     "strategy": "push_pull",
-     "cost": 450.29999999999995,
-     "lt": 6.0,
-     "lp": 0.02780849100589226,
+     "strategy": "all_push",
+     "cost": 1218.0,
+     "lt": 3.0,
+     "lp": 0.09217311234183853,
      "edges": {
       "SEQ(AND(A, B), F)": "push",
-      "D": "pull"
+      "D": "push"
      }
     },
     "SEQ(AND(A, B), E, F)": {
      "node": 3,
-     "strategy": "push_pull",
-     "cost": 2140.1999999999994,
-     "lt": 6.0,
-     "lp": 0.021755767290955356,
+     "strategy": "all_push",
+     "cost": 4000.0,
+     "lt": 3.0,
+     "lp": 0.027008231108343154,
      "edges": {
       "SEQ(AND(A, B), F)": "push",
-      "E": "pull"
+      "E": "push"
      }
     },
     "SEQ(AND(A, B), C, AND(D, E), F)": {
@@ -889,7 +889,7 @@
      }
     }
    },
-   "solve_seconds": 0.17147207260131836
+   "solve_seconds": 0.13033294677734375
   },
   {
    "alpha": 0.9,
@@ -975,7 +975,7 @@
      }
     }
    },
-   "solve_seconds": 0.17051148414611816
+   "solve_seconds": 0.14016366004943848
   }
  ],
  "norm_anchors": {
