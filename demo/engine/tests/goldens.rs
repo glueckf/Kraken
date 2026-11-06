@@ -135,10 +135,11 @@ fn kraken_beats_baselines_on_combined_score() {
 /// parallel, so no placement can take longer than the longest path an event
 /// travels -- 3 hops in this tree (cloud 0 <- 5 <- 6 <- {1, 2}). The old
 /// recursion summed SEQ(A, B, C)'s own input hops (C's 3) onto SEQ(A, B)'s
-/// full latency: 6, 4 and 5 hops below.
+/// full latency: 6, 4 and 5 hops below. medium_c is no longer shown (3
+/// watchtowers, below Kraken's Forge), so its export is kept as a fixture.
 #[test]
 fn all_push_inputs_arrive_in_parallel() {
-    let path = format!("{}/../web/scenarios/medium_c/seq_abc.json", env!("CARGO_MANIFEST_DIR"));
+    let path = format!("{}/tests/fixtures/medium_c_seq_abc.json", env!("CARGO_MANIFEST_DIR"));
     let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("read {path}: {e}"));
     let sc: Scenario = serde_json::from_str(&text).unwrap_or_else(|e| panic!("parse {path}: {e}"));
     for (s1, s2) in [(0, 0), (6, 6), (5, 0)] {

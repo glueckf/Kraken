@@ -12,11 +12,13 @@ EXP = os.path.dirname(SCR)
 WEB = os.path.join(os.path.dirname(EXP), "web")
 PY = sys.executable
 STATE = os.path.join(SCR, "designed_state.json")
-CURATED = ["forge", "medium", "medium_b", "medium_c", "medium_d", "medium_e", "large", "large_b", "large_c", "large_d"]
+CURATED = ["forge", "medium", "medium_d", "large", "large_b", "large_c", "large_d", "medium_e"]   # topologies.py order
 MIN_SHOWN = 3
 MIN_WT = 4   # Kraken's Forge, the minimal example, has 4 watchtowers; nothing simpler
-# One topology-bar button per family; "try again" rotates within it.
-FAMILIES = [(4, "lagoon", "Lagoon", "Lagune"), (99, "barrier", "Barrier Reef", "Barriereriff")]  # by max watchtowers
+# One topology-bar button per family; "try again" rotates within it. Smaller
+# topologies (4-5 watchtowers) are the Lagoon, bigger ones the Barrier Reef;
+# topologies.py's curated entries follow the same rule.
+FAMILIES = [(5, "lagoon", "Lagoon", "Lagune"), (99, "barrier", "Barrier Reef", "Barriereriff")]  # by max watchtowers
 VISIBLE = ["seq_abc", "seq_abcd", "seq_abcde", "and_nested"]
 NAMES = [("atoll", "Atoll", "Atoll"), ("delta", "Delta", "Delta"), ("fjord", "Fjord", "Fjord"),
          ("kelp", "Kelp Forest", "Kelpwald"), ("estuary", "Estuary", "Mündung"), ("seamount", "Seamount", "Tiefseeberg"),
@@ -123,6 +125,11 @@ def main():
         st["exported"][e["id"]] = e["hash"]
     for e in entries:   # family/label can change without the spec changing
         frags[e["id"]].update(family=e["family"], label=e["label"], label_de=e["label_de"])
+    sys.path.insert(0, EXP)
+    from topologies import TOPOLOGIES
+    for t in TOPOLOGIES:   # same for the curated ones, from topologies.py
+        if t["id"] in CURATED and t["id"] in old:
+            old[t["id"]].update(family=t["family"], label=t["label"], label_de=t["label_de"])
     keep = {e["id"] for e in entries}
     for tid in old:
         if tid not in CURATED and tid not in keep:

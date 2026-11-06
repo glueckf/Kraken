@@ -62,7 +62,7 @@ from inev.process_combination import compute_dependencies
 from kraken.run import _gather_problem_parameters
 from kraken.problem import PlacementProblem
 import scenarios_def
-from topologies import TOPOLOGIES
+from topologies import TOPOLOGIES, RETIRED
 import reef_topologies
 
 
@@ -83,7 +83,7 @@ def main():
     topology_id, scenario_id, placement_json = sys.argv[1], sys.argv[2], sys.argv[3]
     push_choice_json = sys.argv[4] if len(sys.argv) == 5 else "{}"
 
-    topology = next((t for t in TOPOLOGIES if t["id"] == topology_id), None)
+    topology = next((t for t in TOPOLOGIES + RETIRED if t["id"] == topology_id), None)
     if topology is None:
         fail(f"unknown topology_id: {topology_id!r}")
     paper_round = topology.get("kind") == "paper_example"

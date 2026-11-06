@@ -2,8 +2,6 @@ import json, os, subprocess, sys, math
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import reef_topologies as rt
 src = {
- "medium_b": (rt._MEDIUM_B_EDGES, rt._MEDIUM_B_LEAVES, rt._MEDIUM_B_CP),
- "medium_c": (rt._MEDIUM_C_EDGES, rt._MEDIUM_C_LEAVES, rt._MEDIUM_C_CP),
  "medium_d": (rt._MEDIUM_D_EDGES, rt._MEDIUM_D_LEAVES, rt._MEDIUM_D_CP),
  "medium_e": (rt._MEDIUM_E_EDGES, rt._MEDIUM_E_LEAVES, rt._MEDIUM_E_CP),
  "large": (rt._LARGE_EDGES, rt._LARGE_LEAVES, rt._LARGE_CP),

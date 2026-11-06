@@ -30,7 +30,7 @@ does.
     topologies as anchors), at most 2 per node count. Tooling in
     export/design/ (search, selection, integrate.py regenerates the
     BEGIN/END designed blocks in reef_topologies.py + topologies.py and
-    re-exports; families by watchtower count: 4 -> Lagoon, more ->
+    re-exports; families by watchtower count: 4-5 -> Lagoon, more ->
     Barrier Reef). First result (trench ... sound) was selected under the
     old, summing latency model; after the critical-path fix only strait
     still passed. Re-run 2026-11-06 under the fixed model (old archive
@@ -46,6 +46,14 @@ does.
     the "King Cloud" label, and wreck/pearl stack n1/n4 and n3/n5 close
     together. Grand Reef B-D and Reef E fail the drawing gates (stacked
     towers overlap) -- not touched.
+    Reclustered 2026-11-06: the >=4-watchtower rule now covers the curated
+    ones too, so medium_b and medium_c (3 each) are gone from the demo
+    (medium_c stays reconstructable as topologies.RETIRED for the latency
+    regression tests; its Q1 export is engine/tests/fixtures/). Families
+    by size: Lagoon = 4-5 watchtowers (medium, medium_d, dunes, cliffs,
+    reefflat, abyss, current, seagrass; 9-13 nodes), Barrier Reef = 6+
+    (large, large_b-d, medium_e, wreck, pearl, coral, whirlpool; 13-24
+    nodes). The buttons still open medium and large first.
 
 34. **Follow-up to item 33, same day — all DONE.** `medium_e` restructured
     (C "travels" on the left side, +3 watchtowers) and the 3-of-6

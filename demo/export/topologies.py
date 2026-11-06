@@ -45,28 +45,27 @@ TOPOLOGIES = [
     dict(id="forge", family="forge", label="Kraken's Forge", label_de="Krakens Schmiede",
          network_size=7, seed=None, kind="paper_example"),
 
-    # Reef variants (Lagoon family, with the simpler designed ones) -- the four curated queries (seq_abc/abcd/abcde,
-    # and_nested) laid out over five different fog networks: the original
-    # hand-built tree plus four hand-curated siblings (a left/right-wing
-    # split, the same split mirrored, a plain branching chain, and the first
-    # split again with its decision nodes renumbered -- see
-    # reef_topologies.py's build_medium_e for why), so edges vary between
-    # plays without the query itself changing -- and, unlike a random
-    # network, each of these four was actually designed and checked to place
-    # the story queries differently from the others, specifically at the
-    # *root* query's own node, not just "some node in the plan".
+    # Families go by watchtowers (fog nodes with children). Kraken's Forge
+    # has 4 and nothing shown has fewer; Lagoon is the smaller topologies
+    # with 4-5 watchtowers, Barrier Reef the bigger ones with 6 or more.
+    # design/integrate.py applies the same rule to the designed block below.
+
+    # Reef variants -- the four curated queries (seq_abc/abcd/abcde,
+    # and_nested) laid out over the original hand-built tree and two
+    # hand-curated siblings (a plain branching chain, and a left/right-wing
+    # split with its decision nodes renumbered -- see reef_topologies.py's
+    # build_medium_e for why), so edges vary between plays without the query
+    # itself changing -- and, unlike a random network, each was actually
+    # designed and checked to place the story queries differently from the
+    # others, specifically at the *root* query's own node, not just "some
+    # node in the plan". medium_e has 6 watchtowers, so it's a Barrier Reef
+    # (listed after the Grand Reef: a family button opens its first entry).
     dict(id="medium", family="lagoon", label="Lagoon", label_de="Lagune",
          network_size=12, seed=None, kind="hardcoded"),
-    dict(id="medium_b", family="lagoon", label="Lagoon", label_de="Lagune",
-         network_size=9, seed=None, kind="hand_curated"),
-    dict(id="medium_c", family="lagoon", label="Lagoon", label_de="Lagune",
-         network_size=9, seed=None, kind="hand_curated"),
     dict(id="medium_d", family="lagoon", label="Lagoon", label_de="Lagune",
          network_size=9, seed=None, kind="hand_curated"),
-    dict(id="medium_e", family="lagoon", label="Lagoon", label_de="Lagune",
-         network_size=13, seed=None, kind="hand_curated"),
 
-    # Grand Reef variants (Barrier Reef family, with the larger designed ones) -- same idea, deeper wings. "large" is the
+    # Grand Reef variants -- same idea, deeper wings. "large" is the
     # family's original random network (same shape, same seed=1024) but
     # pruned to the edges its letter reachability actually needs -- 24
     # instead of 67 -- so it reads as a bigger variant in the rotation
@@ -87,6 +86,8 @@ TOPOLOGIES = [
          network_size=13, seed=None, kind="hand_curated"),
     dict(id="large_d", family="barrier", label="Barrier Reef", label_de="Barriereriff",
          network_size=13, seed=None, kind="hand_curated"),
+    dict(id="medium_e", family="barrier", label="Barrier Reef", label_de="Barriereriff",
+         network_size=13, seed=None, kind="hand_curated"),
 
     # Designed topologies -- see reef_topologies.py. `scenarios` lists only
     # the queries that decompose into 2-5 operators on that network.
@@ -103,10 +104,10 @@ TOPOLOGIES = [
     dict(id="abyss", family="lagoon", label="Lagoon", label_de="Lagune",
          network_size=12, seed=None, kind="hand_curated",
          scenarios=['seq_abc', 'seq_abcd', 'seq_abcde', 'and_nested']),
-    dict(id="current", family="barrier", label="Barrier Reef", label_de="Barriereriff",
+    dict(id="current", family="lagoon", label="Lagoon", label_de="Lagune",
          network_size=13, seed=None, kind="hand_curated",
          scenarios=['seq_abc', 'seq_abcd', 'seq_abcde', 'and_nested']),
-    dict(id="seagrass", family="barrier", label="Barrier Reef", label_de="Barriereriff",
+    dict(id="seagrass", family="lagoon", label="Lagoon", label_de="Lagune",
          network_size=13, seed=None, kind="hand_curated",
          scenarios=['seq_abc', 'seq_abcd', 'seq_abcde']),
     dict(id="wreck", family="barrier", label="Barrier Reef", label_de="Barriereriff",
@@ -122,4 +123,12 @@ TOPOLOGIES = [
          network_size=18, seed=None, kind="hand_curated",
          scenarios=['seq_abc', 'seq_abcd', 'seq_abcde']),
     # END designed
+]
+
+# Not exported or shown (3 watchtowers, fewer than Kraken's Forge), but still
+# reconstructable by score_one.py: the critical-path latency bug was reported
+# on medium_c, and export/tests/test_score_one_latency.py pins it there.
+RETIRED = [
+    dict(id="medium_c", family="lagoon", label="Lagoon", label_de="Lagune",
+         network_size=9, seed=None, kind="hand_curated"),
 ]
