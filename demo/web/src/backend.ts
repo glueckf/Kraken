@@ -43,7 +43,9 @@ export async function refinePushPull(
   scenarioId: string,
   placement: Placement,
   pushChoice: Record<string, string | string[]> = {},
-  timeoutMs = 4000,
+  // A score takes 1-2.5 s on an idle laptop but ~8 s under load (the
+  // biggest networks, other processes); server.py itself gives up at 20 s.
+  timeoutMs = 12000,
 ): Promise<PushPullResult | null> {
   const base = backendBase();
   if (!base) return null;
