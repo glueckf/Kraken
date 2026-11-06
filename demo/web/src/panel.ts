@@ -159,12 +159,15 @@ export function renderQueryBar(state: AppState): string {
   const cur = state.scenario?.scenario_id;
   const active = state.topology.scenarios.find((s) => s.id === cur);
   const pills = state.topology.scenarios
-    .map((s, i) => {
+    .map((s) => {
       const on = s.id === cur ? "on" : "";
       const emblem = EMBLEM_EMOJI[s.emblem] ?? "";
+      // Numbered by the query (scenarios_def.py's Q1-Q5 order, exported as
+      // `difficulty`), not by position: a network that lacks a query skips
+      // its number, so the shark is Q2 everywhere.
       return (
         `<button class="qpill ${on}" data-scenario="${s.id}" title="${escapeHtml(t().queryTitle(s.title, t().subqueries(s.num_subqueries)))}" aria-pressed="${s.id === cur}">` +
-        `<span class="qpill-badge">Q${i + 1}</span>` +
+        `<span class="qpill-badge">Q${s.difficulty}</span>` +
         (emblem ? `<span class="qpill-emblem" aria-hidden="true">${emblem}</span>` : "") +
         `</button>`
       );

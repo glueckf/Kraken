@@ -54,6 +54,16 @@ export type BackendStatus = "off" | "unknown" | "up" | "down";
 
 const BACKEND_POLL_MS = 15000;
 
+/** Queries hidden per network for BSW (2026-11-07): copying Kraken's
+ * revealed plan loses in all three stages (BACKLOG.md item 36, not fixed for
+ * BSW). Only on networks that still show at least three queries without
+ * them; whirlpool, cliffs and wreck show three and keep theirs. */
+const HIDDEN_COPY_LOSES: Record<string, string[]> = {
+  medium: ["seq_abcd"],
+  medium_e: ["seq_abcd"],
+  current: ["and_nested"],
+};
+
 export class AppState {
   manifest: Manifest | null = null;
   topologyId: string | null = null;
@@ -164,6 +174,8 @@ export class AppState {
         if (topo.family !== "barrier") {
           topo.scenarios = topo.scenarios.filter((s) => s.id !== "seq_and_pairs");
         }
+        const hidden = HIDDEN_COPY_LOSES[topo.id] ?? [];
+        topo.scenarios = topo.scenarios.filter((s) => !hidden.includes(s.id));
       }
       const defaultTopo = this.manifest.topologies.find((t) => t.id === "medium") ?? this.manifest.topologies[0];
       this.topologyId = defaultTopo.id;

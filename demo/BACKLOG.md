@@ -1937,12 +1937,21 @@ in the demo now. Two concrete asks:
     which had no affected stage. medium Q5 is hidden in the UI (Q5 is shown
     on Barrier Reef only), so its 3 stages can't be played.
 
+    **Hidden for BSW (decided 2026-11-06 evening).** On a network that
+    shows more than three queries, a query whose copy loses in all three
+    stages is hidden (`HIDDEN_COPY_LOSES` in `state.ts`): `seq_abcd`
+    (turtle) on medium and medium_e, `and_nested` (seedling) on current.
+    That takes 9 of the 32 affected playable stages out of the UI; 23 stay.
+    whirlpool (shark, turtle), cliffs (shark) and wreck (seedling) lose in
+    all three stages too but show only three queries, so they keep them.
+
     Affected stages (F/B/C = Fast/Balanced/Cheap), 15 pairs in 10 topologies.
     Query numbers here and in item 32 are the *old* ones: Q2 = `seq_abcd`
-    (turtle), Q3 = `seq_abcde` (shark). Since 2026-11-06 the UI lists the
-    shark before the turtle, because it played easier (`scenarios_def.py`).
-    The UI numbers pills by position in each network's own query list, so
-    a designed network that lacks a query shifts the numbers after it.
+    (turtle), Q3 = `seq_abcde` (shark). Since 2026-11-06 the shark is Q2 and
+    the turtle Q3, because the shark played easier (`scenarios_def.py`).
+    Since the same evening the UI numbers a pill by its query (`difficulty`
+    in the manifest), not by its position in the network's own list, so a
+    query has the same number on every network (coral: Q2, Q3, Q4).
     - abyss Q3 F C
     - cliffs Q3 F B C
     - coral Q4 B C
