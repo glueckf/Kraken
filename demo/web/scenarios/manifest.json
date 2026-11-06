@@ -35,22 +35,22 @@
      "file": "medium/seq_abc.json"
     },
     {
-     "id": "seq_abcd",
-     "title": "SEQ(A, B, C, D)",
-     "emblem": "turtle",
-     "difficulty": 2,
-     "blurb": "A longer chain — one more operator to place.",
-     "num_subqueries": 4,
-     "file": "medium/seq_abcd.json"
-    },
-    {
      "id": "seq_abcde",
      "title": "SEQ(A, B, C, D, E)",
      "emblem": "shark",
-     "difficulty": 3,
+     "difficulty": 2,
      "blurb": "Branches that share a common sub-result.",
      "num_subqueries": 5,
      "file": "medium/seq_abcde.json"
+    },
+    {
+     "id": "seq_abcd",
+     "title": "SEQ(A, B, C, D)",
+     "emblem": "turtle",
+     "difficulty": 3,
+     "blurb": "A shorter chain than the shark's, but it plays harder.",
+     "num_subqueries": 4,
+     "file": "medium/seq_abcd.json"
     },
     {
      "id": "and_nested",
@@ -89,22 +89,22 @@
      "file": "medium_d/seq_abc.json"
     },
     {
-     "id": "seq_abcd",
-     "title": "SEQ(A, B, C, D)",
-     "emblem": "turtle",
-     "difficulty": 2,
-     "blurb": "A longer chain — one more operator to place.",
-     "num_subqueries": 4,
-     "file": "medium_d/seq_abcd.json"
-    },
-    {
      "id": "seq_abcde",
      "title": "SEQ(A, B, C, D, E)",
      "emblem": "shark",
-     "difficulty": 3,
+     "difficulty": 2,
      "blurb": "Branches that share a common sub-result.",
      "num_subqueries": 5,
      "file": "medium_d/seq_abcde.json"
+    },
+    {
+     "id": "seq_abcd",
+     "title": "SEQ(A, B, C, D)",
+     "emblem": "turtle",
+     "difficulty": 3,
+     "blurb": "A shorter chain than the shark's, but it plays harder.",
+     "num_subqueries": 4,
+     "file": "medium_d/seq_abcd.json"
     },
     {
      "id": "and_nested",
@@ -127,60 +127,6 @@
    ]
   },
   {
-   "id": "large",
-   "family": "barrier",
-   "label": "Barrier Reef",
-   "label_de": "Barriereriff",
-   "network_size": 24,
-   "scenarios": [
-    {
-     "id": "seq_abc",
-     "title": "SEQ(A, B, C)",
-     "emblem": "crab",
-     "difficulty": 1,
-     "blurb": "A short sequence over three streams. Warm-up.",
-     "num_subqueries": 2,
-     "file": "large/seq_abc.json"
-    },
-    {
-     "id": "seq_abcd",
-     "title": "SEQ(A, B, C, D)",
-     "emblem": "turtle",
-     "difficulty": 2,
-     "blurb": "A longer chain — one more operator to place.",
-     "num_subqueries": 2,
-     "file": "large/seq_abcd.json"
-    },
-    {
-     "id": "seq_abcde",
-     "title": "SEQ(A, B, C, D, E)",
-     "emblem": "shark",
-     "difficulty": 3,
-     "blurb": "Branches that share a common sub-result.",
-     "num_subqueries": 2,
-     "file": "large/seq_abcde.json"
-    },
-    {
-     "id": "and_nested",
-     "title": "AND(SEQ(A,B,C), D, SEQ(E,F))",
-     "emblem": "seedling",
-     "difficulty": 4,
-     "blurb": "A rich nested query touching all six streams.",
-     "num_subqueries": 5,
-     "file": "large/and_nested.json"
-    },
-    {
-     "id": "seq_and_pairs",
-     "title": "SEQ(AND(A,B), C, AND(D,E), F)",
-     "emblem": "octopus",
-     "difficulty": 5,
-     "blurb": "Two paired branches, chained together -- the most operators yet.",
-     "num_subqueries": 5,
-     "file": "large/seq_and_pairs.json"
-    }
-   ]
-  },
-  {
    "id": "large_b",
    "family": "barrier",
    "label": "Barrier Reef",
@@ -197,22 +143,22 @@
      "file": "large_b/seq_abc.json"
     },
     {
-     "id": "seq_abcd",
-     "title": "SEQ(A, B, C, D)",
-     "emblem": "turtle",
-     "difficulty": 2,
-     "blurb": "A longer chain — one more operator to place.",
-     "num_subqueries": 3,
-     "file": "large_b/seq_abcd.json"
-    },
-    {
      "id": "seq_abcde",
      "title": "SEQ(A, B, C, D, E)",
      "emblem": "shark",
-     "difficulty": 3,
+     "difficulty": 2,
      "blurb": "Branches that share a common sub-result.",
      "num_subqueries": 5,
      "file": "large_b/seq_abcde.json"
+    },
+    {
+     "id": "seq_abcd",
+     "title": "SEQ(A, B, C, D)",
+     "emblem": "turtle",
+     "difficulty": 3,
+     "blurb": "A shorter chain than the shark's, but it plays harder.",
+     "num_subqueries": 3,
+     "file": "large_b/seq_abcd.json"
     },
     {
      "id": "and_nested",
@@ -251,22 +197,22 @@
      "file": "large_c/seq_abc.json"
     },
     {
-     "id": "seq_abcd",
-     "title": "SEQ(A, B, C, D)",
-     "emblem": "turtle",
-     "difficulty": 2,
-     "blurb": "A longer chain — one more operator to place.",
-     "num_subqueries": 4,
-     "file": "large_c/seq_abcd.json"
-    },
-    {
      "id": "seq_abcde",
      "title": "SEQ(A, B, C, D, E)",
      "emblem": "shark",
-     "difficulty": 3,
+     "difficulty": 2,
      "blurb": "Branches that share a common sub-result.",
      "num_subqueries": 5,
      "file": "large_c/seq_abcde.json"
+    },
+    {
+     "id": "seq_abcd",
+     "title": "SEQ(A, B, C, D)",
+     "emblem": "turtle",
+     "difficulty": 3,
+     "blurb": "A shorter chain than the shark's, but it plays harder.",
+     "num_subqueries": 4,
+     "file": "large_c/seq_abcd.json"
     },
     {
      "id": "and_nested",
@@ -305,22 +251,22 @@
      "file": "large_d/seq_abc.json"
     },
     {
-     "id": "seq_abcd",
-     "title": "SEQ(A, B, C, D)",
-     "emblem": "turtle",
-     "difficulty": 2,
-     "blurb": "A longer chain — one more operator to place.",
-     "num_subqueries": 4,
-     "file": "large_d/seq_abcd.json"
-    },
-    {
      "id": "seq_abcde",
      "title": "SEQ(A, B, C, D, E)",
      "emblem": "shark",
-     "difficulty": 3,
+     "difficulty": 2,
      "blurb": "Branches that share a common sub-result.",
      "num_subqueries": 5,
      "file": "large_d/seq_abcde.json"
+    },
+    {
+     "id": "seq_abcd",
+     "title": "SEQ(A, B, C, D)",
+     "emblem": "turtle",
+     "difficulty": 3,
+     "blurb": "A shorter chain than the shark's, but it plays harder.",
+     "num_subqueries": 4,
+     "file": "large_d/seq_abcd.json"
     },
     {
      "id": "and_nested",
@@ -359,22 +305,22 @@
      "file": "medium_e/seq_abc.json"
     },
     {
-     "id": "seq_abcd",
-     "title": "SEQ(A, B, C, D)",
-     "emblem": "turtle",
-     "difficulty": 2,
-     "blurb": "A longer chain — one more operator to place.",
-     "num_subqueries": 4,
-     "file": "medium_e/seq_abcd.json"
-    },
-    {
      "id": "seq_abcde",
      "title": "SEQ(A, B, C, D, E)",
      "emblem": "shark",
-     "difficulty": 3,
+     "difficulty": 2,
      "blurb": "Branches that share a common sub-result.",
      "num_subqueries": 5,
      "file": "medium_e/seq_abcde.json"
+    },
+    {
+     "id": "seq_abcd",
+     "title": "SEQ(A, B, C, D)",
+     "emblem": "turtle",
+     "difficulty": 3,
+     "blurb": "A shorter chain than the shark's, but it plays harder.",
+     "num_subqueries": 4,
+     "file": "medium_e/seq_abcd.json"
     },
     {
      "id": "and_nested",
@@ -413,22 +359,22 @@
      "file": "dunes/seq_abc.json"
     },
     {
-     "id": "seq_abcd",
-     "title": "SEQ(A, B, C, D)",
-     "emblem": "turtle",
-     "difficulty": 2,
-     "blurb": "A longer chain — one more operator to place.",
-     "num_subqueries": 4,
-     "file": "dunes/seq_abcd.json"
-    },
-    {
      "id": "seq_abcde",
      "title": "SEQ(A, B, C, D, E)",
      "emblem": "shark",
-     "difficulty": 3,
+     "difficulty": 2,
      "blurb": "Branches that share a common sub-result.",
      "num_subqueries": 5,
      "file": "dunes/seq_abcde.json"
+    },
+    {
+     "id": "seq_abcd",
+     "title": "SEQ(A, B, C, D)",
+     "emblem": "turtle",
+     "difficulty": 3,
+     "blurb": "A shorter chain than the shark's, but it plays harder.",
+     "num_subqueries": 4,
+     "file": "dunes/seq_abcd.json"
     }
    ]
   },
@@ -449,22 +395,22 @@
      "file": "cliffs/seq_abc.json"
     },
     {
-     "id": "seq_abcd",
-     "title": "SEQ(A, B, C, D)",
-     "emblem": "turtle",
-     "difficulty": 2,
-     "blurb": "A longer chain — one more operator to place.",
-     "num_subqueries": 4,
-     "file": "cliffs/seq_abcd.json"
-    },
-    {
      "id": "seq_abcde",
      "title": "SEQ(A, B, C, D, E)",
      "emblem": "shark",
-     "difficulty": 3,
+     "difficulty": 2,
      "blurb": "Branches that share a common sub-result.",
      "num_subqueries": 5,
      "file": "cliffs/seq_abcde.json"
+    },
+    {
+     "id": "seq_abcd",
+     "title": "SEQ(A, B, C, D)",
+     "emblem": "turtle",
+     "difficulty": 3,
+     "blurb": "A shorter chain than the shark's, but it plays harder.",
+     "num_subqueries": 4,
+     "file": "cliffs/seq_abcd.json"
     }
    ]
   },
@@ -485,22 +431,22 @@
      "file": "reefflat/seq_abc.json"
     },
     {
-     "id": "seq_abcd",
-     "title": "SEQ(A, B, C, D)",
-     "emblem": "turtle",
-     "difficulty": 2,
-     "blurb": "A longer chain — one more operator to place.",
-     "num_subqueries": 4,
-     "file": "reefflat/seq_abcd.json"
-    },
-    {
      "id": "seq_abcde",
      "title": "SEQ(A, B, C, D, E)",
      "emblem": "shark",
-     "difficulty": 3,
+     "difficulty": 2,
      "blurb": "Branches that share a common sub-result.",
      "num_subqueries": 5,
      "file": "reefflat/seq_abcde.json"
+    },
+    {
+     "id": "seq_abcd",
+     "title": "SEQ(A, B, C, D)",
+     "emblem": "turtle",
+     "difficulty": 3,
+     "blurb": "A shorter chain than the shark's, but it plays harder.",
+     "num_subqueries": 4,
+     "file": "reefflat/seq_abcd.json"
     }
    ]
   },
@@ -521,22 +467,22 @@
      "file": "abyss/seq_abc.json"
     },
     {
-     "id": "seq_abcd",
-     "title": "SEQ(A, B, C, D)",
-     "emblem": "turtle",
-     "difficulty": 2,
-     "blurb": "A longer chain — one more operator to place.",
-     "num_subqueries": 4,
-     "file": "abyss/seq_abcd.json"
-    },
-    {
      "id": "seq_abcde",
      "title": "SEQ(A, B, C, D, E)",
      "emblem": "shark",
-     "difficulty": 3,
+     "difficulty": 2,
      "blurb": "Branches that share a common sub-result.",
      "num_subqueries": 5,
      "file": "abyss/seq_abcde.json"
+    },
+    {
+     "id": "seq_abcd",
+     "title": "SEQ(A, B, C, D)",
+     "emblem": "turtle",
+     "difficulty": 3,
+     "blurb": "A shorter chain than the shark's, but it plays harder.",
+     "num_subqueries": 4,
+     "file": "abyss/seq_abcd.json"
     },
     {
      "id": "and_nested",
@@ -566,22 +512,22 @@
      "file": "current/seq_abc.json"
     },
     {
-     "id": "seq_abcd",
-     "title": "SEQ(A, B, C, D)",
-     "emblem": "turtle",
-     "difficulty": 2,
-     "blurb": "A longer chain — one more operator to place.",
-     "num_subqueries": 3,
-     "file": "current/seq_abcd.json"
-    },
-    {
      "id": "seq_abcde",
      "title": "SEQ(A, B, C, D, E)",
      "emblem": "shark",
-     "difficulty": 3,
+     "difficulty": 2,
      "blurb": "Branches that share a common sub-result.",
      "num_subqueries": 4,
      "file": "current/seq_abcde.json"
+    },
+    {
+     "id": "seq_abcd",
+     "title": "SEQ(A, B, C, D)",
+     "emblem": "turtle",
+     "difficulty": 3,
+     "blurb": "A shorter chain than the shark's, but it plays harder.",
+     "num_subqueries": 3,
+     "file": "current/seq_abcd.json"
     },
     {
      "id": "and_nested",
@@ -611,22 +557,22 @@
      "file": "seagrass/seq_abc.json"
     },
     {
-     "id": "seq_abcd",
-     "title": "SEQ(A, B, C, D)",
-     "emblem": "turtle",
-     "difficulty": 2,
-     "blurb": "A longer chain — one more operator to place.",
-     "num_subqueries": 2,
-     "file": "seagrass/seq_abcd.json"
-    },
-    {
      "id": "seq_abcde",
      "title": "SEQ(A, B, C, D, E)",
      "emblem": "shark",
-     "difficulty": 3,
+     "difficulty": 2,
      "blurb": "Branches that share a common sub-result.",
      "num_subqueries": 2,
      "file": "seagrass/seq_abcde.json"
+    },
+    {
+     "id": "seq_abcd",
+     "title": "SEQ(A, B, C, D)",
+     "emblem": "turtle",
+     "difficulty": 3,
+     "blurb": "A shorter chain than the shark's, but it plays harder.",
+     "num_subqueries": 2,
+     "file": "seagrass/seq_abcd.json"
     }
    ]
   },
@@ -650,7 +596,7 @@
      "id": "seq_abcde",
      "title": "SEQ(A, B, C, D, E)",
      "emblem": "shark",
-     "difficulty": 3,
+     "difficulty": 2,
      "blurb": "Branches that share a common sub-result.",
      "num_subqueries": 3,
      "file": "wreck/seq_abcde.json"
@@ -683,22 +629,22 @@
      "file": "pearl/seq_abc.json"
     },
     {
-     "id": "seq_abcd",
-     "title": "SEQ(A, B, C, D)",
-     "emblem": "turtle",
-     "difficulty": 2,
-     "blurb": "A longer chain — one more operator to place.",
-     "num_subqueries": 3,
-     "file": "pearl/seq_abcd.json"
-    },
-    {
      "id": "seq_abcde",
      "title": "SEQ(A, B, C, D, E)",
      "emblem": "shark",
-     "difficulty": 3,
+     "difficulty": 2,
      "blurb": "Branches that share a common sub-result.",
      "num_subqueries": 3,
      "file": "pearl/seq_abcde.json"
+    },
+    {
+     "id": "seq_abcd",
+     "title": "SEQ(A, B, C, D)",
+     "emblem": "turtle",
+     "difficulty": 3,
+     "blurb": "A shorter chain than the shark's, but it plays harder.",
+     "num_subqueries": 3,
+     "file": "pearl/seq_abcd.json"
     }
    ]
   },
@@ -710,22 +656,22 @@
    "network_size": 18,
    "scenarios": [
     {
-     "id": "seq_abcd",
-     "title": "SEQ(A, B, C, D)",
-     "emblem": "turtle",
-     "difficulty": 2,
-     "blurb": "A longer chain — one more operator to place.",
-     "num_subqueries": 2,
-     "file": "coral/seq_abcd.json"
-    },
-    {
      "id": "seq_abcde",
      "title": "SEQ(A, B, C, D, E)",
      "emblem": "shark",
-     "difficulty": 3,
+     "difficulty": 2,
      "blurb": "Branches that share a common sub-result.",
      "num_subqueries": 3,
      "file": "coral/seq_abcde.json"
+    },
+    {
+     "id": "seq_abcd",
+     "title": "SEQ(A, B, C, D)",
+     "emblem": "turtle",
+     "difficulty": 3,
+     "blurb": "A shorter chain than the shark's, but it plays harder.",
+     "num_subqueries": 2,
+     "file": "coral/seq_abcd.json"
     },
     {
      "id": "and_nested",
@@ -755,22 +701,22 @@
      "file": "whirlpool/seq_abc.json"
     },
     {
-     "id": "seq_abcd",
-     "title": "SEQ(A, B, C, D)",
-     "emblem": "turtle",
-     "difficulty": 2,
-     "blurb": "A longer chain — one more operator to place.",
-     "num_subqueries": 4,
-     "file": "whirlpool/seq_abcd.json"
-    },
-    {
      "id": "seq_abcde",
      "title": "SEQ(A, B, C, D, E)",
      "emblem": "shark",
-     "difficulty": 3,
+     "difficulty": 2,
      "blurb": "Branches that share a common sub-result.",
      "num_subqueries": 5,
      "file": "whirlpool/seq_abcde.json"
+    },
+    {
+     "id": "seq_abcd",
+     "title": "SEQ(A, B, C, D)",
+     "emblem": "turtle",
+     "difficulty": 3,
+     "blurb": "A shorter chain than the shark's, but it plays harder.",
+     "num_subqueries": 4,
+     "file": "whirlpool/seq_abcd.json"
     }
    ]
   }

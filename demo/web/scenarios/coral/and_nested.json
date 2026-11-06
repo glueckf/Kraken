@@ -891,9 +891,9 @@
     "AND(SEQ(A, B, C), D, SEQ(E, F))": 0
    },
    "comm": "mixed",
-   "cost": 1382.2206040766002,
+   "cost": 1382.2227741867503,
    "latency": 10.0,
-   "processing_latency": 1.4503129480308838,
+   "processing_latency": 1.4503129530502963,
    "per_placement": {
     "SEQ(A, B)": {
      "node": 4,
@@ -944,9 +944,9 @@
     "AND(SEQ(A, B, C), D, SEQ(E, F))": {
      "node": 0,
      "strategy": "push_pull",
-     "cost": 4.076600156329777e-06,
+     "cost": 0.0021741867500425483,
      "lt": 1.0,
-     "lp": 9.429077987102158e-12,
+     "lp": 5.028841593121151e-09,
      "edges": {
       "AND(SEQ(A, B, C), SEQ(E, F))": "push",
       "AND(SEQ(A, B), D, F)": "push"
@@ -1029,7 +1029,7 @@
      }
     }
    },
-   "solve_seconds": 0.024558067321777344
+   "solve_seconds": 0.056493520736694336
   },
   {
    "alpha": 0.6,
@@ -1042,9 +1042,9 @@
     "AND(SEQ(A, B, C), D, SEQ(E, F))": 0
    },
    "comm": "push_pull",
-   "cost": 978.7234360920389,
+   "cost": 978.7256062021888,
    "latency": 16.0,
-   "processing_latency": 0.12695407681426488,
+   "processing_latency": 0.1269540818336774,
    "per_placement": {
     "SEQ(A, B)": {
      "node": 4,
@@ -1095,16 +1095,16 @@
     "AND(SEQ(A, B, C), D, SEQ(E, F))": {
      "node": 0,
      "strategy": "push_pull",
-     "cost": 4.076600156329777e-06,
+     "cost": 0.0021741867500425483,
      "lt": 1.0,
-     "lp": 9.429077987102158e-12,
+     "lp": 5.028841593121151e-09,
      "edges": {
       "AND(SEQ(A, B, C), SEQ(E, F))": "push",
       "AND(SEQ(A, B), D, F)": "push"
      }
     }
    },
-   "solve_seconds": 0.017134666442871094
+   "solve_seconds": 0.036544084548950195
   },
   {
    "alpha": 0.9,
@@ -1117,9 +1117,9 @@
     "AND(SEQ(A, B, C), D, SEQ(E, F))": 0
    },
    "comm": "push_pull",
-   "cost": 978.7234360920389,
+   "cost": 978.7256062021888,
    "latency": 16.0,
-   "processing_latency": 0.12695407681426488,
+   "processing_latency": 0.1269540818336774,
    "per_placement": {
     "SEQ(A, B)": {
      "node": 4,
@@ -1170,16 +1170,16 @@
     "AND(SEQ(A, B, C), D, SEQ(E, F))": {
      "node": 0,
      "strategy": "push_pull",
-     "cost": 4.076600156329777e-06,
+     "cost": 0.0021741867500425483,
      "lt": 1.0,
-     "lp": 9.429077987102158e-12,
+     "lp": 5.028841593121151e-09,
      "edges": {
       "AND(SEQ(A, B, C), SEQ(E, F))": "push",
       "AND(SEQ(A, B), D, F)": "push"
      }
     }
    },
-   "solve_seconds": 0.017198801040649414
+   "solve_seconds": 0.036334991455078125
   }
  ],
  "norm_anchors": {

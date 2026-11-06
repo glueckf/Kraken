@@ -3,8 +3,8 @@
  "scenario_id": "seq_abcd",
  "title": "SEQ(A, B, C, D)",
  "emblem": "turtle",
- "difficulty": 2,
- "blurb": "A longer chain — one more operator to place.",
+ "difficulty": 3,
+ "blurb": "A shorter chain than the shark's, but it plays harder.",
  "query": "SEQ(A, B, C, D)",
  "config": {
   "cost_weight": 0.5,

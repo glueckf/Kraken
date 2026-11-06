@@ -59,27 +59,16 @@ TOPOLOGIES = [
     # designed and checked to place the story queries differently from the
     # others, specifically at the *root* query's own node, not just "some
     # node in the plan". medium_e has 6 watchtowers, so it's a Barrier Reef
-    # (listed after the Grand Reef: a family button opens its first entry).
+    # (listed after the Grand Reef variants: a family button opens its first
+    # entry).
     dict(id="medium", family="lagoon", label="Lagoon", label_de="Lagune",
          network_size=12, seed=None, kind="hardcoded"),
     dict(id="medium_d", family="lagoon", label="Lagoon", label_de="Lagune",
          network_size=9, seed=None, kind="hand_curated"),
 
-    # Grand Reef variants -- same idea, deeper wings. "large" is the
-    # family's original random network (same shape, same seed=1024) but
-    # pruned to the edges its letter reachability actually needs -- 24
-    # instead of 67 -- so it reads as a bigger variant in the rotation
-    # instead of an illegible tangle; see reef_topologies.py's build_large
-    # for the pruning method. Its leaf *letter* assignment (not the edges)
-    # used to scatter every letter across several unrelated branches,
-    # which collapsed every query's placement choice down to "the cloud,
-    # nothing else" -- that's why seq_abc/seq_abcd were excluded below.
-    # Fixed by redesigning the letter assignment instead (see
-    # reef_topologies.py's _LARGE_LEAVES); all five story queries now have
-    # real decomposition and real placement choice here, so the exclusion
-    # is gone. See demo/BACKLOG.md item #30 follow-up.
-    dict(id="large", family="barrier", label="Barrier Reef", label_de="Barriereriff",
-         network_size=24, seed=None, kind="hand_curated"),
+    # Grand Reef variants -- same idea, deeper wings. The original Grand
+    # Reef ("large") is retired, see RETIRED below; a Barrier Reef family
+    # button now opens large_b.
     dict(id="large_b", family="barrier", label="Barrier Reef", label_de="Barriereriff",
          network_size=13, seed=None, kind="hand_curated"),
     dict(id="large_c", family="barrier", label="Barrier Reef", label_de="Barriereriff",
@@ -125,10 +114,19 @@ TOPOLOGIES = [
     # END designed
 ]
 
-# Not exported or shown (3 watchtowers, fewer than Kraken's Forge), but still
-# reconstructable by score_one.py: the critical-path latency bug was reported
-# on medium_c, and export/tests/test_score_one_latency.py pins it there.
+# Not exported or shown, but still reconstructable by score_one.py.
 RETIRED = [
+    # 3 watchtowers, fewer than Kraken's Forge. The critical-path latency bug
+    # was reported on medium_c, and export/tests/test_score_one_latency.py
+    # pins it there.
     dict(id="medium_c", family="lagoon", label="Lagoon", label_de="Lagune",
          network_size=9, seed=None, kind="hand_curated"),
+    # Retired 2026-11-06. "large" was the family's original random network
+    # (seed=1024) pruned to 24 edges, with a redesigned letter assignment
+    # (reef_topologies.py's build_large and _LARGE_LEAVES; BACKLOG.md item
+    # #30). Even so, every operator of every query had exactly one valid
+    # host (the cloud), so the round was only a push/pull quiz, and its Q5
+    # had shipped with two operators leaked from Q4 (BACKLOG.md item #32).
+    dict(id="large", family="barrier", label="Barrier Reef", label_de="Barriereriff",
+         network_size=24, seed=None, kind="hand_curated"),
 ]

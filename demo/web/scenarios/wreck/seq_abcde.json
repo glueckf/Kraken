@@ -3,7 +3,7 @@
  "scenario_id": "seq_abcde",
  "title": "SEQ(A, B, C, D, E)",
  "emblem": "shark",
- "difficulty": 3,
+ "difficulty": 2,
  "blurb": "Branches that share a common sub-result.",
  "query": "SEQ(A, B, C, D, E)",
  "config": {

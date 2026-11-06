@@ -154,14 +154,16 @@ export class AppState {
     this.emit();
     try {
       this.manifest = await fetchJson<Manifest>(`${base}manifest.json`);
-      // seq_and_pairs ("Oktopus-Puls", Q5) is hidden: the engine computes a
-      // different subquery decomposition at export time than at live-score
-      // time for this query, so every confirmed plan fails push-pull
-      // scoring with "incomplete placement" regardless of what the player
-      // does. Not a demo-layer bug -- see BACKLOG.md item 32. Remove this
-      // filter once that's fixed upstream.
+      // seq_and_pairs ("Oktopus-Puls", Q5) is a Barrier Reef query only.
+      // On Lagoon's medium, copying Kraken's revealed plan loses in all
+      // three stages (BACKLOG.md item 36, not fixed for BSW), so Lagoon
+      // keeps it hidden. It used to be hidden everywhere because of an
+      // export-time decomposition leak; only the Grand Reef's copy was
+      // affected, and that topology is retired (item 32).
       for (const topo of this.manifest.topologies) {
-        topo.scenarios = topo.scenarios.filter((s) => s.id !== "seq_and_pairs");
+        if (topo.family !== "barrier") {
+          topo.scenarios = topo.scenarios.filter((s) => s.id !== "seq_and_pairs");
+        }
       }
       const defaultTopo = this.manifest.topologies.find((t) => t.id === "medium") ?? this.manifest.topologies[0];
       this.topologyId = defaultTopo.id;
@@ -520,15 +522,23 @@ export class AppState {
     // 2026-11-05 ("try again gave me 3 times the same topology"). The pool
     // is restricted to the *same family* as the current topology
     // (topologies.py has several per family, each a different hand-curated
-    // or random shape) -- Reef stays Reef, Grand Reef stays Grand Reef, so
-    // "try again" never surprises a visitor mid-round with a totally
-    // different node count or label; the family buttons already offer the
-    // cross-family jump explicitly. The paper's fixed "Kraken's Forge"
-    // example is excluded regardless: it's a deliberate separate round a
-    // visitor taps into on purpose, not something "try again" should pick.
-    const jumpToOtherTopology = (this.reveal || this.confirmed) && this.manifest && this.topology
+    // or random shape) -- Lagoon stays Lagoon, Barrier Reef stays Barrier
+    // Reef, so "try again" never surprises a visitor mid-round with a
+    // totally different node count or label; the family buttons already
+    // offer the cross-family jump explicitly. Within the family it prefers
+    // siblings that have the current query: the designed variants carry
+    // only some queries (none has Q5), and landing on one silently dropped
+    // the visitor back to Q1 -- for Q5 on Barrier Reef, 4 of 7 siblings.
+    // Only if no sibling has the query does it fall back to the whole family.
+    // The paper's fixed "Kraken's Forge" example is excluded regardless:
+    // it's a deliberate separate round a visitor taps into on purpose, not
+    // something "try again" should pick.
+    const siblings = (this.reveal || this.confirmed) && this.manifest && this.topology
       ? this.manifest.topologies.filter((t) => t.id !== this.topologyId && t.family === this.topology!.family)
       : [];
+    const queryId = this.scenario?.scenario_id;
+    const withQuery = siblings.filter((t) => t.scenarios.some((s) => s.id === queryId));
+    const jumpToOtherTopology = withQuery.length ? withQuery : siblings;
 
     this.placement = {};
     this.pushChoice = {};

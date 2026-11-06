@@ -650,8 +650,9 @@ def _cleanup_junk():
                     pass
 
 
-def export_one_topology(topology):
-    """Build + write all scenarios for a single topology. Returns (manifest_entry, ok)."""
+def export_one_topology(topology, only=None):
+    """Build + write all scenarios for a single topology (or just the one with
+    id `only`). Returns (manifest_entry, ok)."""
     topo_dir = os.path.join(OUT_DIR, topology["id"])
     os.makedirs(topo_dir, exist_ok=True)
     entry = {
@@ -666,6 +667,8 @@ def export_one_topology(topology):
     wanted = topology.get("scenarios")
     for spec in scenarios_def.SCENARIOS:
         if wanted is not None and spec["id"] not in wanted:
+            continue
+        if only is not None and spec["id"] != only:
             continue
         print(f"--- exporting {topology['id']}/{spec['id']} ({spec['title']}) ---")
         try:
@@ -696,39 +699,67 @@ def export_one_topology(topology):
 _TOPOLOGY_BY_ID = {t["id"]: t for t in TOPOLOGIES}
 
 
+def _fragment_path(topology_id, scenario_id):
+    suffix = f"-{scenario_id}" if scenario_id else ""
+    return os.path.join(OUT_DIR, f".manifest-{topology_id}{suffix}.json")
+
+
 def main():
-    # Child mode: `export_scenario.py <topology-id>` builds just that one
-    # topology and writes its manifest fragment. Each topology gets its own
-    # fresh interpreter (see the driver below) so RNG state from one topology
-    # (random.seed for the sized-random ones) can never leak into another —
-    # in particular it can't perturb the untouched, hand-built "medium" reef.
+    # Child mode: `export_scenario.py <topology-id> [<scenario-id>]` builds
+    # that topology (or just that one of its scenarios) and writes its
+    # manifest fragment. Every scenario gets its own fresh interpreter (see
+    # the driver below), for two reasons:
+    #   - RNG state from one topology (random.seed for the sized-random ones)
+    #     can never leak into another -- in particular it can't perturb the
+    #     untouched, hand-built "medium" reef.
+    #   - INES's Simulation keeps its projection lists and decomposition
+    #     dicts at class level (h_projlist, h_combiDict, ...), shared by every
+    #     instance in a process. A query built after another one in the same
+    #     process can pick up the earlier query's projections as operators:
+    #     the retired Grand Reef's Q5 shipped two of Q4's (BACKLOG.md #32).
     if len(sys.argv) > 1 and sys.argv[1] in _TOPOLOGY_BY_ID:
         topology = _TOPOLOGY_BY_ID[sys.argv[1]]
+        only = sys.argv[2] if len(sys.argv) > 2 else None
         if topology.get("kind") == "paper_example":
             entry, ok = export_factory_topology(topology)
         else:
-            entry, ok = export_one_topology(topology)
-        frag_path = os.path.join(OUT_DIR, f".manifest-{topology['id']}.json")
-        with open(frag_path, "w", encoding="utf-8") as f:
+            entry, ok = export_one_topology(topology, only)
+        with open(_fragment_path(topology["id"], only), "w", encoding="utf-8") as f:
             json.dump(entry, f)
         _cleanup_junk()
         sys.exit(0 if ok else 1)
 
-    # Driver mode: one fresh subprocess per topology, then merge manifests.
+    # Driver mode: one fresh subprocess per scenario, then merge manifests.
     os.makedirs(OUT_DIR, exist_ok=True)
     manifest = {"topologies": []}
     ok = True
     for topology in TOPOLOGIES:
         print(f"=== topology: {topology['id']} ({topology['network_size']} nodes) ===")
-        r = subprocess.run([sys.executable, os.path.abspath(__file__), topology["id"]])
-        frag_path = os.path.join(OUT_DIR, f".manifest-{topology['id']}.json")
-        if r.returncode != 0 or not os.path.exists(frag_path):
+        if topology.get("kind") == "paper_example":
+            parts = [None]   # one fixed scenario, built by its own code path
+        else:
+            wanted = topology.get("scenarios")
+            parts = [s["id"] for s in scenarios_def.SCENARIOS if wanted is None or s["id"] in wanted]
+        entry, topology_ok = None, True
+        for scenario_id in parts:
+            r = subprocess.run([sys.executable, os.path.abspath(__file__), topology["id"]]
+                               + ([scenario_id] if scenario_id else []))
+            frag_path = _fragment_path(topology["id"], scenario_id)
+            if r.returncode != 0 or not os.path.exists(frag_path):
+                topology_ok = False
+                print(f"  !! subprocess failed for {topology['id']}/{scenario_id or '*'} (exit {r.returncode})")
+                continue
+            with open(frag_path, encoding="utf-8") as f:
+                part = json.load(f)
+            os.remove(frag_path)
+            if entry is None:
+                entry = part
+            else:
+                entry["scenarios"].extend(part["scenarios"])
+        if not topology_ok:
             ok = False
-            print(f"  !! subprocess failed for topology {topology['id']} (exit {r.returncode})")
             continue
-        with open(frag_path, encoding="utf-8") as f:
-            manifest["topologies"].append(json.load(f))
-        os.remove(frag_path)
+        manifest["topologies"].append(entry)
 
     with open(os.path.join(OUT_DIR, "manifest.json"), "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=1, ensure_ascii=False)

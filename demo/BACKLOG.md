@@ -53,7 +53,9 @@ does.
     by size: Lagoon = 4-5 watchtowers (medium, medium_d, dunes, cliffs,
     reefflat, abyss, current, seagrass; 9-13 nodes), Barrier Reef = 6+
     (large, large_b-d, medium_e, wreck, pearl, coral, whirlpool; 13-24
-    nodes). The buttons still open medium and large first.
+    nodes). The buttons still open medium and large first. Later the same
+    day Grand Reef (`large`) was retired (item 32), so the Barrier Reef
+    button opens large_b.
 
 34. **Follow-up to item 33, same day — all DONE.** `medium_e` restructured
     (C "travels" on the left side, +3 watchtowers) and the 3-of-6
@@ -1885,6 +1887,133 @@ in the demo now. Two concrete asks:
 
 ## Engine (research code, not demo) — flagged, not scoped
 
+36. **Copying Kraken's revealed plan can lose — 36 of 198 stages
+    (found 2026-11-06). Not fixed for BSW.** Found by an exhaustive play
+    of every stage (every placement × push/pull choice, scored the way the
+    UI scores). In these stages a player who copies Kraken's plan exactly
+    scores worse than Kraken's shown score, so the verdict is a loss. In 3
+    of them the gap is below 1e-6, invisible at the 3 decimals shown,
+    because `panel.ts` (line 277) compares at `+ 1e-9`. **Decision
+    2026-11-06: leave (a) and (c) as is for BSW.** The cause is too
+    complicated to explain to the audience, and fixing it needs
+    preparation. (b) was fixed the same day (see below).
+
+    The 198 stages include the since-retired Grand Reef (`large`, item 32),
+    which had no affected stage. medium Q5 is hidden in the UI (Q5 is shown
+    on Barrier Reef only), so its 3 stages can't be played.
+
+    Affected stages (F/B/C = Fast/Balanced/Cheap), 15 pairs in 10 topologies.
+    Query numbers here and in item 32 are the *old* ones: Q2 = `seq_abcd`
+    (turtle), Q3 = `seq_abcde` (shark). Since 2026-11-06 the UI lists the
+    shark before the turtle, because it played easier (`scenarios_def.py`).
+    The UI numbers pills by position in each network's own query list, so
+    a designed network that lacks a query shifts the numbers after it.
+    - abyss Q3 F C
+    - cliffs Q3 F B C
+    - coral Q4 B C
+    - current Q3 F C; Q4 F B C
+    - dunes Q2 F C; Q3 F C
+    - medium Q2 F B C; Q5 F B C
+    - medium_e Q2 F B C; Q3 B
+    - reefflat Q3 C
+    - whirlpool Q2 F B C; Q3 F B C
+    - wreck Q4 F B C
+
+    There are three causes; each one was verified by re-exporting in a
+    fresh process with that cause patched out and checking that Kraken's
+    stage cost then matches what the UI charges.
+
+    **(a) Kraken's letter-fraction discount: 30 stages.**
+    - Where: INES `src/kraken/components/cost_calculator.py`,
+      `_compute_partial_cost_adjustment` (fraction fallback, ~line 753),
+      called from `_compute_acquisition_adjustment`.
+    - What it does: when an operator's input is another operator's stream
+      (e.g. `SEQ(A, B, C)` feeding the root), the push_pull path subtracts
+      `step cost × (letters already at the node / all letters)`.
+    - The all-push path (`_compute_all_push_adjustment`) only matches exact
+      stream names and gives no discount; neither does the demo's scorer.
+      So Kraken reports "push_pull with every input pushed", which is the
+      same plan as all-push at a lower price. Example, medium Q2: one
+      operator is shown at 8.207 but costs 24.621 when sent.
+    - Added in INES 8d82db0 ("feat: implement kraken2_0").
+    - The two `score_one.py` comments (lines 33 and 220) blame "a separate
+      PrePP bug (cost off by a division-like factor, e.g. 609.0 instead of
+      1827.0)". That is this same Kraken function: 609 = 1827 × 1/3.
+    - Open modeling question, to settle with the Kraken authors before any
+      fix. Can letters that already reached a node inside other streams be
+      reused?
+      - If yes, the discount is intended, and the all-push path and
+        `score_one.py` must apply it too.
+      - If only whole results are reused (AB's result feeds ABC, ABC's
+        feeds ABCD), the fraction discount is wrong and should go.
+
+    **(b) PrePP parser bug, stacked with (a): 5 stages** (wreck Q4 F/B/C,
+    coral Q4 B/C). **FIXED 2026-11-06**, with a regression test
+    (`tests/test_nested_query_components.py`): INES branch
+    `az1_fix_prepp_nested_query_parser` (eb47a48, pushed 2026-11-06, PR not
+    yet opened), feat/demo 818f47e, feature/cost_opt_idea 324284a.
+    Re-exported 2026-11-06: of all 63 scenarios only wreck Q4 and coral Q4
+    changed. Kraken keeps the same plans; the root operator's cost goes up
+    (wreck 0.0045 → 0.605). The 5 stages stay affected until (a) is fixed
+    too.
+    - Where: INES `src/prepp/prepp.py`, `get_all_query_components`
+      (~line 224). This is original INES code (efdf66c).
+    - What goes wrong: `open_parentheses` is not reset for each nested
+      operand. Every nested operand after the first is cut to `"SEQ("` or
+      `"AND("`, and all of its letters except the last are dropped:
+      - `AND(SEQ(B, C), SEQ(E, F))` gives `['SEQ(B,C)', 'SEQ(', 'F']`
+      - `SEQ(AND(A, B), C, AND(D, E), F)` gives
+        `['AND(A,B)', 'C', 'AND(', 'E', 'F']`
+    - Effect: PrePP prices such a stream's output rate far too low. In
+      wreck Q4 it is 0.0045 instead of INES's 2.407, 533× too low.
+    - Fix: one line, set `open_parentheses = 1` before the inner `while`
+      (also in the unused copy in `src/simulator/single_selectivities.py`).
+    - wreck Q4: fixing only the parser leaves Kraken's root operator at
+      0.605. Fixing (a) and (b) gives 2.4107, exactly what the UI charges.
+    - coral Q4: the stream's rate is tiny (0.0054), so the gap is ~3e-7.
+      These are two of the invisible losses. The third, medium Q5 Fast, is
+      (a) alone.
+    - The bug likely also affects the demo's own live scoring. Any explicit
+      push/pull choice other than all-push goes through PrePP's push_pull
+      costing. On a Q4/Q5 operator whose input is a stream with two nested
+      operands, that input is priced too cheaply. This would explain why
+      the only plan that ties Kraken in current Q4 B/C pulls every input
+      at the root. Not verified.
+
+    **(c) Stale export: 1 stage** (medium_e Q3 B). This is item 32's
+    process-state leak. **Fixed by the 2026-11-06 re-export**, which now
+    runs one process per scenario; the shipped file is the fresh export
+    described below. Re-played afterwards: copying Kraken now wins
+    Balanced, but only Kraken's exact plan does (1 winning plan of 2880,
+    rating 5, previously 4). Fast and Cheap are unchanged.
+    - The shipped file's operator order differs from a fresh per-scenario
+      export (`SEQ(A, B, D)` and `SEQ(A, B, E)` swapped).
+    - Kraken's Balanced cost is 1497.3 shipped and 1438.1 fresh, on the
+      same placement.
+    - Replayed against the fresh export, Kraken's plan matches exactly on
+      all 3 stages. The fresh Balanced stage then rates 5: no plan beats
+      Kraken, and no rule of thumb ties it.
+
+    Effect: in all 36 stages Kraken's target is too low, so the stage looks
+    harder than it is (ratings from the play study are inflated there), and
+    a player who copies the reveal is told they lost. In 5 stages exactly
+    one plan ties Kraken: current Q4 B/C, medium_e Q2 F/C, whirlpool Q2 C.
+
+    **Post-BSW plan:**
+    1. Settle the reuse question in (a).
+    2. INES PRs: the parser fix (b) first (branch pushed, PR not yet
+       opened), then (a).
+    3. Re-export every scenario (`export_scenario.py` already runs one
+       process per scenario).
+    4. Re-run the play study as a gate: no stage where copying Kraken
+       loses, no unwinnable stage, no broken query.
+    5. Correct the two `score_one.py` comments.
+
+    A demo-only workaround (pricing the UI's all-push like Kraken's
+    push_pull) would copy the error into every plan, so it is not
+    recommended. Comparing scores at display precision in `panel.ts` would
+    only hide the 3 invisible losses, so that is deferred too.
+
 32. **Q5 (`seq_and_pairs`, "Oktopus-Puls") is unplayable via live push-pull
     scoring, on every topology — combigen picks a different decomposition at
     export time than at live-score time.** Reported 2026-11-05 ("does not
@@ -1920,6 +2049,77 @@ in the demo now. Two concrete asks:
     engine debugging pass (instrument the combination-generation step,
     not guess-and-patch), not a demo-layer workaround. Until fixed, Q5 is
     dead on arrival for push-pull scoring on every topology that has it.
+
+    **Update 2026-11-06:** narrowed to process state shared across
+    scenarios. `export_scenario.py`'s `main` forks one process per topology,
+    and `export_one_topology` builds all of that topology's scenarios in it.
+    - All 67 shipped scenarios were re-exported, each in its own process.
+      Two differ from the shipped files:
+      - `large/seq_and_pairs` (Grand Reef Q5): shipped 5 operators, fresh
+        6. It was the only Q5 still unscorable. (The 2–5-operator rule
+        applies only to the designed topologies; the other shipped Q5s
+        already have 6–7.)
+      - `medium_e/seq_abcde`: same operators in a different order; see
+        item 36 (c).
+    - Exported alone, Grand Reef Q5 scores and Kraken's replay is exact.
+
+    **Root cause found 2026-11-06:**
+    - `Simulation` (`src/simulation_environment.py`, ~lines 1168–1194)
+      declares mutable containers at class level and never reassigns them
+      per instance: `h_projlist = []`, `h_projrates = {}`,
+      `h_projsPerQuery = {}`, `h_sharedProjectionsDict = {}`,
+      `h_sharedProjectionsList = []`, `h_combiDict = {}`, `h_treeDict`,
+      `eList`, `h_placementTreeDict`, `h_globalPartitioninInputTypes`,
+      `h_globalSiSInputTypes`.
+    - Every `Simulation` in one process therefore shares them.
+      `generate_all_projections` appends each query's projections to the
+      shared `h_projlist`.
+    - So when Grand Reef Q5 is built after Q4, Q4's projections are still
+      in the list, and Q5's decomposition uses two of them:
+      `AND(SEQ(A, B), F)` and `AND(SEQ(A, B, C), F)`. These are not
+      projections of `SEQ(AND(A, B), C, AND(D, E), F)`, whose projection
+      onto {A, B, F} is `SEQ(AND(A, B), F)`. The shipped Grand Reef Q5
+      shows players operators from another query.
+    - A scan of all 67 shipped files finds no other leaked operator.
+      medium_e Q3 is the order-only variant: Q2's projections come first
+      in the shared list, which changes tie-breaking.
+    - Check: giving every `Simulation` its own empty containers (patched
+      `__init__`) and building `large`'s 5 queries in one process gives
+      Q5 the same 6 operators as a fresh export. The file is identical
+      except `solve_seconds`. medium_e Q3 likewise matches its fresh
+      export.
+    - Fix options:
+      - Engine: initialise these containers in `Simulation.__init__`
+        (needs an INES PR).
+      - Demo: one process per scenario at export.
+    - The PrePP parser fix (item 36 (b)) does not change any of this.
+
+    **Resolved for the demo 2026-11-06:**
+    - Grand Reef (`large`) is retired: moved to `RETIRED` in
+      `export/topologies.py`, removed from the manifest and
+      `web/scenarios/`. Every operator of every query had exactly one valid
+      host (the cloud), so the round was only a push/pull quiz. The
+      Barrier Reef family button now opens large_b.
+    - Q5 is now shown on Barrier Reef: large_b, large_c, large_d and
+      medium_e (the designed Barrier Reefs have no Q5). All four replay
+      Kraken exactly, and live scoring works: placed, pushed/pulled and
+      confirmed in the browser on large_b, and scored via `/score` on all
+      four. The backend takes ~2 s for Q5 (same as Q4) against the UI's
+      4 s timeout.
+    - Lagoon keeps Q5 hidden (`state.ts` filter): on medium, copying
+      Kraken's plan loses in all 3 stages (item 36 (a)).
+    - "Try again" picks any sibling in the family. 4 of the 7 (wreck,
+      pearl, coral, whirlpool) have no Q5, so it falls back to Q1 about
+      57% of the time. Q2 and Q4 already behave the same way on designed
+      variants.
+    - The demo-side fix is in: `export_scenario.py`'s driver now starts
+      one fresh process per *scenario* (it used to be one per topology),
+      so no query can see another query's projections any more. This was
+      done for the parser-fix re-export (item 36 (b)), which could
+      otherwise have produced new leaks.
+    - The engine fix (per-instance containers) is still open and belongs
+      in an INES PR after BSW. `score_one.py` and the play scripts are
+      unaffected: they build one scenario per process already.
 
 25. **INEv mutates `h_eventNodes`, shrinking Kraken's candidate set.**
     `Simulation.run()` runs INEv before Kraken; INEv's placement writes its
