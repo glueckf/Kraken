@@ -6,6 +6,33 @@ does.
 
 ## Functional (current priority)
 
+37. **Bigger designed topologies (19-25 nodes) — prototype, not shipped
+    (2026-11-06).** The item 35 search can't produce them: with only six
+    letters, a big network's duplicated letters sit on leaves all over
+    the tree, so every operator needs the cloud (none of 269 candidates
+    with 7+ watchtowers moved an operator between stages).
+    `export/design/complex_search.py` builds two regions under one cloud,
+    each with its own letters (A-C / D-F), so operators can stay inside a
+    region. Regions are either two passing 4-6 tower designs from
+    archive.jsonl or generated gateway/hub/deep-chain meshes. It reuses
+    topo_search.py, allows 30% of edges behind an unrelated tower
+    (instead of 15%), and scores rules of thumb that lose at every goal
+    higher. Its 624 evaluations are in the gitignored
+    archive_complex.jsonl. Of the 14 designs played exhaustively (147
+    stages), the mean rating is 2.10, versus 2.33 for the shipped
+    topologies (item 36's study), so bigger is not harder on average. A
+    rule of thumb wins 27% of stages, versus 41%. The best design, dx1
+    (21 nodes, 7 watchtowers, regional), averages 2.67 over Q1-Q3, and no
+    rule of thumb wins any of its stages. But copying Kraken loses all
+    three turtle (seq_abcd) stages, via item 36 (a). 5 of the 14 designs
+    have such stages (20 of the 147). Exhaustive play takes up to 13 min
+    per query at this size. Not for BSW. After item 36 (a) is fixed,
+    re-play, gate (no stage where copying Kraken loses, none unwinnable),
+    and add the survivors as Barrier Reef variants. The other designs,
+    their play results and the exhaustive player stayed in a session
+    scratchpad and are not in the repo. dx1, to rebuild it:
+    `{"n":21,"parents":{"1":[0],"2":[0],"3":[2,1],"4":[0],"5":[0],"6":[5,1],"7":[6],"11":[3,1],"20":[3],"13":[3,1],"14":[3],"18":[7],"15":[7],"8":[6,4],"12":[7,4],"17":[7,4],"16":[6,4],"9":[7,4],"10":[6],"19":[7,4]},"letters":{"11":[1],"20":[0],"13":[2],"14":[0],"18":[3],"15":[4],"8":[3,4],"12":[3,4],"17":[3,4],"16":[4,5],"9":[3,4],"10":[4],"19":[4]}}`
+
 35. **Ten designed topologies, 2026-11-05, re-run 2026-11-06 — DONE.**
     Goal: variety in what each network *teaches*, not just in its shape.
     In every query of a topology, Fast/Balanced/Cheap must differ, in
