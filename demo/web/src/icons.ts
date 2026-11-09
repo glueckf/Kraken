@@ -1,65 +1,28 @@
-// Small ocean-themed glyphs standing in for raw message letters (A, B, C, …).
-// Assignment is by letter position (A=0, B=1, …) so a given letter always
-// reads as the same creature/shape across every scenario.
+// One color per event type (A, B, C, …). Assignment is by letter position
+// (A=0, B=1, …) so a given letter always has the same color across every
+// scenario. The letter itself is always shown next to or on the color.
 
 interface Glyph {
-  name: string;
   color: string;
-  // path/shape markup, viewBox 0 0 24 24, drawn with fill="currentColor"
-  shape: string;
 }
 
 const GLYPHS: Glyph[] = [
-  // A — fin (a shape breaking the surface)
-  {
-    name: "fin",
-    color: "#d9542f",
-    shape: `<path d="M12 2c1.2 4.6 1.1 8-2.6 11.4C7 15.6 4.6 16.4 2 16.6c2.4-3 3.6-6.4 3.4-10C7.6 4.4 9.8 2.8 12 2z"/>`,
-  },
-  // B — shadow (an unidentified shape underwater)
-  {
-    name: "shadow",
-    // Darkened/pushed further toward violet from the original #6f5bd1 --
-    // simulated against protanopia/deuteranopia/tritanopia, that color sat
-    // within ~0.07-0.10 (normalized RGB) of D's blue, closer than any pair
-    // in the reference Okabe-Ito colorblind-safe palette ever gets. This
-    // value keeps >=0.28 separation from every other glyph under all three
-    // simulated types -- see BACKLOG.md for the full before/after check.
-    color: "#3d2c96",
-    shape: `<ellipse cx="12" cy="15.5" rx="8.4" ry="4"/><circle cx="12" cy="8.4" r="3.2"/>`,
-  },
-  // C — fleeing fish
-  {
-    name: "fish",
-    color: "#2f9e8f",
-    shape: `<path d="M2.5 12c3.2-4.6 9-6.6 13.6-4-0.9 2-0.9 6 0 8-4.6 2.6-10.4 0.6-13.6-4z"/><circle cx="14.6" cy="9.8" r="1.1"/><path d="M16 12l5.5-3v6z"/>`,
-  },
-  // D — bubble trail
-  {
-    name: "bubbles",
-    // Paired change with B above -- see that comment.
-    color: "#2d7fd2",
-    shape: `<circle cx="7.5" cy="17" r="2.6"/><circle cx="14" cy="10.5" r="3.4"/><circle cx="18.2" cy="6.2" r="1.7"/>`,
-  },
-  // E — starfish
-  {
-    name: "starfish",
-    // Darkened from the original #d9a41e -- unrelated to the colorblind
-    // check above, this one was a plain WCAG contrast gap: every use draws
-    // a white icon directly on top of this color (petals, the event
-    // legend, dependency chips), and the original gold only cleared
-    // 2.26:1 against white, well under the 3:1 floor for graphical
-    // objects. This clears 3.58:1 while keeping its separation from every
-    // other glyph under simulated colorblindness.
-    color: "#a58312",
-    shape: `<path d="M12 1.5l2.4 6.6 6.6 0.9-5 4.6 1.4 6.9-5.4-3.7-5.4 3.7 1.4-6.9-5-4.6 6.6-0.9z"/>`,
-  },
-  // F — spiral shell
-  {
-    name: "shell",
-    color: "#c0497e",
-    shape: `<path d="M12 21c-5 0-9-3.6-9-8.4C3 8.4 6.1 5 10.4 5c3.3 0 6 2.4 6 5.6 0 2.6-2.1 4.6-4.6 4.6-2 0-3.6-1.5-3.6-3.5 0-1.5 1.2-2.7 2.7-2.7"/>`,
-  },
+  { color: "#d9542f" }, // A
+  // B: darkened/pushed toward violet from the original #6f5bd1 -- simulated
+  // against protanopia/deuteranopia/tritanopia, that color sat within
+  // ~0.07-0.10 (normalized RGB) of D's blue, closer than any pair in the
+  // reference Okabe-Ito colorblind-safe palette ever gets. This value keeps
+  // >=0.28 separation from every other color under all three simulated
+  // types -- see BACKLOG.md for the full before/after check.
+  { color: "#3d2c96" },
+  { color: "#2f9e8f" }, // C
+  { color: "#2d7fd2" }, // D (paired change with B above)
+  // E: darkened from the original #d9a41e for WCAG contrast -- white text
+  // sits directly on this color (badges, chips), and the original gold only
+  // cleared 2.26:1 against white, under the 3:1 floor for graphical
+  // objects. This clears 3.58:1 and keeps its colorblind separation.
+  { color: "#a58312" },
+  { color: "#c0497e" }, // F
 ];
 
 function indexFor(letter: string): number {
@@ -71,18 +34,7 @@ export function glyphFor(letter: string): Glyph {
   return GLYPHS[indexFor(letter)];
 }
 
-/** Standalone <svg> for use inside plain HTML strings (panel chips/pills). */
-export function eventIconSvg(letter: string, size = 13): string {
-  const g = glyphFor(letter);
-  return `<svg class="evt-icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${g.shape}</svg>`;
-}
-
-/** A <g> fragment for use directly inside the reef's master <svg> (no nested <svg>).
- * `fill` defaults to the glyph's own color (for use directly against the open
- * scene background); pass an override (e.g. white) when drawing on top of a
- * same-colored chip/petal, where the glyph's own color would vanish. */
-export function eventIconGroup(letter: string, cx: number, cy: number, size: number, fill?: string): string {
-  const g = glyphFor(letter);
-  const s = size / 24;
-  return `<g class="evt-icon" transform="translate(${cx - size / 2} ${cy - size / 2}) scale(${s})" fill="${fill ?? g.color}">${g.shape}</g>`;
+/** Colored letter badge for plain HTML strings (panel chips, query text). */
+export function eventBadge(letter: string): string {
+  return `<span class="evt-badge-html" style="background:${glyphFor(letter).color}">${letter}</span>`;
 }

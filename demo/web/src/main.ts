@@ -14,8 +14,8 @@ const $ = (id: string) => document.getElementById(id)!;
 const state = new AppState();
 let layout: Layout | null = null;
 let layoutFor: Scenario | null = null;
-// Identity of the last `state.official` we rendered, so the win-celebration
-// bubble burst fires exactly once per freshly-arrived win — not again on an
+// Identity of the last `state.official` we rendered, so the
+// win pulse fires exactly once per freshly-arrived win — not again on an
 // unrelated re-render (e.g. toggling reveal) while the same win is still on
 // screen. `rescore()` always creates a brand-new object when a result
 // resolves, so identity alone is a reliable "this is new" signal.
@@ -107,33 +107,22 @@ function render(): void {
 
   if (state.official !== lastOfficial) {
     lastOfficial = state.official;
-    if (state.official && playerBeatsKraken(state)) burstBubbles();
+    if (state.official && playerBeatsKraken(state)) celebrateWin();
   }
 }
 
 const REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-/** Win celebration: a short burst of bubbles rising from the Kraken-score
- * tile. Self-cleaning (removes its own overlay after the animation), and a
- * no-op under reduced motion rather than spawning motionless elements. */
-function burstBubbles(): void {
+/** Win celebration: a short glow pulse on the Kraken-score tile.
+ * Self-cleaning, and a no-op under reduced motion. */
+function celebrateWin(): void {
   if (REDUCED_MOTION.matches) return;
   const tile = document.getElementById("krakenScoreTile");
   if (!tile) return;
-  const burst = document.createElement("div");
-  burst.className = "bubble-burst";
-  const n = 12;
-  for (let i = 0; i < n; i++) {
-    const b = document.createElement("span");
-    b.className = "bubble";
-    b.style.setProperty("--bx", `${10 + Math.random() * 80}%`);
-    b.style.setProperty("--bs", `${5 + Math.random() * 7}px`);
-    b.style.setProperty("--dx", `${(Math.random() - 0.5) * 36}px`);
-    b.style.setProperty("--bd", `${Math.random() * 0.35}s`);
-    burst.appendChild(b);
-  }
-  tile.appendChild(burst);
-  setTimeout(() => burst.remove(), 1500);
+  tile.classList.remove("win-pulse");
+  void tile.offsetWidth; // restart the animation if it's still running
+  tile.classList.add("win-pulse");
+  setTimeout(() => tile.classList.remove("win-pulse"), 1600);
 }
 
 // ---- delegated interaction helpers ----
@@ -184,21 +173,21 @@ function wire(): void {
     }
   });
 
-  // Hover a node -> highlight just its own edge(s) up to its parent(s), so
-  // tracing a bigger topology (Grand Reef) by eye is easier. relatedTarget
+  // Hover a node -> highlight every link it has (up to its parents and down
+  // to its children), so tracing a bigger topology by eye is easier. relatedTarget
   // is checked against the same ancestor so moving between a node's own
   // children (dot, label, chip) doesn't flicker the highlight off and on.
   $("reef").addEventListener("mouseover", (e) => {
     const node = closestAttr(e.target, "data-node");
     if (node == null) return;
     if (closestAttr((e as MouseEvent).relatedTarget, "data-node") === node) return;
-    for (const edge of $("reef").querySelectorAll(`.edge[data-from="${node}"]`)) edge.classList.add("hl");
+    for (const edge of $("reef").querySelectorAll(`.edge[data-from="${node}"], .edge[data-to="${node}"]`)) edge.classList.add("hl");
   });
   $("reef").addEventListener("mouseout", (e) => {
     const node = closestAttr(e.target, "data-node");
     if (node == null) return;
     if (closestAttr((e as MouseEvent).relatedTarget, "data-node") === node) return;
-    for (const edge of $("reef").querySelectorAll(`.edge[data-from="${node}"]`)) edge.classList.remove("hl");
+    for (const edge of $("reef").querySelectorAll(`.edge[data-from="${node}"], .edge[data-to="${node}"]`)) edge.classList.remove("hl");
   });
 
   $("scorecard").addEventListener("click", (e) => {

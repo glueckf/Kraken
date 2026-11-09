@@ -3,8 +3,8 @@
 
 import type { AppState } from "./state";
 import type { Baselines, CommScheme, Projection, StrategyId, TopologyEntry } from "./types";
-import { eventIconSvg, glyphFor } from "./icons";
-import { t, getLang } from "./i18n";
+import { eventBadge, glyphFor } from "./icons";
+import { t } from "./i18n";
 
 const STRAT_ORDER: StrategyId[] = ["all_push", "inev", "prepp", "sequential", "kraken"];
 
@@ -22,8 +22,10 @@ function fmtCost(n: number): string {
 function fmtLat(n: number): string {
   return Number.isInteger(n) ? String(n) : n.toFixed(1);
 }
+// Rates in full ("1000", not "1k"): the gap between a 1000/s and a 10/s
+// stream is the whole push/pull argument, and "1k" read as small at the booth.
 function fmtRate(n: number): string {
-  return n >= 1000 ? Math.round(n / 100) / 10 + "k" : String(Math.round(n));
+  return String(Math.round(n));
 }
 
 /**
@@ -83,8 +85,7 @@ function renderPushPullRow(state: AppState, name: string, proj: Projection): str
       return (
         `<${el} class="pp-chip${cls}"${tag} ` +
         `title="${dep}${isFree ? " " + t().alreadyHere : `: ${rate !== undefined ? rate + "/s" : t().rateUnknown}`}">` +
-        eventIconSvg(dep, 12) +
-        `<span class="pp-letter">${dep}</span>` +
+        eventBadge(dep) +
         `<span class="pp-rate">${rate !== undefined ? fmtRate(rate) + "/s" : ""}</span>${roleHtml}` +
         `</${el}>`
       );
@@ -142,7 +143,7 @@ export function renderTopologyBar(state: AppState): string {
     .map((variants) => {
       const active = variants.find((v) => v.id === cur) ?? variants[0];
       const on = active.id === cur ? "on" : "";
-      const label = getLang() === "de" ? active.label_de : active.label;
+      const label = t().familyLabel(active.family);
       return (
         `<button class="tcard ${on}" data-topology="${active.id}" title="${escapeHtml(t().topologyTitle(label, active.network_size))}" aria-pressed="${active.id === cur}">` +
         `<span class="tname">${escapeHtml(label)}</span>` +
@@ -161,23 +162,21 @@ export function renderQueryBar(state: AppState): string {
   const pills = state.topology.scenarios
     .map((s) => {
       const on = s.id === cur ? "on" : "";
-      const emblem = EMBLEM_EMOJI[s.emblem] ?? "";
       // Numbered by the query (scenarios_def.py's Q1-Q5 order, exported as
       // `difficulty`), not by position: a network that lacks a query skips
       // its number, so the shark is Q2 everywhere.
       return (
         `<button class="qpill ${on}" data-scenario="${s.id}" title="${escapeHtml(t().queryTitle(s.title, t().subqueries(s.num_subqueries)))}" aria-pressed="${s.id === cur}">` +
         `<span class="qpill-badge">Q${s.difficulty}</span>` +
-        (emblem ? `<span class="qpill-emblem" aria-hidden="true">${emblem}</span>` : "") +
         `</button>`
       );
     })
     .join("");
   const active_line = active
     ? `<div class="qactive">` +
-      `<div class="qactive-headline">${EMBLEM_EMOJI[active.emblem] ?? ""} ${escapeHtml(queryHeadline(active.id) ?? active.title)}</div>` +
-      `<div class="qactive-sub"><span class="qactive-expr">${titleWithIcons(active.title)}</span>` +
-      `<span class="qactive-count">${t().subqueries(active.num_subqueries)}</span></div>` +
+      `<div class="qactive-headline"><span class="qactive-q">Q${active.difficulty}</span>` +
+      `<span class="qactive-expr">${titleWithIcons(active.title)}</span></div>` +
+      `<div class="qactive-sub"><span class="qactive-count">${t().subqueries(active.num_subqueries)}</span></div>` +
       `</div>`
     : "";
   return `<div class="qpills">${pills}</div>${active_line}`;
@@ -198,7 +197,7 @@ export function renderTray(state: AppState): string {
           const dm = state.subMeta.get(d);
           return dm
             ? `<span class="pill mini" style="background:${dm.color}">${dm.tag}</span>`
-            : `<span class="pill mini evt" style="background:${glyphFor(d).color}">${eventIconSvg(d, 11)}${d}</span>`;
+            : `<span class="pill mini" style="background:${glyphFor(d).color}">${d}</span>`;
         })
         .join("");
       const autoReason = state.autoPlacedReason[name];
@@ -207,7 +206,7 @@ export function renderTray(state: AppState): string {
         `<span class="tag" style="background:${m.color}">${m.tag}${m.isRoot ? "★" : ""}</span>` +
         `<span class="tray-body"><span class="tray-name">${titleWithIcons(name)}</span>` +
         `<span class="tray-inputs">${t().needs} ${inputs}</span></span>` +
-        `<span class="tray-loc"${autoReason ? ` title="${escapeHtml(autoReason)}"` : ""}>${placed ? (node === 0 ? `👑 ${t().cloudName}` : "n" + node) : "—"}${autoReason ? ` <span class="tray-auto-badge">${t().autoBadge}</span>` : ""}</span>` +
+        `<span class="tray-loc"${autoReason ? ` title="${escapeHtml(autoReason)}"` : ""}>${placed ? (node === 0 ? t().cloudName : "n" + node) : "—"}${autoReason ? ` <span class="tray-auto-badge">${t().autoBadge}</span>` : ""}</span>` +
         `</div>` +
         (autoReason ? `<div class="tray-note">${escapeHtml(autoReason)}</div>` : "");
       return row + renderPushPullRow(state, name, proj);
@@ -247,22 +246,15 @@ export function renderTray(state: AppState): string {
  * different real placement at each stage (see KrakenStage / currentStage),
  * computed once at export time — picking a stage is instant, no rescoring or
  * backend round-trip needed. */
-// Reef-themed, one per stage rather than a separate legend flanking the
-// row — a fitting icon on the button itself reads more directly than an
-// icon-plus-word pair sitting outside it. Falls back to no icon for a
-// label this map doesn't recognize (e.g. a future 4th/5th stage).
-const STAGE_ICON: Record<string, string> = { fast: "🐟", balanced: "🪸", cheap: "🐚" };
-
 function renderStagePicker(state: AppState): string {
   const stages = state.stages;
   const buttons = stages
     .map((s, i) => {
       const on = i === state.stageIndex;
-      const icon = STAGE_ICON[s.label.toLowerCase()];
       const label = t().stageLabel(s.label);
       return (
         `<button class="stage-btn${on ? " on" : ""}" data-action="stage" data-stage="${i}" ` +
-        `title="${escapeHtml(t().stageTitleFor(label.toLowerCase()))}">${icon ? icon + " " : ""}${escapeHtml(label)}</button>`
+        `title="${escapeHtml(t().stageTitleFor(label.toLowerCase()))}">${escapeHtml(label)}</button>`
       );
     })
     .join("");
@@ -334,7 +326,7 @@ function renderDecisionTable(state: AppState): string {
   const opt = a.reference_optimum;
   const kNode = stage.placement[name];
   const kScheme = stage.per_placement?.[name]?.strategy as CommScheme | undefined;
-  const label = (n: number) => (n === 0 ? `👑 ${t().cloudName}` : `n${n}`);
+  const label = (n: number) => (n === 0 ? t().cloudName : `n${n}`);
   const byNode = new Map<number, typeof pr.decision_table>();
   for (const d of pr.decision_table) {
     if (!byNode.has(d.node)) byNode.set(d.node, []);
@@ -442,7 +434,7 @@ export function renderScorecard(state: AppState): string {
     // better than a number that's about to change.
     return (
       `<div class="sc-scoring">` +
-      `<div class="sc-scoring-icon" aria-hidden="true">🐙</div>` +
+      `<div class="sc-spinner" aria-hidden="true"></div>` +
       `<div class="sc-scoring-title">${t().scoringTitle}</div>` +
       `<div class="sc-scoring-sub">${t().scoringSub}</div>` +
       stagePicker +
@@ -575,42 +567,12 @@ function escapeHtml(s: string): string {
 }
 
 /** "SEQ(A, B, C)" -> the same text with each standalone event letter (A-F)
- * swapped for its icon — matches the reef's leaf-node icons instead of
- * reading as bare programming syntax. \b keeps "SEQ"/"AND" untouched (no
- * boundary between adjacent letters inside those words). */
+ * in its event color, matching the source nodes' letter badges. \b keeps
+ * "SEQ"/"AND" untouched (no boundary between adjacent letters inside those
+ * words). */
 function titleWithIcons(title: string): string {
   return escapeHtml(title).replace(
     /\b([A-F])\b/g,
-    (_m, letter: string) => `<span class="op-evt">${eventIconSvg(letter, 12)}${letter}</span>`,
+    (_m, letter: string) => `<span class="op-evt" style="color:${glyphFor(letter).color}">${letter}</span>`,
   );
-}
-
-const EMBLEM_EMOJI: Record<string, string> = {
-  crab: "🦀", turtle: "🐢", shark: "🦈", seedling: "🌱", octopus: "🐙", factory: "⚒️",
-};
-
-// Short, story-flavored stand-in for the raw SEQ(...)/AND(...) expression as
-// the primary headline — reads as "spot the alarm," not programming syntax.
-// The expression itself isn't hidden, just demoted to secondary text below
-// (see renderQueryBar) — it still carries real information (operator count,
-// which streams feed in) a returning player may want. Keyed by scenario_id
-// rather than emblem since that's the stable per-query identity.
-const QUERY_HEADLINE_EN: Record<string, string> = {
-  seq_abc: "Crab signal",
-  seq_abcd: "Turtle trail",
-  seq_abcde: "Shark alarm",
-  and_nested: "Reef bloom",
-  seq_and_pairs: "Octopus pulse",
-  factory_join: "Forge alarm (paper example)",
-};
-const QUERY_HEADLINE_DE: Record<string, string> = {
-  seq_abc: "Krabben-Signal",
-  seq_abcd: "Schildkröten-Spur",
-  seq_abcde: "Hai-Alarm",
-  and_nested: "Riff-Blüte",
-  seq_and_pairs: "Oktopus-Puls",
-  factory_join: "Schmiede-Alarm (Paper-Beispiel)",
-};
-function queryHeadline(scenarioId: string): string | undefined {
-  return (getLang() === "de" ? QUERY_HEADLINE_DE : QUERY_HEADLINE_EN)[scenarioId];
 }

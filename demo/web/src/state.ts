@@ -177,7 +177,10 @@ export class AppState {
         const hidden = HIDDEN_COPY_LOSES[topo.id] ?? [];
         topo.scenarios = topo.scenarios.filter((s) => !hidden.includes(s.id));
       }
-      const defaultTopo = this.manifest.topologies.find((t) => t.id === "medium") ?? this.manifest.topologies[0];
+      // ?topo=<id> opens one concrete network directly (e.g. ?topo=dunes),
+      // for checking a variant without clicking through "try again".
+      const wanted = new URLSearchParams(location.search).get("topo") ?? "medium";
+      const defaultTopo = this.manifest.topologies.find((t) => t.id === wanted) ?? this.manifest.topologies[0];
       this.topologyId = defaultTopo.id;
       await this.loadScenario(defaultTopo.scenarios[0].id);
     } catch (e) {

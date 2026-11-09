@@ -146,10 +146,12 @@ interface Strings {
   hidePlan: string;
   tryAgain: string;
 
-  // ---- reef aria labels ----
+  // ---- network labels ----
+  /** Topology-bar button label for a manifest `family`. */
+  familyLabel: (family: string) => string;
   cloudName: string;
   cloudSink: string;
-  watchtower: (id: number) => string;
+  fogNode: (id: number) => string;
   sourceNode: (id: number) => string;
   holdsSubqueries: (n: number) => string;
   producesEvents: (letters: string) => string;
@@ -286,10 +288,11 @@ const EN: Strings = {
   hidePlan: "Hide Kraken's plan",
   tryAgain: "Try again",
 
-  cloudName: "King Cloud",
-  cloudSink: "King Cloud, the sink",
-  watchtower: (id) => `Watchtower ${id}`,
-  sourceNode: (id) => `Reef source node ${id}`,
+  familyLabel: (family) => ({ forge: "Paper example", lagoon: "Small network", barrier: "Large network" })[family] ?? family,
+  cloudName: "Cloud",
+  cloudSink: "Cloud, the sink",
+  fogNode: (id) => `Fog node ${id}`,
+  sourceNode: (id) => `Source node ${id}`,
   holdsSubqueries: (n) => `, holds ${n} subquer${n === 1 ? "y" : "ies"}`,
   producesEvents: (letters) => `, produces ${letters}`,
   topologyAria: "Fog-cloud topology; tap a node to place the selected subquery",
@@ -301,28 +304,28 @@ const EN: Strings = {
   noPathFrom: (node, dep) =>
     `n${node} has no path from ${dep} — a subquery needs to sit above (or at) all of its inputs in the network.`,
   autoPlacedAtCloud: (dep) =>
-    `Placed at King Cloud automatically — its input ${dep} is already there, and no other node can reach it.`,
+    `Placed in the cloud automatically — its input ${dep} is already there, and no other node can reach it.`,
 
   modalTitle: "Kraken — subquery placement",
   modalLede:
     'A hands-on view of <b>Kraken</b>, a placement engine for distributed Complex Event Processing on <b>fog-cloud</b> networks. Continuous queries over geo-distributed event streams run as subqueries that must be placed on nodes, and each subquery must acquire its inputs — either <b>all-push</b> (forward every tuple upward) or <b>push-pull</b> (push the low-rate stream, then pull only the matches). Placement and communication are tightly coupled.',
   yourTask: "Your task",
-  taskStep1: "Pick a query (the animal tokens).",
+  taskStep1: "Pick a query (Q1, Q2, …).",
   taskStep2: "Place <b>every</b> subquery onto a node — cloud, fog, or a source.",
   taskStep3:
     "We compute the <b>tuples transmitted</b> and the <b>latency</b> of your plan, and rank it against the baselines and Kraken on a balanced (cost + latency) score.",
   taskStep4:
-    "Subqueries near their sources move fewer tuples; subqueries near the cloud shorten the path to the sink. Find the balance the Kraken finds.",
+    "Subqueries near their sources move fewer tuples; subqueries near the cloud shorten the path to the sink. Find the balance Kraken finds.",
   whyJoint: "Why joint optimisation wins",
   jointBody:
-    'Existing planners decide placement and communication <i>in stages</i> — fix the placement first, then optimise input acquisition. Committing to a placement early rules out globally better plans. Kraken instead searches over <b>atomic deploy decisions</b>, weighing <i>both</i> communication schemes as it places each subquery. In the paper\'s factory example (a windowed join <span class="mono">[A ∘ B]</span>), all-push moves <b>3010</b> tuples, a staged planner <b>2120</b>, and Kraken <b>360</b> — a plan unreachable when the two decisions are made separately. Play it yourself on <b>Kraken\'s Forge</b>.',
+    'Existing planners decide placement and communication <i>in stages</i> — fix the placement first, then optimise input acquisition. Committing to a placement early rules out globally better plans. Kraken instead searches over <b>atomic deploy decisions</b>, weighing <i>both</i> communication schemes as it places each subquery. In the paper\'s factory example (a windowed join <span class="mono">[A ∘ B]</span>), all-push moves <b>3010</b> tuples, a staged planner <b>2120</b>, and Kraken <b>360</b> — a plan unreachable when the two decisions are made separately. Play it yourself in the <b>paper example</b>.',
   headlineResults: "Headline results",
   result1: "<b>~3×</b> fewer tuples transmitted vs the sequential baseline (median).",
   result2: "<b>14%</b> lower median transmission latency.",
   result3: "<b>7×</b> faster planning time.",
   aboutScoring: "About the scoring",
   scoringFine:
-    'Your plan is scored by Kraken\'s own cost model through the local push-pull scoring service, including your push/pull choices. Without that service only pure all-push plans are scored (by the same all-push model, in the browser); plans that pull are not scored at all rather than mis-scored. Kraken\'s Forge needs no service: every one of its options was computed in advance. The combined "Kraken score" normalises tuples and latency against this scenario\'s range (0 = as good as the best).',
+    'Your plan is scored by Kraken\'s own cost model through the local push-pull scoring service, including your push/pull choices. Without that service only pure all-push plans are scored (by the same all-push model, in the browser); plans that pull are not scored at all rather than mis-scored. The paper example needs no service: every one of its options was computed in advance. The combined "Kraken score" normalises tuples and latency against this scenario\'s range (0 = as good as the best).',
   linkPaper: "Paper (DEBS '26, DOI)",
   linkRepo: "Code repository",
 };
@@ -424,10 +427,11 @@ const DE: Strings = {
   hidePlan: "Kraken-Plan verbergen",
   tryAgain: "Nochmal versuchen",
 
-  cloudName: "König Cloud",
-  cloudSink: "König Cloud, das Ziel",
-  watchtower: (id) => `Wachturm ${id}`,
-  sourceNode: (id) => `Riff-Quellknoten ${id}`,
+  familyLabel: (family) => ({ forge: "Paper-Beispiel", lagoon: "Kleines Netz", barrier: "Großes Netz" })[family] ?? family,
+  cloudName: "Cloud",
+  cloudSink: "Cloud, das Ziel",
+  fogNode: (id) => `Fog-Knoten ${id}`,
+  sourceNode: (id) => `Quellknoten ${id}`,
   holdsSubqueries: (n) => `, enthält ${n} Teilabfrage${n === 1 ? "" : "n"}`,
   producesEvents: (letters) => `, erzeugt ${letters}`,
   topologyAria: "Fog-Cloud-Topologie; auf einen Knoten tippen, um die ausgewählte Teilabfrage zu platzieren",
@@ -439,13 +443,13 @@ const DE: Strings = {
   noPathFrom: (node, dep) =>
     `n${node} hat keinen Pfad von ${dep} — eine Teilabfrage muss über (oder auf) all ihren Eingaben im Netzwerk sitzen.`,
   autoPlacedAtCloud: (dep) =>
-    `Automatisch an König Cloud platziert — ihre Eingabe ${dep} ist bereits dort, und kein anderer Knoten kann sie erreichen.`,
+    `Automatisch in der Cloud platziert — ihre Eingabe ${dep} ist bereits dort, und kein anderer Knoten kann sie erreichen.`,
 
   modalTitle: "Kraken — Platzierung von Teilabfragen",
   modalLede:
     'Ein praktischer Einblick in <b>Kraken</b>, eine Platzierungs-Engine für verteilte komplexe Ereignisverarbeitung in <b>Fog-Cloud</b>-Netzwerken. Kontinuierliche Anfragen über geo-verteilte Ereignisströme laufen als Teilabfragen, die auf Knoten platziert werden müssen, und jede Teilabfrage muss ihre Eingaben beschaffen — entweder <b>All-Push</b> (jedes Tupel aufwärts weiterleiten) oder <b>Push-Pull</b> (den ratenarmen Stream pushen, dann nur die Treffer pullen). Platzierung und Kommunikation sind eng gekoppelt.',
   yourTask: "Deine Aufgabe",
-  taskStep1: "Wähle eine Anfrage (die Tier-Symbole).",
+  taskStep1: "Wähle eine Anfrage (Q1, Q2, …).",
   taskStep2: "Platziere <b>jede</b> Teilabfrage auf einem Knoten — Cloud, Fog oder eine Quelle.",
   taskStep3:
     "Wir berechnen die <b>übertragenen Tupel</b> und die <b>Latenz</b> deines Plans und vergleichen ihn mit den Baselines und Kraken anhand eines ausgewogenen (Kosten + Latenz) Werts.",
@@ -453,14 +457,14 @@ const DE: Strings = {
     "Teilabfragen nahe ihren Quellen bewegen weniger Tupel; Teilabfragen nahe der Cloud verkürzen den Weg zur Senke. Finde die Balance, die Kraken findet.",
   whyJoint: "Warum gemeinsame Optimierung gewinnt",
   jointBody:
-    'Bestehende Planer entscheiden Platzierung und Kommunikation <i>in Stufen</i> — zuerst die Platzierung festlegen, dann die Eingabebeschaffung optimieren. Eine frühe Festlegung schließt global bessere Pläne aus. Kraken sucht stattdessen über <b>atomare Einsatzentscheidungen</b> und wägt <i>beide</i> Kommunikationsschemata ab, während es jede Teilabfrage platziert. Im Fabrikbeispiel des Papers (ein Fenster-Join <span class="mono">[A ∘ B]</span>) bewegt All-Push <b>3010</b> Tupel, ein gestufter Planer <b>2120</b>, und Kraken <b>360</b> — ein Plan, der unerreichbar ist, wenn beide Entscheidungen getrennt getroffen werden. Spiel es selbst nach in <b>Krakens Schmiede</b>.',
+    'Bestehende Planer entscheiden Platzierung und Kommunikation <i>in Stufen</i> — zuerst die Platzierung festlegen, dann die Eingabebeschaffung optimieren. Eine frühe Festlegung schließt global bessere Pläne aus. Kraken sucht stattdessen über <b>atomare Einsatzentscheidungen</b> und wägt <i>beide</i> Kommunikationsschemata ab, während es jede Teilabfrage platziert. Im Fabrikbeispiel des Papers (ein Fenster-Join <span class="mono">[A ∘ B]</span>) bewegt All-Push <b>3010</b> Tupel, ein gestufter Planer <b>2120</b>, und Kraken <b>360</b> — ein Plan, der unerreichbar ist, wenn beide Entscheidungen getrennt getroffen werden. Spiel es selbst nach im <b>Paper-Beispiel</b>.',
   headlineResults: "Kernergebnisse",
   result1: "<b>~3×</b> weniger übertragene Tupel ggü. der sequentiellen Baseline (Median).",
   result2: "<b>14%</b> niedrigere mediane Übertragungslatenz.",
   result3: "<b>7×</b> schnellere Planungszeit.",
   aboutScoring: "Über die Bewertung",
   scoringFine:
-    'Dein Plan wird über den lokalen Push-Pull-Bewertungsdienst mit Krakens eigenem Kostenmodell bewertet, inklusive deiner Push/Pull-Wahl. Ohne diesen Dienst werden nur reine All-Push-Pläne bewertet (mit demselben All-Push-Modell, im Browser); Pläne mit Pull werden dann gar nicht bewertet statt falsch. Krakens Schmiede braucht keinen Dienst: alle ihre Optionen sind vorab berechnet. Der kombinierte "Kraken-Wert" normalisiert Tupel und Latenz auf die Spannweite dieses Szenarios (0 = so gut wie die beste).',
+    'Dein Plan wird über den lokalen Push-Pull-Bewertungsdienst mit Krakens eigenem Kostenmodell bewertet, inklusive deiner Push/Pull-Wahl. Ohne diesen Dienst werden nur reine All-Push-Pläne bewertet (mit demselben All-Push-Modell, im Browser); Pläne mit Pull werden dann gar nicht bewertet statt falsch. Das Paper-Beispiel braucht keinen Dienst: alle ihre Optionen sind vorab berechnet. Der kombinierte "Kraken-Wert" normalisiert Tupel und Latenz auf die Spannweite dieses Szenarios (0 = so gut wie die beste).',
   linkPaper: "Paper (DEBS '26, DOI)",
   linkRepo: "Code-Repository",
 };
