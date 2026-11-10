@@ -21,8 +21,10 @@ function fmtCost(n: number): string {
 function fmtLat(n: number): string {
   return Number.isInteger(n) ? String(n) : n.toFixed(1);
 }
+// Rates in full ("1000", not "1k"): the gap between a 1000/s and a 10/s
+// stream is the whole push/pull argument, and "1k" read as small at the booth.
 function fmtRate(n: number): string {
-  return n >= 1000 ? Math.round(n / 100) / 10 + "k" : String(Math.round(n));
+  return String(Math.round(n));
 }
 
 /**

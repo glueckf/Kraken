@@ -51,15 +51,15 @@ danach **immer** `npm run build`, sonst zeigt der Server die alten Daten.
    („n1 erreicht nicht jede Quelle von B …"). Guter Einstieg: „Ein Knoten
    braucht beide Ströme, um den Vergleich zu rechnen."
 3. Platziert auf **n3** (wo A und B sich zum ersten Mal treffen) und
-   **All-Push** gewählt → 4,02k Tupel, Latenz 4.
-4. „Und mit Push-Pull?" → **n3 + Push-Pull** → 2,24k. Genau das macht ein
+   **All-Push** gewählt → 4020 Tupel, Latenz 4.
+4. „Und mit Push-Pull?" → **n3 + Push-Pull** → 2240. Genau das macht ein
    sequentieller Planer: erst den Knoten wählen, dann die Kommunikation.
 5. „Geht es noch besser?" Wer die Teilabfrage auf **König Cloud** setzt und
    **Push-Pull** wählt, kommt auf **480** und zieht mit Kraken gleich (Blasen).
 6. **„Kraken-Plan anzeigen"**: Tabelle mit allen 9 Optionen (3 Knoten × 3
    Push/Pull-Kombinationen — nicht nur die zwei des Papers, auch „A pushen"
    statt B). ★ = beste Option, K = Kraken, S =
-   Sequential. Kernsatz: „Unter All-Push ist n3 der beste Knoten. Erst wenn
+   Sequential, I = INEv. Kernsatz: „Unter All-Push ist n3 der beste Knoten. Erst wenn
    man Platzierung und Push-Pull zusammen entscheidet, gewinnt die Cloud. Ein
    Planer, der nacheinander entscheidet, sieht das nie."
 7. Optional, guter Aha-Moment: an der Cloud statt **B** mal **A** pushen (Chip
@@ -72,6 +72,9 @@ danach **immer** `npm run build`, sonst zeigt der Server die alten Daten.
 Gut zu wissen: Die Zeile „PrePP" (alles in der Cloud, Push-Pull) ist hier
 gleich gut wie Kraken. Das ist richtig so, das Optimum liegt in diesem
 Beispiel in der Cloud. Der Vergleich, um den es geht, ist mit „Sequential".
+
+„INEv" ist der tupel-günstigste All-Push-Knoten (n3, 4020 Tupel). INEv
+kennt kein Push-Pull, deshalb ist sein Plan in jeder Stufe derselbe.
 
 ## Zurücksetzen
 

@@ -139,11 +139,11 @@ body {
 
 /* ---------- reef graph ---------- */
 .coral-decor path { fill: color-mix(in srgb, var(--sea-deep) 55%, #000 10%); opacity: 0.55; pointer-events: none; }
-.edge { fill: none; stroke: var(--edge); stroke-width: 1.6; opacity: 0.85; transition: stroke 0.1s, stroke-width 0.1s, opacity 0.1s; }
+.edge { fill: none; stroke: var(--edge); stroke-width: 2; opacity: 0.95; pointer-events: none; transition: stroke 0.1s, stroke-width 0.1s, opacity 0.1s; }
 .edge.hl { stroke: var(--accent); stroke-width: 3; opacity: 1; }
-.node { cursor: pointer; }
+.node, .scenery image { cursor: pointer; }
 .node:focus { outline: none; }
-#reef.locked .node { cursor: default; }
+#reef.locked .node, #reef.locked .scenery image { cursor: default; }
 #reef.locked .node .node-dot { opacity: 0.7; }
 .node-dot { fill: var(--node-fill); stroke: var(--node-stroke); stroke-width: 1.5; }
 .node.fog .node-dot { fill: var(--tower-fill); stroke: var(--tower-stroke); opacity: 0.55; }

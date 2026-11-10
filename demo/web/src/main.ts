@@ -184,21 +184,21 @@ function wire(): void {
     }
   });
 
-  // Hover a node -> highlight just its own edge(s) up to its parent(s), so
-  // tracing a bigger topology (Grand Reef) by eye is easier. relatedTarget
-  // is checked against the same ancestor so moving between a node's own
-  // children (dot, label, chip) doesn't flicker the highlight off and on.
+  // Hover a node -> highlight all its links (up and down), so tracing a
+  // bigger topology by eye is easier. relatedTarget is checked against the
+  // same ancestor so moving between a node's own children (dot, label,
+  // chip) doesn't flicker the highlight off and on.
   $("reef").addEventListener("mouseover", (e) => {
     const node = closestAttr(e.target, "data-node");
     if (node == null) return;
     if (closestAttr((e as MouseEvent).relatedTarget, "data-node") === node) return;
-    for (const edge of $("reef").querySelectorAll(`.edge[data-from="${node}"]`)) edge.classList.add("hl");
+    for (const edge of $("reef").querySelectorAll(`.edge[data-from="${node}"], .edge[data-to="${node}"]`)) edge.classList.add("hl");
   });
   $("reef").addEventListener("mouseout", (e) => {
     const node = closestAttr(e.target, "data-node");
     if (node == null) return;
     if (closestAttr((e as MouseEvent).relatedTarget, "data-node") === node) return;
-    for (const edge of $("reef").querySelectorAll(`.edge[data-from="${node}"]`)) edge.classList.remove("hl");
+    for (const edge of $("reef").querySelectorAll(`.edge[data-from="${node}"], .edge[data-to="${node}"]`)) edge.classList.remove("hl");
   });
 
   $("scorecard").addEventListener("click", (e) => {

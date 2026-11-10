@@ -29,53 +29,268 @@ export interface ReefView {
 const VB_W = 1000;
 const VB_H = 640;
 const TOP_Y = 86; // leaves room for König Cloud's crown above the topmost row
-const BOTTOM_MARGIN = 92; // leaf-row petals (up to r*0.95+petalR below center) + the event legend strip
+const BOTTOM_Y = VB_H - 92; // leaf-row petals (up to r*0.95+petalR below center) + the event legend strip
+const SIDE = 56; // horizontal margin to the outermost node centers
 
-export type Layout = Map<number, { x: number; y: number; r: number }>;
+const CLOUD_R = 40;
+const FOG_R = 30;
+const LEAF_R = 24;
 
-export function computeLayout(scenario: Scenario): Layout {
-  const layout: Layout = new Map();
-  const byLayer = new Map<number, number[]>();
-  const nodeById = new Map(scenario.topology.nodes.map((n) => [n.id, n]));
-  // `n.layer` is shortest-path distance from the cloud -- right for cost/
-  // latency, but a leaf with two parents at different depths (e.g. Grand
-  // Reef's n12, reachable in 3 hops one way and 4 the other) gets the
-  // shorter one, stranding it a row above the rest of the source pods, in
-  // with the watchtowers. Leaves always belong on the seabed row -- the
-  // deepest row anything reaches -- regardless of which parent is closest.
-  const maxLayer = Math.max(...scenario.topology.nodes.map((n) => n.layer));
-  for (const n of scenario.topology.nodes) {
-    const layer = n.is_leaf ? maxLayer : n.layer;
-    if (!byLayer.has(layer)) byLayer.set(layer, []);
-    byLayer.get(layer)!.push(n.id);
-  }
-  // Rows are spaced evenly across the whole canvas height, based on however
-  // many layers THIS scenario actually has — different network sizes have
-  // different depths (levels ≈ log2(node count)), so a fixed 4-row table
-  // would overflow (or waste space) for other sizes.
-  const step = maxLayer > 0 ? (VB_H - BOTTOM_MARGIN - TOP_Y) / maxLayer : 0;
-  for (const [layer, ids] of byLayer) {
-    ids.sort((a, b) => a - b);
-    const y = TOP_Y + layer * step;
-    const count = ids.length;
-    const margin = 96;
-    const span = VB_W - margin * 2;
-    // Leaf radius shrinks once a row is crowded enough that the usual 24
-    // would start to overlap (e.g. a leaf moved down into an already-full
-    // seabed row) -- harmless no-op at the usual leaf counts per row.
-    const leafR = count > 1 ? Math.min(24, (span / (count - 1)) * 0.42) : 24;
-    ids.forEach((id, i) => {
-      const x = count === 1 ? VB_W / 2 : margin + (span * i) / (count - 1);
-      const r = layer === 0 ? 40 : nodeById.get(id)!.is_leaf ? leafR : 30;
-      layout.set(id, { x, y, r });
-    });
-  }
-  return layout;
+interface Pt {
+  x: number;
+  y: number;
 }
 
-function edgePath(a: { x: number; y: number }, b: { x: number; y: number }): string {
-  const my = (a.y + b.y) / 2;
-  return `M ${a.x} ${a.y} C ${a.x} ${my}, ${b.x} ${my}, ${b.x} ${b.y}`;
+export interface Layout {
+  nodes: Map<number, { x: number; y: number; r: number }>;
+  /** Topology edge child>parent -> the points it is drawn through, child
+   * first. Two points for an edge between adjacent rows; one more per row it
+   * skips, so a long edge is routed around the nodes in between instead of
+   * straight through them. */
+  routes: Map<string, Pt[]>;
+}
+
+// Half the width each node takes up in its row: the scenery, not just the
+// dot -- a watchtower image is far wider than its foundation.
+const towerHalf = (r: number) => (r * 3.3 * TOWER_IMG_ASPECT) / 2;
+const leafHalf = (r: number) => r * 0.95 + r * 0.34; // petal ring
+
+interface Item {
+  node: number | null; // null = routing point of a long edge
+  row: number;
+  half: number;
+  up: Item[];
+  down: Item[];
+  ord: number;
+  x: number;
+}
+
+/** Positions that keep `gaps[i]` between items i-1 and i, within [lo, hi],
+ * as close as possible (least squares) to `desired`: isotonic regression on
+ * desired - cumulative gap (pool adjacent violators). */
+function fitRow(desired: number[], gaps: number[], lo: number, hi: number): number[] {
+  const n = desired.length;
+  const c = [0];
+  for (let i = 1; i < n; i++) c.push(c[i - 1] + gaps[i]);
+  const total = c[n - 1];
+  if (total >= hi - lo) {
+    const s = n > 1 ? (hi - lo) / total : 0;
+    return c.map((ci) => (n > 1 ? lo + ci * s : (lo + hi) / 2));
+  }
+  const blocks: { sum: number; cnt: number }[] = [];
+  for (let i = 0; i < n; i++) {
+    blocks.push({ sum: desired[i] - c[i], cnt: 1 });
+    while (blocks.length > 1) {
+      const b = blocks[blocks.length - 1];
+      const a = blocks[blocks.length - 2];
+      if (a.sum / a.cnt <= b.sum / b.cnt) break;
+      a.sum += b.sum;
+      a.cnt += b.cnt;
+      blocks.pop();
+    }
+  }
+  const out: number[] = [];
+  for (const b of blocks) for (let k = 0; k < b.cnt; k++) out.push(b.sum / b.cnt);
+  return out.map((y, i) => Math.min(Math.max(y + c[i], lo + c[i]), hi - (total - c[i])));
+}
+
+/**
+ * Layered layout (Sugiyama-style). Rows are the longest path from the cloud,
+ * so every edge points at least one row up; an edge that skips rows gets a
+ * routing point in each skipped row, which takes a slot like a node does.
+ * That is what keeps edges visible: in the old layout every source sat on
+ * the bottom row, and an edge from a source to a parent several rows up ran
+ * straight through the nodes in between (dunes n7->n3 behind n4, large_b
+ * n6->n3 behind n5), so visitors read the wrong parent.
+ */
+export function computeLayout(scenario: Scenario): Layout {
+  const topo = scenario.topology.nodes;
+  const byId = new Map(topo.map((n) => [n.id, n]));
+
+  const rowOf = new Map<number, number>();
+  const visiting = new Set<number>();
+  const rowFor = (id: number): number => {
+    const known = rowOf.get(id);
+    if (known !== undefined) return known;
+    const n = byId.get(id)!;
+    if (n.is_cloud || !n.parents.length || visiting.has(id)) return n.layer;
+    visiting.add(id);
+    const r = 1 + Math.max(...n.parents.map(rowFor));
+    visiting.delete(id);
+    rowOf.set(id, r);
+    return r;
+  };
+  for (const n of topo) rowOf.set(n.id, rowFor(n.id));
+  const maxRow = Math.max(...rowOf.values());
+  const step = maxRow > 0 ? (BOTTOM_Y - TOP_Y) / maxRow : 0;
+  // A tower reaches up toward the row above. In the deep (5-6 row) Barrier
+  // Reefs it reached the parent's foundation, so a child right below its
+  // parent hid the edge between them. Smaller fog nodes there keep a gap;
+  // the 4-row networks keep the full size.
+  const fogR = Math.min(FOG_R, (step - 13) / 3.3);
+
+  const items = new Map<number, Item>();
+  const rows: Item[][] = Array.from({ length: maxRow + 1 }, () => []);
+  const add = (it: Item) => {
+    rows[it.row].push(it);
+    return it;
+  };
+  for (const n of [...topo].sort((a, b) => a.id - b.id)) {
+    const half = n.is_cloud ? cloudImageBox(0, 0).w / 2 : n.is_leaf ? leafHalf(LEAF_R) : towerHalf(fogR);
+    items.set(n.id, add({ node: n.id, row: rowOf.get(n.id)!, half, up: [], down: [], ord: 0, x: 0 }));
+  }
+  const chains = new Map<string, Item[]>();
+  for (const n of topo) {
+    for (const p of n.parents) {
+      const chain = [items.get(n.id)!];
+      for (let r = rowOf.get(n.id)! - 1; r > rowOf.get(p)!; r--) {
+        chain.push(add({ node: null, row: r, half: 3, up: [], down: [], ord: 0, x: 0 }));
+      }
+      chain.push(items.get(p)!);
+      for (let i = 0; i < chain.length - 1; i++) {
+        chain[i].up.push(chain[i + 1]);
+        chain[i + 1].down.push(chain[i]);
+      }
+      chains.set(`${n.id}>${p}`, chain);
+    }
+  }
+
+  // --- order within rows: barycenter sweeps, keeping the fewest crossings ---
+  const renumber = (row: Item[]) => row.forEach((it, i) => (it.ord = i));
+  const sortRow = (row: Item[], dir: "up" | "down") => {
+    const key = new Map(
+      row.map((it) => {
+        const nb = it[dir];
+        return [it, nb.length ? nb.reduce((s, o) => s + o.ord, 0) / nb.length : it.ord] as const;
+      }),
+    );
+    row.sort((a, b) => key.get(a)! - key.get(b)! || a.ord - b.ord);
+    renumber(row);
+  };
+  const crossings = () => {
+    let k = 0;
+    for (let r = 1; r <= maxRow; r++) {
+      const es: [number, number][] = [];
+      for (const it of rows[r]) for (const u of it.up) if (u.row === r - 1) es.push([u.ord, it.ord]);
+      for (let i = 0; i < es.length; i++)
+        for (let j = i + 1; j < es.length; j++)
+          if ((es[i][0] - es[j][0]) * (es[i][1] - es[j][1]) < 0) k++;
+    }
+    return k;
+  };
+  rows.forEach(renumber);
+  for (let r = 1; r <= maxRow; r++) sortRow(rows[r], "up");
+  let best = rows.map((row) => row.slice());
+  let bestK = crossings();
+  for (let sweep = 0; sweep < 12 && bestK > 0; sweep++) {
+    if (sweep % 2) for (let r = 1; r <= maxRow; r++) sortRow(rows[r], "up");
+    else for (let r = maxRow - 1; r >= 0; r--) sortRow(rows[r], "down");
+    const k = crossings();
+    if (k < bestK) {
+      bestK = k;
+      best = rows.map((row) => row.slice());
+    }
+  }
+  best.forEach((row, r) => {
+    rows[r] = row;
+    renumber(row);
+  });
+
+  // --- x: as close to the neighbors as the spacing allows ---
+  const lo = SIDE;
+  const hi = VB_W - SIDE;
+  // One padding for the whole figure, as wide as the fullest row allows, so
+  // sparse rows don't huddle while the canvas sits empty.
+  let pad = 110;
+  for (const row of rows) {
+    if (row.length < 2) continue;
+    const widths = row.reduce((s, it) => s + it.half * 2, 0) - row[0].half - row[row.length - 1].half;
+    pad = Math.min(pad, (hi - lo - widths) / (row.length - 1));
+  }
+  pad = Math.max(pad, 10);
+  const gapsOf = (row: Item[]) => row.map((it, i) => (i ? row[i - 1].half + it.half + pad : 0));
+  for (const row of rows) {
+    const g = gapsOf(row);
+    const total = g.reduce((s, v) => s + v, 0);
+    let x = VB_W / 2 - total / 2;
+    row.forEach((it, i) => {
+      x += g[i];
+      it.x = x;
+    });
+  }
+  const place = (row: Item[], nbrs: (it: Item) => Item[]) => {
+    const desired = row.map((it) => {
+      const nb = nbrs(it);
+      return nb.length ? nb.reduce((s, o) => s + o.x, 0) / nb.length : it.x;
+    });
+    fitRow(desired, gapsOf(row), lo, hi).forEach((x, i) => (row[i].x = x));
+  };
+  for (let pass = 0; pass < 16; pass++) {
+    if (pass % 2) for (let r = maxRow; r >= 0; r--) place(rows[r], (it) => it.down);
+    else for (let r = 0; r <= maxRow; r++) place(rows[r], (it) => it.up);
+  }
+  for (let pass = 0; pass < 4; pass++) for (const row of rows) place(row, (it) => [...it.up, ...it.down]);
+
+  // The passes above only keep the spacing; nothing anchors the drawing, so
+  // it can drift to one side. Stretch it to the full width, centered --
+  // stretching only widens gaps, so order and spacing stay valid.
+  const all = rows.flat();
+  const cl = Math.min(...all.map((it) => it.x));
+  const cr = Math.max(...all.map((it) => it.x));
+  const maxHalf = Math.max(...all.map((it) => it.half));
+  if (cr > cl) {
+    const s = Math.min(2.5, Math.max(1, (VB_W - 2 * 16 - 2 * maxHalf) / (cr - cl)));
+    const mid = (cl + cr) / 2;
+    for (const it of all) it.x = VB_W / 2 + (it.x - mid) * s;
+  }
+
+  const yOf = (r: number) => TOP_Y + r * step;
+  const nodes = new Map<number, { x: number; y: number; r: number }>();
+  for (const [id, it] of items) {
+    const n = byId.get(id)!;
+    nodes.set(id, { x: it.x, y: yOf(it.row), r: n.is_cloud ? CLOUD_R : n.is_leaf ? LEAF_R : fogR });
+  }
+  // Edges into the cloud end at the bottom of König Cloud's island, which
+  // is drawn under the edges (see renderReef).
+  const anchor = (it: Item): Pt => {
+    const y = yOf(it.row);
+    if (it.node === null || !byId.get(it.node)!.is_cloud) return { x: it.x, y };
+    const box = cloudImageBox(it.x, y);
+    return { x: it.x, y: box.y + box.h };
+  };
+  const routes = new Map<string, Pt[]>();
+  for (const [key, chain] of chains) routes.set(key, chain.map(anchor));
+  return { nodes, routes };
+}
+
+/** A smooth curve through the route points; vertical tangents at every point
+ * keep the joins at routing points seamless. */
+function routePath(pts: Pt[]): string {
+  let d = `M ${pts[0].x} ${pts[0].y}`;
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1];
+    const b = pts[i];
+    const my = (a.y + b.y) / 2;
+    d += ` C ${a.x} ${my}, ${b.x} ${my}, ${b.x} ${b.y}`;
+  }
+  return d;
+}
+
+/** The route shifted sideways by `off` (perpendicular to its chords). */
+function offsetRoute(pts: Pt[], off: number): Pt[] {
+  if (!off) return pts;
+  const normals = pts.slice(1).map((b, i) => {
+    const a = pts[i];
+    const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+    return { x: -(b.y - a.y) / len, y: (b.x - a.x) / len };
+  });
+  return pts.map((p, i) => {
+    const ns = [normals[i - 1], normals[i]].filter(Boolean);
+    const nx = ns.reduce((s, n) => s + n.x, 0);
+    const ny = ns.reduce((s, n) => s + n.y, 0);
+    const len = Math.hypot(nx, ny) || 1;
+    return { x: p.x + (nx / len) * off, y: p.y + (ny / len) * off };
+  });
 }
 
 // Aspect ratio of assets/kingcloud.png (the reference island scene — cloud,
@@ -104,7 +319,7 @@ function cloudImageBox(cx: number, cy: number): CloudBox {
 // cropped to its opaque bounds) — needed to size the <image> without distortion.
 const TOWER_IMG_ASPECT = 431 / 480;
 
-function towerShape(cx: number, cy: number, r: number): string {
+function towerShape(cx: number, cy: number, r: number, node: number): string {
   // The reference tower illustration, standing on the node's round base.
   // Replaces the old hand-drawn SVG silhouette (tapered body/roof/window/flag),
   // which still read as too abstract next to the talk's own reference art.
@@ -114,7 +329,7 @@ function towerShape(cx: number, cy: number, r: number): string {
   const x = cx - w / 2;
   const y = bottomY - h;
   return (
-    `<image class="tower-img" href="assets/tower.png" x="${x}" y="${y}" ` +
+    `<image class="tower-img" data-node="${node}" href="assets/tower.png" x="${x}" y="${y}" ` +
     `width="${w}" height="${h}" preserveAspectRatio="xMidYMax meet"/>`
   );
 }
@@ -187,7 +402,13 @@ function background(): string {
 
 export function renderReef(scenario: Scenario, layout: Layout, subMeta: Map<string, SubMeta>, view: ReefView, topologyId: string): string {
   const nodes = scenario.topology.nodes;
-  const pos = (id: number) => layout.get(id)!;
+  const pos = (id: number) => layout.nodes.get(id)!;
+  const routeBetween = (u: number, v: number): Pt[] => {
+    const fwd = layout.routes.get(`${u}>${v}`);
+    if (fwd) return fwd;
+    const back = layout.routes.get(`${v}>${u}`);
+    return back ? [...back].reverse() : [pos(u), pos(v)];
+  };
 
   // placement map: node -> subqueries there
   const atNode = new Map<number, string[]>();
@@ -196,17 +417,13 @@ export function renderReef(scenario: Scenario, layout: Layout, subMeta: Map<stri
     atNode.get(node)!.push(sub);
   }
 
-  // --- edges (behind nodes) ---
-  // data-from names the lower (child) end of this one hop, so a hover on
-  // that node can highlight just its own edges up to its parent(s) -- the
-  // "next level up" a visitor is trying to trace, not the whole plan-edges
-  // overlay above (which is about a *placement*, not exploring the shape).
+  // --- edges (behind nodes, above the scenery) ---
+  // data-from/data-to name both ends of this one link, so hovering a node
+  // can highlight every link it has.
   let edges = "";
   for (const n of nodes) {
     for (const p of n.parents) {
-      const a = pos(n.id);
-      const b = pos(p);
-      edges += `<path class="edge" data-from="${n.id}" d="${edgePath(a, b)}" />`;
+      edges += `<path class="edge" data-from="${n.id}" data-to="${p}" d="${routePath(routeBetween(n.id, p))}" />`;
     }
   }
 
@@ -282,20 +499,12 @@ export function renderReef(scenario: Scenario, layout: Layout, subMeta: Map<stri
     let pushOverlay = "";
     for (const [key, deps] of hopDeps) {
       const [u, v] = key.split("-").map(Number);
-      const a = pos(u);
-      const b = pos(v);
-      const dx = b.x - a.x;
-      const dy = b.y - a.y;
-      const len = Math.hypot(dx, dy) || 1;
-      const perp = { x: -dy / len, y: dx / len };
+      const route = routeBetween(u, v);
       const entries = [...deps.entries()];
       entries.forEach(([dep, role], i) => {
         const offset = (i - (entries.length - 1) / 2) * FAN_GAP;
-        const oa = { x: a.x + perp.x * offset, y: a.y + perp.y * offset };
-        const ob = { x: b.x + perp.x * offset, y: b.y + perp.y * offset };
-        const d = edgePath(oa, ob);
-        const color = depColor(dep);
-        const stroke = `<path class="plan-edge ${role}" d="${d}" style="stroke:${color}"/>`;
+        const d = routePath(offsetRoute(route, offset));
+        const stroke = `<path class="plan-edge ${role}" d="${d}" style="stroke:${depColor(dep)}"/>`;
         if (role === "pull") pullOverlay += stroke;
         else pushOverlay += stroke;
       });
@@ -304,6 +513,10 @@ export function renderReef(scenario: Scenario, layout: Layout, subMeta: Map<stri
   }
 
   // --- nodes ---
+  // The tower and König Cloud images go in their own layer under the edges:
+  // they are much bigger than the node itself, and on top they hid any edge
+  // passing behind them. data-node keeps them tappable like the node.
+  let scenery = "";
   let g = "";
   for (const n of nodes) {
     const { x, y, r } = pos(n.id);
@@ -326,19 +539,20 @@ export function renderReef(scenario: Scenario, layout: Layout, subMeta: Map<stri
     const ariaEvents = leafLetters.length ? t().producesEvents(leafLetters.join(", ")) : "";
     const aria = `${n.is_cloud ? t().cloudSink : n.is_leaf ? t().sourceNode(n.id) : t().watchtower(n.id)}${ariaPlaced}${ariaEvents}`;
 
-    let shape: string;
+    let shape = "";
     let cloudBox: CloudBox | null = null;
     if (n.is_cloud) {
       cloudBox = cloudImageBox(x, y);
-      shape =
-        `<image class="cloud-img" href="assets/kingcloud.png" x="${cloudBox.x}" y="${cloudBox.y}" ` +
+      scenery +=
+        `<image class="cloud-img" data-node="${n.id}" href="assets/kingcloud.png" x="${cloudBox.x}" y="${cloudBox.y}" ` +
         `width="${cloudBox.w}" height="${cloudBox.h}" preserveAspectRatio="xMidYMax meet"/>`;
     } else if (n.is_leaf) {
       shape = `<circle class="node-dot" cx="${x}" cy="${y}" r="${r}"/>` + eventPetals(x, y, r, leafLetters);
     } else {
       // A small foundation, not the tower itself — the old full-size circle
       // read as "the shape", with the tower as decoration on top of a ball.
-      shape = `<circle class="node-dot" cx="${x}" cy="${y}" r="${r * 0.62}"/>` + towerShape(x, y, r);
+      shape = `<circle class="node-dot" cx="${x}" cy="${y}" r="${r * 0.62}"/>`;
+      scenery += towerShape(x, y, r, n.id);
     }
 
     // placed-subquery chips near the node -- the control a player taps to
@@ -385,6 +599,7 @@ export function renderReef(scenario: Scenario, layout: Layout, subMeta: Map<stri
   return (
     `<svg viewBox="0 0 ${VB_W} ${VB_H}" class="reef-svg" preserveAspectRatio="xMidYMid meet" role="group" aria-label="${t().topologyAria}">` +
     background() +
+    `<g class="scenery">${scenery}</g>` +
     `<g class="edges">${edges}</g>` +
     `<g class="plan-edges">${planEdges}</g>` +
     `<g class="nodes">${g}</g>` +
