@@ -14,9 +14,8 @@ function strategyIds(state: AppState, bl: Baselines): StrategyId[] {
   return STRAT_ORDER.filter((id) => sc.strategies[id] && bl[id]);
 }
 
+// Full numbers, like fmtRate: "1190" reads unambiguously, "1.19k" did not.
 function fmtCost(n: number): string {
-  if (n >= 10000) return (n / 1000).toFixed(1) + "k";
-  if (n >= 1000) return (n / 1000).toFixed(2) + "k";
   return Math.round(n).toString();
 }
 function fmtLat(n: number): string {
