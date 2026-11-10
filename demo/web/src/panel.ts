@@ -8,7 +8,7 @@ import { t, getLang } from "./i18n";
 
 const STRAT_ORDER: StrategyId[] = ["all_push", "inev", "prepp", "sequential", "kraken"];
 
-/** The baselines this round actually exports (the paper round has no INEv). */
+/** The baselines this round actually exports. */
 function strategyIds(state: AppState, bl: Baselines): StrategyId[] {
   const sc = state.scenario!;
   return STRAT_ORDER.filter((id) => sc.strategies[id] && bl[id]);
@@ -331,6 +331,7 @@ function renderDecisionTable(state: AppState): string {
   const name = state.subqueries[0];
   const mine = state.paperDecision;
   const seq = a.sequential.decision;
+  const inev = (state.scenario?.strategies.inev as { decision?: { node: number; scheme: CommScheme } } | undefined)?.decision;
   const opt = a.reference_optimum;
   const kNode = stage.placement[name];
   const kScheme = stage.per_placement?.[name]?.strategy as CommScheme | undefined;
@@ -353,6 +354,7 @@ function renderDecisionTable(state: AppState): string {
           const marks = [
             isBest ? `<span class="dt-mark opt" title="${escapeHtml(t().dtOptTitle)}">★</span>` : "",
             d.node === kNode && d.scheme === kScheme ? `<span class="dt-mark k" title="Kraken">K</span>` : "",
+            inev && d.node === inev.node && d.scheme === inev.scheme ? `<span class="dt-mark i" title="INEv">I</span>` : "",
             d.node === seq.node && d.scheme === seq.scheme ? `<span class="dt-mark s" title="Sequential">S</span>` : "",
             mine && d.node === mine.node && d.scheme === mine.scheme ? `<span class="dt-mark you" title="${escapeHtml(t().youLabel)}">${escapeHtml(t().youLabel)}</span>` : "",
           ].join("");

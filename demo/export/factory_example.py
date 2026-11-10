@@ -362,6 +362,13 @@ def all_push_best(pool: List[Dict], alpha: float) -> Dict:
     return _argmin([d for d in pool if d["scheme"] == "all_push"], pool, alpha)
 
 
+def inev_plan(pool: List[Dict]) -> Dict:
+    """INEv on the same table: it places by transmitted tuples alone and has
+    no push-pull, so it is the cheapest all-push cell -- whatever alpha is."""
+    return min((d for d in pool if d["scheme"] == "all_push"),
+               key=lambda d: (d["cost"], d["latency"], d["node"]))
+
+
 def sequential_plan(pool: List[Dict], alpha: float) -> Dict:
     """Example 1's sequential planner, with the same inputs and the same F as
     Kraken: (1) fix the placement that is best under all-push, (2) then pick

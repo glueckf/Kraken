@@ -169,8 +169,13 @@ als All-Push am selben Knoten, da gleiches V aber höhere L.)
    `test_unquantified_sigma_B_given_A_does_not_matter`.
 4. **Sequential der Engine.** `Simulation.run()` berechnet „Sequential" als
    INEv-Platzierung + PrePP. Die Runde verwendet stattdessen die
-   Sequential-Definition aus Example 1 auf Krakens Kostenmodell (Abschnitt 3)
-   und lässt die INEv-Zeile weg — siehe Punkt 5 für den Grund.
+   Sequential-Definition aus Example 1 auf Krakens Kostenmodell (Abschnitt 3),
+   siehe Punkt 5 für den Grund. Ebenso INEv: Die Engine-INEv landet hier in
+   der Cloud, ist also identisch mit All-Push. Die Runde zeigt stattdessen den
+   INEv-Schritt aus Example 1 — INEv platziert rein nach übertragenen Tupeln
+   und kennt kein Push-Pull, also der tupel-günstigste All-Push-Knoten
+   (n3, 4020 Tupel, Latenz 4; `factory_example.inev_plan`, unabhängig von α).
+   In der Entscheidungstabelle als „I" markiert.
 5. **Befund in der Engine (nicht behoben, umgangen):** INEv schreibt beim
    Lauf seine Weiterleitungsentscheidungen in die gemeinsame Matrix
    `h_eventNodes` (`core/structures.set_event_nodes`). Krakens

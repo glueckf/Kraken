@@ -194,6 +194,12 @@ class TestFactoryExample(unittest.TestCase):
             min(fx.score_F(d["cost"], d["latency"], self.pool, a) for d in same_node))
         self.assertEqual(key(seq), (fx.FOG_MERGE, "push_pull"))
 
+    def test_inev_is_the_tuple_cheapest_all_push_cell(self):
+        # INEv places by tuples only and never pulls, so alpha cannot move it.
+        inev = fx.inev_plan(self.pool)
+        self.assertEqual(key(inev), (fx.FOG_MERGE, "all_push"))
+        self.assertEqual(inev["cost"], min(d["cost"] for d in self.pool if d["scheme"] == "all_push"))
+
     def test_kraken_compared_with_enumeration_per_stage(self):
         # Not assumed: Kraken's real greedy run, checked against the scan.
         for a in (0.2, 0.6, 0.9):
@@ -241,6 +247,9 @@ class TestFactoryExample(unittest.TestCase):
         seq = fx.sequential_plan(self.pool, a)
         self.assertEqual(sc["strategies"]["sequential"]["decision"],
                          {"node": seq["node"], "scheme": seq["scheme"]})
+        inev = fx.inev_plan(self.pool)
+        self.assertEqual(sc["strategies"]["inev"]["decision"],
+                         {"node": inev["node"], "scheme": inev["scheme"]})
         anchors = sc["norm_anchors"]
         self.assertEqual((anchors["cost_min"], anchors["cost_max"]),
                          (min(d["cost"] for d in self.pool), max(d["cost"] for d in self.pool)))

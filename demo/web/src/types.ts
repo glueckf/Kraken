@@ -158,7 +158,7 @@ export interface Scenario {
   };
   projections: Projection[];
   processing_order: string[];
-  /** Not every round has every baseline (the paper round has no INEv row). */
+  /** Not every round has to export every baseline. */
   strategies: Partial<Record<StrategyId, Strategy>>;
   paper_round?: PaperRound;
   /** Named cost/latency-balance presets, each with Kraken's own real
