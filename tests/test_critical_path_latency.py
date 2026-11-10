@@ -14,7 +14,8 @@ A produced at node 1, B and C at node 2. Events only flow towards the cloud,
 so a projection can only sit on a common ancestor of its sources that
 produces no events itself (node 6, 5 or the cloud), as Kraken's optimizer
 enforces; every test uses such placements. Node 7 below 5 is not part of
-medium_c: it produces a second copy of C in TestSeveralSources only.
+medium_c: it produces D, for the queries S3 and FLAT that can therefore only
+sit on 5 or the cloud, and a second copy of C in TestSeveralSources.
 """
 
 import itertools
@@ -37,10 +38,13 @@ from simulation_environment import calculate_sequential_max_latency
 
 CLOUD = 0
 PARENT = {5: 0, 6: 5, 1: 6, 2: 6, 7: 5}
-SOURCES = {"A": [1], "B": [2], "C": [2]}
+SOURCES = {"A": [1], "B": [2], "C": [2], "D": [7]}
 S1 = "SEQ(A, B)"
 S2 = "SEQ(A, B, C)"
-DEPS = {S1: ["A", "B"], S2: [S1, "C"]}
+S3 = "SEQ(A, B, C, D)"  # a third level on top of S2
+FLAT = "AND(A, B, D)"  # three primitive inputs, no subquery
+DEPS = {S1: ["A", "B"], S2: [S1, "C"], S3: [S2, "D"], FLAT: ["A", "B", "D"]}
+ORDER = [S1, S2, S3, FLAT]  # processing order: every projection, inputs first
 
 
 def _path_to_root(n):
@@ -109,7 +113,7 @@ def _latency(placements, workload=(S2,), processing=None, xi=0.0):
         )
         placed[projection] = node
     problem = SimpleNamespace(
-        processing_order=[S1, S2],
+        processing_order=ORDER,
         dependencies_per_projection=DEPS,
         query_workload=list(workload),
         latency_weighting_factor=xi,
@@ -120,28 +124,29 @@ def _latency(placements, workload=(S2,), processing=None, xi=0.0):
 
 
 def _sequential_latency(placements):
-    """The Sequential baseline's latency of S2 for the same plans. It reports
-    no sink hop, so callers place S2 in the cloud."""
+    """The Sequential baseline's latency of the last projection for the same
+    plans. It reports no sink hop, so callers place that one in the cloud."""
     acquisitions, placed = {}, {}
     for projection, node, steps in placements:
         acquisitions[projection] = _plan(node, steps, placed)
         placed[projection] = node
     context = SimpleNamespace(
         config=SimpleNamespace(xi=0.0),
-        processing_order=[S1, S2],
+        processing_order=ORDER,
         h_mycombi=DEPS,
         sum_of_input_rates_per_query={},
         h_projrates={},
         allPairs=DIST,
-        query_workload=[S2],
+        query_workload=[projection],
     )
     latencies, _ = calculate_sequential_max_latency(
         context, [None] * 6 + [acquisitions])
-    return latencies[S2]
+    return latencies[projection]
 
 
 ALL_PUSH_S1 = [((), ["A", "B"])]
 ALL_PUSH_S2 = [((), [S1, "C"])]
+ALL_PUSH_S3 = [((), [S2, "D"])]
 
 # Every placement Kraken can choose: S1 on a host, S2 on the same or a higher
 # one (it consumes S1, and events only flow up). Hosts form a chain.
@@ -161,17 +166,33 @@ S2_PLANS = {
 
 
 def _expected(n1, plan1, n2, plan2, workload=(S2,)):
-    """The same timings derived by hand for this chain of hosts."""
-    h1 = DEPTH[1] - DEPTH[n1]  # hops from A's or B's source up to S1
-    h2 = DEPTH[2] - DEPTH[n2]  # hops from C's source up to S2
-    d12 = DEPTH[n1] - DEPTH[n2]  # hops from S1 up to S2
-    # pull: the first event comes up, the request goes down, the other back up
+    """The same timings derived by hand for this chain of hosts.
+
+    h1 = hops from A's or B's source up to S1 (both are equally deep),
+    h2 = hops from C's source up to S2, d12 = hops from S1 up to S2.
+
+    S1 is ready at
+    - all push: h1, A and B travel in parallel;
+    - push one, pull the other: 3 * h1, the pushed event comes up, the
+      request goes down to the other source and its answer comes back up.
+    S2 is ready at
+    - all push: max(ready1 + d12, h2), S1's output and C travel in parallel;
+    - push S1, pull C: ready1 + d12 + 2 * h2, the request for C leaves once
+      S1's output is in;
+    - push C, pull S1: max(h2 + d12, ready1) + d12, the request reaches S1's
+      node after C is in, but S1 can only answer once it has results.
+    The latency adds S2's hops to the cloud. A shared S1 adds its own hops
+    to the cloud to ready1, which S2 does not inherit.
+    """
+    h1 = DEPTH[1] - DEPTH[n1]
+    h2 = DEPTH[2] - DEPTH[n2]
+    d12 = DEPTH[n1] - DEPTH[n2]
     ready1 = h1 if plan1 == "all push" else 3 * h1
     if plan2 == "all push":
         ready2 = max(ready1 + d12, h2)
     elif plan2 == "push S1, pull C":
         ready2 = ready1 + d12 + 2 * h2
-    else:  # the request waits at S1's node until S1 has results
+    else:
         ready2 = max(h2 + d12, ready1) + d12
     latency = ready2 + DEPTH[n2]
     if S1 in workload:
@@ -256,6 +277,110 @@ class TestProcessingLatency(unittest.TestCase):
                            processing={S1: 2.0, S2: 1.0}, xi=0.5)
         self.assertEqual(latency, 4.5)
 
+    def test_processing_of_a_late_subquery_delays_the_pull_answer(self):
+        # As test_pull_waits_for_a_late_subquery, but S1 needs 0.5 * 2 to
+        # process its inputs: it has results at 7 instead of 6, so the
+        # request waiting at node 5 is answered at 7, back in the cloud at 8.
+        latency = _latency([
+            (S1, 5, S1_PLANS["push B, pull A"]),
+            (S2, CLOUD, S2_PLANS["push C, pull S1"]),
+        ], processing={S1: 2.0}, xi=0.5)
+        self.assertEqual(latency, 8)  # was 12: 7 + (3 + 1 + 1)
+
+
+class TestDeeperQueries(unittest.TestCase):
+    """S3 = SEQ(S2, D) adds a third level. D comes from node 7, two hops below
+    the cloud. The old recursion added one more transmission latency per
+    level, so its error grew with the depth of the query."""
+
+    def test_three_levels_all_push_in_the_cloud(self):
+        # S1 and S2 are ready at 3 as in test_both_in_cloud; D arrives at 2.
+        # S3 only waits for its latest input, S2 at 3.
+        latency = _latency([
+            (S1, CLOUD, ALL_PUSH_S1),
+            (S2, CLOUD, ALL_PUSH_S2),
+            (S3, CLOUD, ALL_PUSH_S3),
+        ], workload=(S3,))
+        self.assertEqual(latency, 3)  # was 8: 3 + 3 + 2
+
+    def test_three_levels_climbing_towards_the_cloud(self):
+        # S1 at 6 is ready at 1; S2 at 5 at 2 (S1 one hop up, C two hops);
+        # S3 in the cloud at 3 (S2 one hop up, D two hops). Each level picks
+        # up its inputs on the way up, so the deepest source still decides.
+        latency = _latency([
+            (S1, 6, ALL_PUSH_S1),
+            (S2, 5, ALL_PUSH_S2),
+            (S3, CLOUD, ALL_PUSH_S3),
+        ], workload=(S3,))
+        self.assertEqual(latency, 3)  # was 5: 1 + 2 + 2
+
+    def test_sink_hop_is_not_inherited_over_two_levels(self):
+        # All three are workload queries: S1 at 6 is ready at 1 and sends
+        # its matches 2 hops to the cloud (3); S2 at 5 is ready at 2, +1 (3);
+        # S3 at 5 gets S2 locally and D after 1 hop, ready at 2, +1 (3).
+        # Each adds its own hops to the cloud, none inherits another's.
+        latency = _latency([
+            (S1, 6, ALL_PUSH_S1),
+            (S2, 5, ALL_PUSH_S2),
+            (S3, 5, ALL_PUSH_S3),
+        ], workload=(S1, S2, S3))
+        self.assertEqual(latency, 3)  # was 8: (1 + 2) + (2 + 1) + (1 + 1)
+
+    def test_late_subquery_two_levels_down(self):
+        # S1 at 5: push B (2), pull A with B (2 + 2 + 2) -> ready 6. S2 at 5
+        # gets S1 locally at 6 and C at 2 -> ready 6. S3 in the cloud: push
+        # D (2), pull S2 with D: the request is at node 5 at 3, but S2 only
+        # has results at 6, back at 7. S1's delay reaches S3 through S2.
+        latency = _latency(LATE_TWO_LEVELS, workload=(S3,))
+        self.assertEqual(latency, 7)  # was 12: 6 + 2 + (2 + 1 + 1)
+
+
+LATE_TWO_LEVELS = [
+    (S1, 5, S1_PLANS["push B, pull A"]),
+    (S2, 5, ALL_PUSH_S2),
+    (S3, CLOUD, [((), ["D"]), (["D"], [S2])]),
+]
+
+
+class TestLongerAcquisitionPlans(unittest.TestCase):
+    """FLAT = AND(A, B, D) takes three primitives directly, so its plan can
+    have three steps, or pull two events in one step. D at node 7 is one hop
+    closer to the cloud than A and B."""
+
+    def test_each_pull_waits_for_all_earlier_steps(self):
+        # FLAT in the cloud: push D (2); pull B with D: the request goes 3
+        # down, B 3 up -> 8; pull A with D and B: leaves at 8, back at 14.
+        # Summing is right here, every request needs the earlier events.
+        latency = _latency([
+            (FLAT, CLOUD, [((), ["D"]), (["D"], ["B"]), (["D", "B"], ["A"])]),
+        ], workload=(FLAT,))
+        self.assertEqual(latency, 14)
+
+    def test_one_pull_of_two_events_waits_for_the_farther(self):
+        # FLAT in the cloud: push B (3); pull D and A with B in one step: the
+        # request leaves at 3, D is back at 3 + 2 + 2 = 7, A only at
+        # 3 + 3 + 3 = 9.
+        latency = _latency([
+            (FLAT, CLOUD, [((), ["B"]), (["B"], ["D", "A"])]),
+        ], workload=(FLAT,))
+        self.assertEqual(latency, 9)
+
+
+class TestPartialCandidates(unittest.TestCase):
+    """The search checks the latency after every placement, to prune, while
+    later projections are not placed yet."""
+
+    def test_only_the_subquery_placed(self):
+        # S1 at 5 pulling A is ready at 6; S2 does not count yet.
+        latency = _latency([(S1, 5, S1_PLANS["push B, pull A"])])
+        self.assertEqual(latency, 6)
+
+    def test_placed_subquery_in_the_workload_adds_its_sink_hop(self):
+        # As above, but S1 is a workload query itself: +1 hop to the cloud.
+        latency = _latency([(S1, 5, S1_PLANS["push B, pull A"])],
+                           workload=(S1, S2))
+        self.assertEqual(latency, 7)
+
 
 class TestSequentialBaseline(unittest.TestCase):
     """calculate_sequential_max_latency uses the same model for its plans."""
@@ -266,6 +391,10 @@ class TestSequentialBaseline(unittest.TestCase):
                 latency = _sequential_latency([(S1, n1, S1_PLANS[plan1]),
                                                (S2, CLOUD, S2_PLANS[plan2])])
                 self.assertEqual(latency, _expected(n1, plan1, CLOUD, plan2))
+
+    def test_late_subquery_two_levels_down(self):
+        # As TestDeeperQueries.test_late_subquery_two_levels_down: 7.
+        self.assertEqual(_sequential_latency(LATE_TWO_LEVELS), 7)
 
 
 class TestPushPullSteps(unittest.TestCase):
@@ -301,6 +430,17 @@ class TestPushPullSteps(unittest.TestCase):
             (S2, 6, [((), [S1]), (["A"], ["C"])], [(1, ["C"])]),
         ])
         self.assertEqual(latency, 3)
+
+    def test_partly_local_step_still_needs_the_round_trip(self):
+        # S1 at 6 is ready at 1. S2 at 5: push C (2), pull S1 with C. A
+        # already passes node 5 for another placement there, but B does not,
+        # so S1 cannot be had locally: the request goes down to node 6 (3),
+        # S1 answers at once and is back at 4; +1 hop to the sink.
+        latency = _latency([
+            (S1, 6, ALL_PUSH_S1),
+            (S2, 5, S2_PLANS["push C, pull S1"], [(1, ["A"])]),
+        ])
+        self.assertEqual(latency, 5)  # was 6: 1 + (2 + 1 + 1) + 1
 
     def test_without_local_events_the_round_trip_counts(self):
         latency = _latency([
