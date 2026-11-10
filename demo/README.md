@@ -5,27 +5,34 @@ You place operators on network nodes yourself, and the app scores your plan
 against Kraken and the baselines. All-push scoring runs client-side via a Rust
 engine compiled to WebAssembly; push-pull scoring uses the local backend.
 
-Topologies: **Reef** (~9–13 nodes) and **Grand Reef** (~13–26 nodes) with
-five story queries each — each of those two is actually several networks
-(see `topologies.py`'s `family` grouping) so repeat visitors see different
-edges under the same query. Those networks are hand-curated, not randomly
-generated (`demo/export/reef_topologies.py`): a random network almost
-never gives a query more than one real placement candidate (its valid set
-is just the ancestor chain up to the root), so it never showed the actual
-placement trade-off this demo is about, no matter how many times you tried
-again. "Try again" only rotates within the current size (Reef stays Reef,
-Grand Reef stays Grand Reef) — the topology-bar buttons are the explicit
-way to switch size. Grand Reef's own default network started out randomly
-generated and un-curated on purpose, as a bigger, messier reference point,
-but its 67 edges (most nodes with 3-4 parents at once) read as noise, not
-a network, so it's since been pruned down to the 24 edges its query
-letters actually depend on — same shape, same placements, just legible —
-see `demo/BACKLOG.md` item #30 for the investigation and the per-query
-verification table. And
-**Kraken's Forge**, the paper's motivating example (Example 1–4), a small
-fixed round where the best node depends on the communication scheme. See
-[FACTORY_ROUND.md](FACTORY_ROUND.md) for its derivation and
-[BOOTH.md](BOOTH.md) for the booth staff's start/reset/recovery guide.
+Two demos share this code. This branch, `kraken-demo`, is the plain version
+for a scientific audience. `kraken-demo-bsw` keeps the underwater theme for
+a general audience (shown at BSW 2026) and has three named alpha presets
+instead of the slider.
+
+Rounds:
+
+- **Paper example (P)**: the paper's motivating example (Example 1–4), a
+  small fixed round where the best node depends on the communication scheme.
+  See [FACTORY_ROUND.md](FACTORY_ROUND.md) for its derivation.
+- **Small networks (S1–S8, 9–13 nodes)** and **large networks (L1–L10,
+  13–26 nodes)**, with three to five queries each. Codes are numbered by
+  size within each group (`export/topologies.py`, `display_code`); the
+  internal ids (dunes, coral, …) are still the themed ones. `?topo=S2` or
+  `?topo=dunes` opens a network directly. "Try again" stays within the
+  current size; the topology-bar buttons switch size.
+
+The networks are hand-curated (`export/reef_topologies.py`), not randomly
+generated: a random network almost never gives a query more than one real
+placement candidate (its valid set is just the ancestor chain up to the
+root), so it never showed the placement trade-off this demo is about. See
+`BACKLOG.md` item #30 for the history of the original large network.
+
+A slider sets the cost/latency weight α from 0.0 to 1.0 in steps of 0.1.
+Kraken has its own real run at every step; the baselines (All-Push, INEv,
+Sequential, PrePP) don't depend on α, only their score does.
+
+[BOOTH.md](BOOTH.md) is the start/reset/recovery guide for running the demo.
 
 ## Layout
 
@@ -103,13 +110,13 @@ RNG state from a randomly-sized topology leak into another's reconstruction.
 
 ## Push-pull scoring backend
 
-The Reef rounds need it to score any plan that pulls. Without it (not
+The network rounds (S, L) need it to score any plan that pulls. Without it (not
 configured, or not reachable), only pure all-push plans are scored, by the
 in-browser all-push model and labelled as such; a plan that pulls anything
 shows "can't score this plan right now" instead of an all-push number that
 would ignore the pulls. A status line under the scorecard says which mode is
 active; the page polls `GET /health` every 15 s and rescores by itself when the
-service comes back. Kraken's Forge never needs the backend (scored from its
+service comes back. The paper example never needs the backend (scored from its
 exported, engine-computed decision table). Run the backend alongside the
 frontend:
 
@@ -123,7 +130,7 @@ local development. The backend reuses Kraken's own `CostCalculator` (via
 RNG-isolation reason as above) to pick the cheapest push/push-pull strategy
 per operator for whatever placement you chose — the same model the
 "Sequential" baseline already uses for INEv's placement, generalized to any
-placement. For Kraken's Forge it restricts placement to nodes 1, 2, cloud,
+placement. For the paper example it restricts placement to nodes 1, 2, cloud,
 and push/pull to real subsets of {A, B} (so a player's free per-dependency
 chips can build any of the four combinations, not just the paper's own two)
 — `score_one.py` is also what the exported decision table itself comes from
@@ -136,7 +143,7 @@ from that table directly, offline.
 ```bash
 # Python: paper round (engine vs. paper formulas, enumeration, backend) + push/pull regressions
 cd demo/export && uv run python -m unittest tests.test_factory_example tests.test_score_one
-# Frontend: types, and the shipped WASM scorer against Kraken's Forge
+# Frontend: types, and the shipped WASM scorer against the paper example
 cd demo/web && npm run typecheck && npm test
 # Rust scorer goldens (unchanged)
 cd demo/engine && cargo test --release

@@ -1,4 +1,6 @@
-# Paper-Runde „Krakens Schmiede" — Herleitung
+# Paper-Beispiel (P) — Herleitung
+
+(In der BSW-Demo, Branch `kraken-demo-bsw`, heißt die Runde „Krakens Schmiede".)
 
 Die Runde spielt das Motivationsbeispiel aus `Kraken_DEBS_Long_Version.pdf`
 nach (Example 1–4, Fig. 1 und 3, Sec. 4.3) und erweitert es um eine Topologie,
@@ -95,10 +97,17 @@ min/max über alle neun Optionen (V: 480…4040, L: 4…12). Das Spiel
 normalisiert mit genau diesen Ankern (geprüft in
 `web/tests/factory_wasm.test.mjs`).
 
-**Gewicht:** Hauptvergleich bei **α = 0,6** (Stufe „Ausgewogen", die
-Standardstufe der Demo; das Paper nennt α ≥ 0,6 bei diesem Beispiel
-„intermediate weights"). Die Stufen „Schnell" (0,2) und „Günstig" (0,9) sind
-ebenfalls exportiert, jeweils mit eigenem Kraken-Lauf.
+**Gewicht:** Hauptvergleich bei **α = 0,6** (Startwert des Reglers in
+dieser Runde; das Paper nennt α ≥ 0,6 bei diesem Beispiel „intermediate
+weights"). Exportiert sind alle α von 0,0 bis 1,0 in Schritten von 0,1,
+jeweils mit eigenem Kraken-Lauf:
+
+| α | Kraken | Sequential |
+|---|---|---|
+| 0,0 | n4 / All-Push (Gleichstand aller All-Push-Optionen, L = 4) | n3 / All-Push |
+| 0,1–0,4 | n3 / All-Push | n3 / All-Push |
+| 0,5 | n3 / All-Push (exakter Gleichstand mit n3 / Push-Pull, F = 0,497) | n3 / Push-Pull |
+| 0,6–1,0 | c / Push-Pull | n3 / Push-Pull |
 
 | Knoten / Schema | V | L | F bei α = 0,6 |
 |---|---|---|---|
@@ -121,7 +130,9 @@ als All-Push am selben Knoten, da gleiches V aber höhere L.)
 - **Vollständige Enumeration**: Minimum von F über alle 9 Optionen → c / Push-Pull.
   Krakens Ergebnis wird damit **verglichen**, nicht gleichgesetzt
   (`matches_reference` im JSON, Test `test_kraken_compared_with_enumeration_per_stage`).
-  Es stimmt für alle drei Stufen überein.
+  Es stimmt für alle elf α-Werte überein. Bei α = 0,0 und 0,5 gibt es
+  exakte Gleichstände; dort zählt jede Option mit minimalem F als Optimum
+  (Vergleich über F, nicht über die Zelle; die Tabelle markiert alle mit ★).
 - **Kopplung (Kriterium 2):** Unter All-Push bevorzugt: n3. Beste
   Kombination: Cloud + Push-Pull. Der Effekt hängt an der Gewichtung, wie im
   Paper.
@@ -209,14 +220,15 @@ als All-Push am selben Knoten, da gleiches V aber höhere L.)
 ## 6. Reproduzieren
 
 ```bash
-# Szenarien neu erzeugen (schreibt auch forge/factory_join.json)
-uv run python demo/export/export_scenario.py
+# Szenarien neu erzeugen (schreibt auch forge/factory_join.json),
+# aus dem Repo-Root INES-demo/, mit der .venv von INES/ (nicht uv run, siehe BOOTH.md)
+../INES/.venv/bin/python demo/export/export_scenario.py
 # Tests
-cd demo/export && uv run python -m unittest tests.test_factory_example tests.test_score_one
+cd demo/export && ../../../INES/.venv/bin/python -m unittest tests.test_factory_example tests.test_score_one
 cd demo/web && npm run typecheck && npm test
 ```
 
-Der Exporter gibt die neun Zellen und für jede Stufe Kraken / Optimum /
+Der Exporter gibt die neun Zellen und für jedes α Kraken / Optimum /
 Sequential / All-Push-Bestwert aus. Bei jeder Abweichung (Engine ≠
 unabhängige Formel, Backend-Pfad ≠ freie Suche, WASM-All-Push ≠ Engine,
 Baseline ≠ Tabellenzelle, Kraken ≠ Tabelle) endet er mit Fehlercode.
