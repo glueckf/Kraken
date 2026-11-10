@@ -4,7 +4,7 @@
 
 import { AppState, type OfficialScore } from "./state";
 import { computeLayout, renderReef, type Layout, type ReefView } from "./reef";
-import { renderTopologyBar, renderQueryBar, renderTray, renderScorecard, renderServiceBadge, playerBeatsKraken } from "./panel";
+import { renderTopologyBar, renderQueryBar, renderTray, renderScorecard, renderServiceBadge, playerBeatsKraken, syncAlphaBar } from "./panel";
 import { modalHtml } from "./modal";
 import { getLang, setLang, onLangChange, t } from "./i18n";
 import type { Scenario } from "./types";
@@ -92,7 +92,7 @@ function render(): void {
     layout = computeLayout(state.scenario);
     layoutFor = state.scenario;
   }
-  $("reef").innerHTML = renderReef(state.scenario, layout!, state.subMeta, reefView(), state.topologyId!);
+  $("reef").innerHTML = renderReef(state.scenario, layout!, state.subMeta, reefView(), state.topology?.code ?? state.topologyId!);
   $("topologyBar").innerHTML = renderTopologyBar(state);
   $("queryBar").innerHTML = renderQueryBar(state);
   $("tray").innerHTML = renderTray(state);
@@ -102,6 +102,7 @@ function render(): void {
   $("reef").classList.toggle("locked", state.confirmed);
   $("tray").classList.toggle("locked", state.confirmed);
   $("scorecard").innerHTML = renderScorecard(state) + renderServiceBadge(state);
+  syncAlphaBar($("alphaBar"), state);
   status.textContent = state.scenario.title;
   renderTimer();
 
@@ -195,10 +196,11 @@ function wire(): void {
     if (action === "reveal") state.toggleReveal();
     else if (action === "clear") state.clear();
     else if (action === "confirm") state.confirm();
-    else if (action === "stage") {
-      const idx = closestAttr(e.target, "data-stage");
-      if (idx != null) state.setStage(Number(idx));
-    }
+  });
+
+  $("alphaBar").addEventListener("input", (e) => {
+    const input = e.target as HTMLInputElement;
+    if (input.classList.contains("alpha-slider")) state.setStage(Number(input.value));
   });
 
   // modal

@@ -55,8 +55,8 @@ export type BackendStatus = "off" | "unknown" | "up" | "down";
 const BACKEND_POLL_MS = 15000;
 
 /** Queries hidden per network for BSW (2026-11-07): copying Kraken's
- * revealed plan loses in all three stages (BACKLOG.md item 36, not fixed for
- * BSW). Only on networks that still show at least three queries without
+ * revealed plan loses in all three BSW stages (BACKLOG.md item 36, not fixed
+ * for BSW). Only on networks that still show at least three queries without
  * them; whirlpool, cliffs and wreck show three and keep theirs. */
 const HIDDEN_COPY_LOSES: Record<string, string[]> = {
   medium: ["seq_abcd"],
@@ -71,14 +71,13 @@ export class AppState {
   engine: Engine | null = null;
   baselines: Baselines | null = null;
   subMeta: Map<string, SubMeta> = new Map();
-  /** Index into scenario.kraken_stages — the player's choice of cost/latency
-   * balance, simplified from a raw 0-1 "alpha" number (too abstract for a lay
-   * audience) into 3 named presets ("Fast" / "Balanced" / "Cheap", at alpha
-   * 0.2/0.5/0.9 — see KRAKEN_STAGES in export_scenario.py; Kraken's Forge
-   * keeps 0.2/0.6/0.9). Persists across topology/query switches, same as the
-   * old continuous weight did (each freshly-created Engine gets this stage's
-   * alpha explicitly reapplied in loadScenario). Default 1 = "Balanced". */
-  stageIndex = 1;
+  /** Index into scenario.kraken_stages, i.e. the alpha slider's position
+   * (0.0 to 1.0 in steps of 0.1, see KRAKEN_STAGES in export_scenario.py). */
+  stageIndex = 0;
+  /** The alpha the player set on the slider, kept across topology/query
+   * switches. Until they touch it, every round opens at its own default
+   * (config.cost_weight: 0.5 in the networks, 0.6 in the paper example). */
+  chosenAlpha: number | null = null;
 
   placement: Placement = {};
   activeSubquery: string | null = null;
@@ -166,7 +165,7 @@ export class AppState {
       this.manifest = await fetchJson<Manifest>(`${base}manifest.json`);
       // seq_and_pairs ("Oktopus-Puls", Q5) is a Barrier Reef query only.
       // On Lagoon's medium, copying Kraken's revealed plan loses in all
-      // three stages (BACKLOG.md item 36, not fixed for BSW), so Lagoon
+      // three BSW stages (BACKLOG.md item 36, not fixed for BSW), so Lagoon
       // keeps it hidden. It used to be hidden everywhere because of an
       // export-time decomposition leak; only the Grand Reef's copy was
       // affected, and that topology is retired (item 32).
@@ -177,10 +176,13 @@ export class AppState {
         const hidden = HIDDEN_COPY_LOSES[topo.id] ?? [];
         topo.scenarios = topo.scenarios.filter((s) => !hidden.includes(s.id));
       }
-      // ?topo=<id> opens one concrete network directly (e.g. ?topo=dunes),
-      // for checking a variant without clicking through "try again".
-      const wanted = new URLSearchParams(location.search).get("topo") ?? "medium";
-      const defaultTopo = this.manifest.topologies.find((t) => t.id === wanted) ?? this.manifest.topologies[0];
+      // ?topo=<id or code> opens one concrete network directly (e.g.
+      // ?topo=S2 or ?topo=dunes), for checking a variant without clicking
+      // through "try again".
+      const wanted = (new URLSearchParams(location.search).get("topo") ?? "medium").toLowerCase();
+      const defaultTopo =
+        this.manifest.topologies.find((t) => t.id === wanted || t.code?.toLowerCase() === wanted) ??
+        this.manifest.topologies[0];
       this.topologyId = defaultTopo.id;
       await this.loadScenario(defaultTopo.scenarios[0].id);
     } catch (e) {
@@ -218,8 +220,8 @@ export class AppState {
       const scenario = await fetchJson<Scenario>(`${this.base}${entry.file}`);
       this.engine?.dispose();
       this.engine = await Engine.create(scenario);
-      const stageAlpha = scenario.kraken_stages[this.stageIndex]?.alpha ?? 0.5;
-      this.engine.setCostWeight(stageAlpha);
+      this.stageIndex = stageIndexFor(scenario, this.chosenAlpha ?? scenario.config.cost_weight);
+      this.engine.setCostWeight(scenario.kraken_stages[this.stageIndex]?.alpha ?? scenario.config.cost_weight);
       this.scenario = scenario;
       this.baselines = this.engine.baselines();
       this.descendants = computeDescendants(scenario);
@@ -624,6 +626,7 @@ export class AppState {
   setStage(index: number): void {
     if (index < 0 || index >= this.stages.length) return;
     this.stageIndex = index;
+    this.chosenAlpha = this.stages[index].alpha;
     if (!this.engine) {
       this.emit();
       return;
@@ -792,4 +795,14 @@ function computeDescendants(scenario: Scenario): Map<number, Set<number>> {
     result.set(n.id, seen);
   }
   return result;
+}
+
+/** The stage whose alpha is closest to `alpha`. */
+function stageIndexFor(scenario: Scenario, alpha: number): number {
+  const stages = scenario.kraken_stages;
+  let best = 0;
+  stages.forEach((s, i) => {
+    if (Math.abs(s.alpha - alpha) < Math.abs(stages[best].alpha - alpha)) best = i;
+  });
+  return best;
 }

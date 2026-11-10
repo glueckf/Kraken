@@ -298,7 +298,7 @@ function eventBadges(cx: number, cy: number, letters: string[]): string {
   return out;
 }
 
-export function renderReef(scenario: Scenario, layout: Layout, subMeta: Map<string, SubMeta>, view: ReefView, topologyId: string): string {
+export function renderReef(scenario: Scenario, layout: Layout, subMeta: Map<string, SubMeta>, view: ReefView, topologyCode: string): string {
   const nodes = scenario.topology.nodes;
   const pos = (id: number) => layout.nodes.get(id)!;
   const routeBetween = (u: number, v: number): Pt[] => {
@@ -469,7 +469,7 @@ export function renderReef(scenario: Scenario, layout: Layout, subMeta: Map<stri
   // Quiet reference tag, not UI — lets a visitor (or us, in a bug report)
   // name *this exact* concrete network ("large_b") rather than only its
   // family label, which several variants share.
-  const idTag = `<text class="topo-id" x="10" y="18">${topologyId}</text>`;
+  const idTag = `<text class="topo-id" x="10" y="18">${topologyCode}</text>`;
 
   return (
     `<svg viewBox="0 0 ${VB_W} ${VB_H}" class="reef-svg" preserveAspectRatio="xMidYMid meet" role="group" aria-label="${t().topologyAria}">` +

@@ -120,6 +120,25 @@ TOPOLOGIES = [
     # END designed
 ]
 
+# Neutral names shown in the plain Kraken demo: "P" for the paper example,
+# "S1".."Sn" and "L1".."Ln" for the small and large networks, numbered by
+# node count within their family. Derived rather than stored per entry, so
+# the generated block above stays exactly as design/integrate.py writes it,
+# and the ids themselves (keys into reef_topologies.BUILDERS, the design
+# tools and BACKLOG.md's history) don't change.
+_CODE_PREFIX = {"forge": "P", "lagoon": "S", "barrier": "L"}
+
+
+def display_code(topology_id):
+    t = next(t for t in TOPOLOGIES if t["id"] == topology_id)
+    family = [x for x in TOPOLOGIES if x["family"] == t["family"]]
+    prefix = _CODE_PREFIX.get(t["family"], t["family"][:1].upper())
+    if len(family) == 1:
+        return prefix
+    ranked = sorted(family, key=lambda x: (x["network_size"], TOPOLOGIES.index(x)))
+    return f"{prefix}{ranked.index(t) + 1}"
+
+
 # Not exported or shown, but still reconstructable by score_one.py.
 RETIRED = [
     # 3 watchtowers, fewer than Kraken's Forge. The critical-path latency bug

@@ -6,6 +6,7 @@
    "label": "Kraken's Forge",
    "label_de": "Krakens Schmiede",
    "network_size": 7,
+   "code": "P",
    "scenarios": [
     {
      "id": "factory_join",
@@ -24,6 +25,7 @@
    "label": "Lagoon",
    "label_de": "Lagune",
    "network_size": 12,
+   "code": "S4",
    "scenarios": [
     {
      "id": "seq_abc",
@@ -78,6 +80,7 @@
    "label": "Lagoon",
    "label_de": "Lagune",
    "network_size": 9,
+   "code": "S1",
    "scenarios": [
     {
      "id": "seq_abc",
@@ -132,6 +135,7 @@
    "label": "Barrier Reef",
    "label_de": "Barriereriff",
    "network_size": 13,
+   "code": "L1",
    "scenarios": [
     {
      "id": "seq_abc",
@@ -186,6 +190,7 @@
    "label": "Barrier Reef",
    "label_de": "Barriereriff",
    "network_size": 13,
+   "code": "L2",
    "scenarios": [
     {
      "id": "seq_abc",
@@ -240,6 +245,7 @@
    "label": "Barrier Reef",
    "label_de": "Barriereriff",
    "network_size": 13,
+   "code": "L3",
    "scenarios": [
     {
      "id": "seq_abc",
@@ -294,6 +300,7 @@
    "label": "Barrier Reef",
    "label_de": "Barriereriff",
    "network_size": 13,
+   "code": "L4",
    "scenarios": [
     {
      "id": "seq_abc",
@@ -348,6 +355,7 @@
    "label": "Lagoon",
    "label_de": "Lagune",
    "network_size": 10,
+   "code": "S2",
    "scenarios": [
     {
      "id": "seq_abc",
@@ -384,6 +392,7 @@
    "label": "Lagoon",
    "label_de": "Lagune",
    "network_size": 10,
+   "code": "S3",
    "scenarios": [
     {
      "id": "seq_abc",
@@ -420,6 +429,7 @@
    "label": "Lagoon",
    "label_de": "Lagune",
    "network_size": 12,
+   "code": "S5",
    "scenarios": [
     {
      "id": "seq_abc",
@@ -456,6 +466,7 @@
    "label": "Lagoon",
    "label_de": "Lagune",
    "network_size": 12,
+   "code": "S6",
    "scenarios": [
     {
      "id": "seq_abc",
@@ -501,6 +512,7 @@
    "label": "Lagoon",
    "label_de": "Lagune",
    "network_size": 13,
+   "code": "S7",
    "scenarios": [
     {
      "id": "seq_abc",
@@ -546,6 +558,7 @@
    "label": "Lagoon",
    "label_de": "Lagune",
    "network_size": 13,
+   "code": "S8",
    "scenarios": [
     {
      "id": "seq_abc",
@@ -582,6 +595,7 @@
    "label": "Barrier Reef",
    "label_de": "Barriereriff",
    "network_size": 16,
+   "code": "L5",
    "scenarios": [
     {
      "id": "seq_abc",
@@ -618,6 +632,7 @@
    "label": "Barrier Reef",
    "label_de": "Barriereriff",
    "network_size": 16,
+   "code": "L6",
    "scenarios": [
     {
      "id": "seq_abc",
@@ -654,6 +669,7 @@
    "label": "Barrier Reef",
    "label_de": "Barriereriff",
    "network_size": 18,
+   "code": "L7",
    "scenarios": [
     {
      "id": "seq_abcde",
@@ -690,6 +706,7 @@
    "label": "Barrier Reef",
    "label_de": "Barriereriff",
    "network_size": 18,
+   "code": "L8",
    "scenarios": [
     {
      "id": "seq_abc",
@@ -726,6 +743,7 @@
    "label": "Barrier Reef",
    "label_de": "Barriereriff",
    "network_size": 24,
+   "code": "L9",
    "scenarios": [
     {
      "id": "seq_abc",
@@ -771,6 +789,7 @@
    "label": "Barrier Reef",
    "label_de": "Barriereriff",
    "network_size": 26,
+   "code": "L10",
    "scenarios": [
     {
      "id": "seq_abc",

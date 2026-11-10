@@ -100,10 +100,11 @@ interface Strings {
   dtKrakenDiffers: string;
   dtNote: string;
 
-  // ---- stage picker ----
-  stageTitleFor: (stage: string) => string;
-  stageRowTitle: string;
-  stageLabel: (enLabel: string) => string;
+  // ---- alpha slider ----
+  alphaTitle: string;
+  alphaLatencyEnd: string;
+  alphaTupleEnd: string;
+  alphaFormula: string;
 
   // ---- scorecard: empty / scoring ----
   choosePushPullFor: (n: number) => string;
@@ -138,7 +139,7 @@ interface Strings {
   sameAsKraken: string;
   vsKraken: (sign: string, v: string) => string;
   leaderboardTitle: string;
-  leaderboardHint: string;
+  leaderboardHint: (alpha: number) => string;
   legendHint: string;
   legendPush: string;
   legendPull: string;
@@ -243,9 +244,10 @@ const EN: Strings = {
   dtNote:
     "I = INEv: the node with the fewest tuples under all-push, no push-pull. S = sequential planner: first picks the node that is best under all-push, then optimises communication there. F = α·(tuples, scaled 0–1) + (1−α)·(latency, scaled 0–1) over these options; lower is better.",
 
-  stageTitleFor: (stage) => `Kraken optimised for ${stage}`,
-  stageRowTitle: "How Kraken balances cost (fewer messages) vs. latency (speed)",
-  stageLabel: (enLabel) => enLabel,
+  alphaTitle: "Weight",
+  alphaLatencyEnd: "latency only",
+  alphaTupleEnd: "tuples only",
+  alphaFormula: "Score = α · tuples + (1 − α) · latency, both scaled 0–1. Kraken plans anew for every α.",
 
   choosePushPullFor: (n) => `Choose push or pull for ${n} more subquer${n > 1 ? "ies" : "y"} to score your plan`,
   placeAllToScore: (subqueries) => `Place all ${subqueries} to score your plan`,
@@ -280,7 +282,7 @@ const EN: Strings = {
   sameAsKraken: "same as Kraken",
   vsKraken: (sign, v) => `${sign}${v} vs Kraken`,
   leaderboardTitle: "Leaderboard",
-  leaderboardHint: "lower is better — cost & latency, balanced",
+  leaderboardHint: (alpha) => `lower is better — score at α = ${alpha.toFixed(1)}`,
   legendHint: "edge color = event type ·",
   legendPush: "push",
   legendPull: "pull",
@@ -313,7 +315,7 @@ const EN: Strings = {
   taskStep1: "Pick a query (Q1, Q2, …).",
   taskStep2: "Place <b>every</b> subquery onto a node — cloud, fog, or a source.",
   taskStep3:
-    "We compute the <b>tuples transmitted</b> and the <b>latency</b> of your plan, and rank it against the baselines and Kraken on a balanced (cost + latency) score.",
+    "We compute the <b>tuples transmitted</b> and the <b>latency</b> of your plan, and rank it against the baselines and Kraken on a weighted score: α · tuples + (1 − α) · latency, with α on the slider.",
   taskStep4:
     "Subqueries near their sources move fewer tuples; subqueries near the cloud shorten the path to the sink. Find the balance Kraken finds.",
   whyJoint: "Why joint optimisation wins",
@@ -381,9 +383,10 @@ const DE: Strings = {
   dtNote:
     "I = INEv: der Knoten mit den wenigsten Tupeln unter All-Push, ohne Push-Pull. S = sequentieller Planer: wählt erst den unter All-Push besten Knoten und optimiert dann dort die Kommunikation. F = α·(Tupel, auf 0–1 skaliert) + (1−α)·(Latenz, auf 0–1 skaliert) über diese Optionen; niedriger ist besser.",
 
-  stageTitleFor: (stage) => `Kraken optimiert für ${stage}`,
-  stageRowTitle: "Wie Kraken Kosten (weniger Nachrichten) gegen Latenz (Geschwindigkeit) abwägt",
-  stageLabel: (enLabel) => STAGE_LABEL_DE[enLabel.toLowerCase()] ?? enLabel,
+  alphaTitle: "Gewichtung",
+  alphaLatencyEnd: "nur Latenz",
+  alphaTupleEnd: "nur Tupel",
+  alphaFormula: "Wert = α · Tupel + (1 − α) · Latenz, beide auf 0–1 skaliert. Kraken plant für jedes α neu.",
 
   choosePushPullFor: (n) =>
     `Wähle Push oder Pull für ${n} weitere Teilabfrage${n > 1 ? "n" : ""}, um deinen Plan zu bewerten`,
@@ -419,7 +422,7 @@ const DE: Strings = {
   sameAsKraken: "wie Kraken",
   vsKraken: (sign, v) => `${sign}${v} ggü. Kraken`,
   leaderboardTitle: "Rangliste",
-  leaderboardHint: "niedriger ist besser — Kosten & Latenz, ausgewogen",
+  leaderboardHint: (alpha) => `niedriger ist besser — Wert bei α = ${alpha.toFixed(1)}`,
   legendHint: "Kantenfarbe = Ereignistyp ·",
   legendPush: "push",
   legendPull: "pull",
@@ -452,7 +455,7 @@ const DE: Strings = {
   taskStep1: "Wähle eine Anfrage (Q1, Q2, …).",
   taskStep2: "Platziere <b>jede</b> Teilabfrage auf einem Knoten — Cloud, Fog oder eine Quelle.",
   taskStep3:
-    "Wir berechnen die <b>übertragenen Tupel</b> und die <b>Latenz</b> deines Plans und vergleichen ihn mit den Baselines und Kraken anhand eines ausgewogenen (Kosten + Latenz) Werts.",
+    "Wir berechnen die <b>übertragenen Tupel</b> und die <b>Latenz</b> deines Plans und vergleichen ihn mit den Baselines und Kraken anhand eines gewichteten Werts: α · Tupel + (1 − α) · Latenz, α stellst du am Regler ein.",
   taskStep4:
     "Teilabfragen nahe ihren Quellen bewegen weniger Tupel; Teilabfragen nahe der Cloud verkürzen den Weg zur Senke. Finde die Balance, die Kraken findet.",
   whyJoint: "Warum gemeinsame Optimierung gewinnt",
@@ -467,16 +470,6 @@ const DE: Strings = {
     'Dein Plan wird über den lokalen Push-Pull-Bewertungsdienst mit Krakens eigenem Kostenmodell bewertet, inklusive deiner Push/Pull-Wahl. Ohne diesen Dienst werden nur reine All-Push-Pläne bewertet (mit demselben All-Push-Modell, im Browser); Pläne mit Pull werden dann gar nicht bewertet statt falsch. Das Paper-Beispiel braucht keinen Dienst: alle ihre Optionen sind vorab berechnet. Der kombinierte "Kraken-Wert" normalisiert Tupel und Latenz auf die Spannweite dieses Szenarios (0 = so gut wie die beste).',
   linkPaper: "Paper (DEBS '26, DOI)",
   linkRepo: "Code-Repository",
-};
-
-// Stage labels come from exported scenario data ("Fast"/"Balanced"/"Cheap",
-// baked in at export time by export_scenario.py) -- translate by English
-// label rather than hardcoding stage identity here, same pattern as
-// panel.ts's own STAGE_ICON map.
-const STAGE_LABEL_DE: Record<string, string> = {
-  fast: "Schnell",
-  balanced: "Ausgewogen",
-  cheap: "Günstig",
 };
 
 export function t(): Strings {

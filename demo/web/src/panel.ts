@@ -240,24 +240,35 @@ export function renderTray(state: AppState): string {
   );
 }
 
-/** Replaces the old raw 0-1 "alpha" slider (too abstract for a lay audience)
- * with a small set of named presets. Unlike a re-normalized score, Kraken has a genuinely
- * different real placement at each stage (see KrakenStage / currentStage),
- * computed once at export time — picking a stage is instant, no rescoring or
- * backend round-trip needed. */
-function renderStagePicker(state: AppState): string {
+
+/** The alpha slider sits in its own container outside #scorecard and is
+ * built once, then only synced: rebuilding it through innerHTML on every
+ * state change, as the scorecard is, would drop the thumb mid-drag. Each
+ * position is a real Kraken run at that alpha (kraken_stages), so moving
+ * it re-plans Kraken and re-scores everything live. */
+export function syncAlphaBar(el: HTMLElement, state: AppState): void {
   const stages = state.stages;
-  const buttons = stages
-    .map((s, i) => {
-      const on = i === state.stageIndex;
-      const label = t().stageLabel(s.label);
-      return (
-        `<button class="stage-btn${on ? " on" : ""}" data-action="stage" data-stage="${i}" ` +
-        `title="${escapeHtml(t().stageTitleFor(label.toLowerCase()))}">${escapeHtml(label)}</button>`
-      );
-    })
-    .join("");
-  return `<div class="stage-row" title="${escapeHtml(t().stageRowTitle)}">${buttons}</div>`;
+  el.hidden = stages.length < 2;
+  if (el.hidden) return;
+  let input = el.querySelector<HTMLInputElement>("input.alpha-slider");
+  if (!input) {
+    el.innerHTML =
+      `<div class="alpha-head"><span class="alpha-title"></span><span class="alpha-val"></span></div>` +
+      `<input type="range" class="alpha-slider" min="0" step="1">` +
+      `<div class="alpha-ends"><span class="alpha-lo"></span><span class="alpha-hi"></span></div>` +
+      `<div class="alpha-formula"></div>`;
+    input = el.querySelector<HTMLInputElement>("input.alpha-slider")!;
+  }
+  const alpha = (state.currentStage?.alpha ?? 0).toFixed(1);
+  input.max = String(stages.length - 1);
+  input.value = String(state.stageIndex);
+  input.setAttribute("aria-label", `${t().alphaTitle} α`);
+  input.setAttribute("aria-valuetext", `α = ${alpha}`);
+  el.querySelector(".alpha-title")!.textContent = t().alphaTitle;
+  el.querySelector(".alpha-val")!.textContent = `α = ${alpha}`;
+  el.querySelector(".alpha-lo")!.textContent = t().alphaLatencyEnd;
+  el.querySelector(".alpha-hi")!.textContent = t().alphaTupleEnd;
+  el.querySelector(".alpha-formula")!.textContent = t().alphaFormula;
 }
 
 /** Shared with main.ts, which watches for the moment this flips to true on a
@@ -284,7 +295,7 @@ export function renderServiceBadge(state: AppState): string {
   return `<div class="svc ${cls}" role="status">${text}</div>`;
 }
 
-function renderUnscorable(stagePicker: string): string {
+function renderUnscorable(): string {
   // The plan is confirmed (frozen) by the time this can ever show -- without
   // its own Try Again, a visitor stuck here (pull chosen, backend down)
   // would have no way back into an editable plan.
@@ -292,7 +303,6 @@ function renderUnscorable(stagePicker: string): string {
     `<div class="sc-unscorable" role="alert">` +
     `<div class="sc-unscorable-title">${t().unscorableTitle}</div>` +
     `<div class="sc-unscorable-sub">${t().unscorableBody}</div>` +
-    stagePicker +
     `<div class="sc-actions">` +
     `<button class="btn" data-action="clear">${t().tryAgain}</button>` +
     `</div>` +
@@ -324,6 +334,7 @@ function renderDecisionTable(state: AppState): string {
   const seq = a.sequential.decision;
   const inev = (state.scenario?.strategies.inev as { decision?: { node: number; scheme: CommScheme } } | undefined)?.decision;
   const opt = a.reference_optimum;
+  const optScore = a.scores.find((s) => s.node === opt.node && s.scheme === opt.scheme)?.score ?? NaN;
   const kNode = stage.placement[name];
   const kScheme = stage.per_placement?.[name]?.strategy as CommScheme | undefined;
   const label = (n: number) => (n === 0 ? t().cloudName : `n${n}`);
@@ -341,7 +352,10 @@ function renderDecisionTable(state: AppState): string {
       return group
         .map((d, i) => {
           const score = a.scores.find((s) => s.node === d.node && s.scheme === d.scheme)?.score ?? NaN;
-          const isBest = d.node === opt.node && d.scheme === opt.scheme;
+          // Every cell that ties the optimum's F gets a star, not just the
+          // export's tie-break pick: at e.g. alpha 0.5 Kraken's own cell is
+          // one of two exactly equal ones.
+          const isBest = Math.abs(score - optScore) <= 1e-9;
           const marks = [
             isBest ? `<span class="dt-mark opt" title="${escapeHtml(t().dtOptTitle)}">★</span>` : "",
             d.node === kNode && d.scheme === kScheme ? `<span class="dt-mark k" title="Kraken">K</span>` : "",
@@ -388,7 +402,6 @@ export function renderScorecard(state: AppState): string {
   const sc = state.scenario;
   const bl = state.effectiveBaselines;
   if (!sc || !bl) return "";
-  const stagePicker = renderStagePicker(state);
 
   if (!state.readyToScore) {
     const pending = state.pendingPushChoices;
@@ -402,7 +415,6 @@ export function renderScorecard(state: AppState): string {
       `<div class="sc-empty-title">${title}</div>` +
       `<div class="progress"><div class="progress-fill" style="width:${pct}%"></div></div>` +
       `<div class="sc-empty-sub">${t().scEmptySub}</div>` +
-      stagePicker +
       `</div>`
     );
   }
@@ -415,7 +427,6 @@ export function renderScorecard(state: AppState): string {
       `<div class="sc-empty">` +
       `<div class="sc-empty-title">${t().confirmTitle}</div>` +
       `<div class="sc-empty-sub">${t().confirmSub}</div>` +
-      stagePicker +
       `<div class="sc-actions">` +
       `<button class="btn" data-action="confirm">${t().confirmBtn}</button>` +
       `</div>` +
@@ -424,7 +435,7 @@ export function renderScorecard(state: AppState): string {
   }
 
   if (state.unscorable) {
-    return renderUnscorable(stagePicker);
+    return renderUnscorable();
   }
 
   if (state.scoring || !state.official) {
@@ -438,7 +449,6 @@ export function renderScorecard(state: AppState): string {
       `<div class="sc-spinner" aria-hidden="true"></div>` +
       `<div class="sc-scoring-title">${t().scoringTitle}</div>` +
       `<div class="sc-scoring-sub">${t().scoringSub}</div>` +
-      stagePicker +
       `</div>`
     );
   }
@@ -519,8 +529,7 @@ export function renderScorecard(state: AppState): string {
     `<div class="sc-head">${verdict}${modeTag}</div>` +
     tiles +
     timerNote +
-    `<div class="lb-title">${t().leaderboardTitle} <span class="lb-hint">${t().leaderboardHint}</span></div>` +
-    stagePicker +
+    `<div class="lb-title">${t().leaderboardTitle} <span class="lb-hint">${t().leaderboardHint(state.currentStage?.alpha ?? sc.config.cost_weight)}</span></div>` +
     `<div class="leaderboard">${board}</div>` +
     (state.reveal
       ? `<div class="plan-legend"><span class="plan-legend-hint">${t().legendHint}</span>` +

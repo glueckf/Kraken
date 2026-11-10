@@ -19,6 +19,8 @@ export interface TopologyEntry {
   label: string;
   label_de: string;
   network_size: number;
+  /** Neutral display name ("P", "S1", "L3", ...), see topologies.display_code. */
+  code?: string;
   scenarios: ManifestEntry[];
 }
 

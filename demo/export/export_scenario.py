@@ -38,7 +38,7 @@ from core.query_workload import number_children
 from inev.process_combination import compute_dependencies
 from kraken.run import run_kraken_solver
 import scenarios_def
-from topologies import TOPOLOGIES
+from topologies import TOPOLOGIES, display_code
 import reef_topologies
 
 SINKS = (0,)
@@ -46,28 +46,23 @@ XI = 0.0
 COST_WEIGHT = 0.5
 FLOAT_TOL = 1e-6
 
-# Player-facing "alpha" simplification: rather than exposing the raw 0-1
-# cost/latency balance as a number, the demo offers these three named stages.
-# Unlike the four other baselines (whose placement algorithms don't depend on
-# cost_weight at all -- see BACKLOG.md item #17), Kraken's own greedy search
-# genuinely chooses a different placement depending on this weight, so each
-# stage needs its own real Kraken run, not just a re-normalized score.
+# The cost/latency weight alpha the player can set. Unlike the four other
+# baselines (whose placement algorithms don't depend on cost_weight at all --
+# see BACKLOG.md item #17), Kraken's own greedy search genuinely chooses a
+# different placement depending on this weight, so each stage needs its own
+# real Kraken run, not just a re-normalized score.
 #
 # Balanced was 0.6 until 2026-11-06. At 0.6 Kraken's Balanced plan was the
 # same as Cheap's in 45 of 65 reef queries, and players beat Kraken in 55 of
 # them; at 0.5 Balanced differs from Cheap everywhere (BACKLOG.md item 38).
-KRAKEN_STAGES = [
-    (0.2, "Fast"),
-    (0.5, "Balanced"),
-    (0.9, "Cheap"),
-]
-# Kraken's Forge (the paper example) keeps Balanced at 0.6 for now
-# (factory_example.DEFAULT_ALPHA) -- to be revisited, see item 38.
-FORGE_STAGES = [
-    (0.2, "Fast"),
-    (0.6, "Balanced"),
-    (0.9, "Cheap"),
-]
+# The plain Kraken demo lets the player set alpha freely, so Kraken gets a
+# real run at every slider position: 0.0 (latency only) to 1.0 (tuples
+# only) in steps of 0.1. The fairy-tale demo (branch kraken-demo-bsw) keeps
+# its three named presets instead. Where the slider starts is each round's
+# own cost_weight: COST_WEIGHT for the reef rounds, the paper example's
+# factory_example.DEFAULT_ALPHA (0.6, see item 38) for Kraken's Forge.
+KRAKEN_STAGES = [(round(i / 10, 1), f"{i / 10:.1f}") for i in range(11)]
+FORGE_STAGES = KRAKEN_STAGES
 
 
 # ----------------------------------------------------------------------------
@@ -507,9 +502,12 @@ def build_factory_scenario(topology):
     for alpha, label in FORGE_STAGES:
         st = kraken_entry(alpha, label)
         st["analysis"] = analysis(alpha)
+        # By score, not by cell: at some alphas two cells tie exactly (e.g.
+        # 0.5: n3 all-push and n3 push-pull; 0.0: every all-push cell), and
+        # Kraken may pick the other one of the pair.
         opt = st["analysis"]["reference_optimum"]
-        st["matches_reference"] = (st["placement"][p] == opt["node"]
-                                   and st["per_placement"][p]["strategy"] == opt["scheme"])
+        st["matches_reference"] = abs(fx.score_F(st["cost"], st["latency"], pool, alpha)
+                                      - fx.score_F(opt["cost"], opt["latency"], pool, alpha)) <= 1e-9
         kraken_stages.append(st)
     default = next(s for s in kraken_stages if s["alpha"] == fx.DEFAULT_ALPHA)
 
@@ -622,7 +620,8 @@ def export_factory_topology(topology):
     os.makedirs(topo_dir, exist_ok=True)
     entry = {"id": topology["id"], "family": topology.get("family", topology["id"]),
              "label": topology["label"], "label_de": topology.get("label_de", topology["label"]),
-             "network_size": topology["network_size"], "scenarios": []}
+             "network_size": topology["network_size"], "code": display_code(topology["id"]),
+             "scenarios": []}
     print(f"--- exporting {topology['id']}/{FACTORY_SCENARIO['id']} (paper example) ---")
     try:
         scenario, mismatches, spec = build_factory_scenario(topology)
@@ -672,7 +671,8 @@ def export_one_topology(topology, only=None):
     entry = {
         "id": topology["id"], "family": topology.get("family", topology["id"]),
         "label": topology["label"], "label_de": topology.get("label_de", topology["label"]),
-        "network_size": topology["network_size"], "scenarios": [],
+        "network_size": topology["network_size"], "code": display_code(topology["id"]),
+        "scenarios": [],
     }
     ok = True
     # A topology may list the queries it offers (topologies.py `scenarios`):

@@ -202,6 +202,7 @@ class TestFactoryExample(unittest.TestCase):
 
     def test_kraken_compared_with_enumeration_per_stage(self):
         # Not assumed: Kraken's real greedy run, checked against the scan.
+        # These three alphas have a unique optimum, so the cell must match too.
         for a in (0.2, 0.6, 0.9):
             _, g = fx.run_kraken(a)
             (pi,) = g["solution"].placements.values()
