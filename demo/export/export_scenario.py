@@ -526,6 +526,9 @@ def build_factory_scenario(topology):
             "latency": float(base_sim.all_push_results["transmission_latency"]),
             "processing_latency": float(base_sim.all_push_results["processing_latency"]),
         },
+        # The engine's INEv lands on the cloud here, i.e. on All-Push itself;
+        # Example 1's INEv step is the tuple-cheapest all-push node instead.
+        "inev": plan(fx.inev_plan(pool), "INEv"),
         "prepp": {
             "label": "PrePP", "placement": {p: 0}, "comm": "push_pull",
             "cost": float(base_sim.prepp_from_cloud_result["cost"]),

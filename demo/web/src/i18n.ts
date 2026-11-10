@@ -241,7 +241,7 @@ const EN: Strings = {
   dtKrakenMatches: "Kraken's plan (K) is the best option (★).",
   dtKrakenDiffers: "Kraken's greedy plan (K) is not the best option (★) here.",
   dtNote:
-    "S = sequential planner: first picks the node that is best under all-push, then optimises communication there. F = α·(tuples, scaled 0–1) + (1−α)·(latency, scaled 0–1) over these options; lower is better.",
+    "I = INEv: the node with the fewest tuples under all-push, no push-pull. S = sequential planner: first picks the node that is best under all-push, then optimises communication there. F = α·(tuples, scaled 0–1) + (1−α)·(latency, scaled 0–1) over these options; lower is better.",
 
   stageTitleFor: (stage) => `Kraken optimised for ${stage}`,
   stageRowTitle: "How Kraken balances cost (fewer messages) vs. latency (speed)",
@@ -379,7 +379,7 @@ const DE: Strings = {
   dtKrakenMatches: "Krakens Plan (K) ist die beste Option (★).",
   dtKrakenDiffers: "Krakens Greedy-Plan (K) ist hier nicht die beste Option (★).",
   dtNote:
-    "S = sequentieller Planer: wählt erst den unter All-Push besten Knoten und optimiert dann dort die Kommunikation. F = α·(Tupel, auf 0–1 skaliert) + (1−α)·(Latenz, auf 0–1 skaliert) über diese Optionen; niedriger ist besser.",
+    "I = INEv: der Knoten mit den wenigsten Tupeln unter All-Push, ohne Push-Pull. S = sequentieller Planer: wählt erst den unter All-Push besten Knoten und optimiert dann dort die Kommunikation. F = α·(Tupel, auf 0–1 skaliert) + (1−α)·(Latenz, auf 0–1 skaliert) über diese Optionen; niedriger ist besser.",
 
   stageTitleFor: (stage) => `Kraken optimiert für ${stage}`,
   stageRowTitle: "Wie Kraken Kosten (weniger Nachrichten) gegen Latenz (Geschwindigkeit) abwägt",
