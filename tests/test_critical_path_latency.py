@@ -14,7 +14,7 @@ A produced at node 1, B and C at node 2. Events only flow towards the cloud,
 so a projection can only sit on a common ancestor of its sources that
 produces no events itself (node 6, 5 or the cloud), as Kraken's optimizer
 enforces; every test uses such placements. Node 7 below 5 is not part of
-medium_c: it produces D, for the queries S3 and FLAT that can therefore only
+medium_c: it produces D, for the queries S3, FLAT and A_D that can therefore only
 sit on 5 or the cloud, and a second copy of C in TestSeveralSources.
 """
 
@@ -43,8 +43,14 @@ S1 = "SEQ(A, B)"
 S2 = "SEQ(A, B, C)"
 S3 = "SEQ(A, B, C, D)"  # a third level on top of S2
 FLAT = "AND(A, B, D)"  # three primitive inputs, no subquery
-DEPS = {S1: ["A", "B"], S2: [S1, "C"], S3: [S2, "D"], FLAT: ["A", "B", "D"]}
-ORDER = [S1, S2, S3, FLAT]  # processing order: every projection, inputs first
+# Two more workload queries that only bring primitives to a node (see
+# TestPushPullSteps): A_C has its sources below 6, A_D below 5.
+A_C = "AND(A, C)"
+A_D = "AND(A, D)"
+DEPS = {S1: ["A", "B"], S2: [S1, "C"], S3: [S2, "D"], FLAT: ["A", "B", "D"],
+        A_C: ["A", "C"], A_D: ["A", "D"]}
+# processing order: every projection, inputs first
+ORDER = [S1, A_C, A_D, S2, S3, FLAT]
 
 
 def _path_to_root(n):
@@ -78,8 +84,12 @@ def _response(events, node, placed):
 
 
 def _plan(node, steps, placed, already_at_node=()):
-    """steps: list of (events pulled with, events acquired). An empty first
-    element is a push step; one step pushing everything is all-push."""
+    """steps: list of (events the pull request is sent with, events
+    acquired). The request is sent with events of earlier steps; an empty
+    first element is a push step, and one step pushing everything is
+    all-push. already_at_node: (step index, primitives of the step that
+    already reach the node), as CostCalculator derives it from the
+    event stack."""
     acquisition = AcquisitionSet()
     for i, (pull_with, acquire) in enumerate(steps):
         response = _response(acquire, node, placed)
@@ -155,13 +165,13 @@ DEPTH = {CLOUD: 0, 5: 1, 6: 2, 1: 3, 2: 3}
 PLACEMENTS = [(n1, n2) for i, n1 in enumerate(HOSTS) for n2 in HOSTS[i:]]
 S1_PLANS = {
     "all push": ALL_PUSH_S1,
-    "push B, pull A": [((), ["B"]), (["B"], ["A"])],
-    "push A, pull B": [((), ["A"]), (["A"], ["B"])],
+    "push B, pull A with B": [((), ["B"]), (["B"], ["A"])],
+    "push A, pull B with A": [((), ["A"]), (["A"], ["B"])],
 }
 S2_PLANS = {
     "all push": ALL_PUSH_S2,
-    "push S1, pull C": [((), [S1]), (["A"], ["C"])],
-    "push C, pull S1": [((), ["C"]), (["C"], [S1])],
+    "push S1, pull C with S1": [((), [S1]), ([S1], ["C"])],
+    "push C, pull S1 with C": [((), ["C"]), (["C"], [S1])],
 }
 
 
@@ -177,10 +187,11 @@ def _expected(n1, plan1, n2, plan2, workload=(S2,)):
       request goes down to the other source and its answer comes back up.
     S2 is ready at
     - all push: max(ready1 + d12, h2), S1's output and C travel in parallel;
-    - push S1, pull C: ready1 + d12 + 2 * h2, the request for C leaves once
-      S1's output is in;
-    - push C, pull S1: max(h2 + d12, ready1) + d12, the request reaches S1's
-      node after C is in, but S1 can only answer once it has results.
+    - push S1, pull C with S1: ready1 + d12 + 2 * h2, the request for C
+      leaves once S1's output is in;
+    - push C, pull S1 with C: max(h2 + d12, ready1) + d12, the request
+      reaches S1's node after C is in, but S1 can only answer once it has
+      results.
     The latency adds S2's hops to the cloud. A shared S1 adds its own hops
     to the cloud to ready1, which S2 does not inherit.
     """
@@ -190,7 +201,7 @@ def _expected(n1, plan1, n2, plan2, workload=(S2,)):
     ready1 = h1 if plan1 == "all push" else 3 * h1
     if plan2 == "all push":
         ready2 = max(ready1 + d12, h2)
-    elif plan2 == "push S1, pull C":
+    elif plan2 == "push S1, pull C with S1":
         ready2 = ready1 + d12 + 2 * h2
     else:
         ready2 = max(h2 + d12, ready1) + d12
@@ -265,7 +276,7 @@ class TestSeveralSources(unittest.TestCase):
         with mock.patch.dict(SOURCES, {"C": [7, 2]}):
             latency = _latency([
                 (S1, 6, ALL_PUSH_S1),
-                (S2, 5, S2_PLANS["push S1, pull C"]),
+                (S2, 5, S2_PLANS["push S1, pull C with S1"]),
             ])
         self.assertEqual(latency, 7)
 
@@ -282,8 +293,8 @@ class TestProcessingLatency(unittest.TestCase):
         # process its inputs: it has results at 7 instead of 6, so the
         # request waiting at node 5 is answered at 7, back in the cloud at 8.
         latency = _latency([
-            (S1, 5, S1_PLANS["push B, pull A"]),
-            (S2, CLOUD, S2_PLANS["push C, pull S1"]),
+            (S1, 5, S1_PLANS["push B, pull A with B"]),
+            (S2, CLOUD, S2_PLANS["push C, pull S1 with C"]),
         ], processing={S1: 2.0}, xi=0.5)
         self.assertEqual(latency, 8)  # was 12: 7 + (3 + 1 + 1)
 
@@ -336,7 +347,7 @@ class TestDeeperQueries(unittest.TestCase):
 
 
 LATE_TWO_LEVELS = [
-    (S1, 5, S1_PLANS["push B, pull A"]),
+    (S1, 5, S1_PLANS["push B, pull A with B"]),
     (S2, 5, ALL_PUSH_S2),
     (S3, CLOUD, [((), ["D"]), (["D"], [S2])]),
 ]
@@ -372,12 +383,12 @@ class TestPartialCandidates(unittest.TestCase):
 
     def test_only_the_subquery_placed(self):
         # S1 at 5 pulling A is ready at 6; S2 does not count yet.
-        latency = _latency([(S1, 5, S1_PLANS["push B, pull A"])])
+        latency = _latency([(S1, 5, S1_PLANS["push B, pull A with B"])])
         self.assertEqual(latency, 6)
 
     def test_placed_subquery_in_the_workload_adds_its_sink_hop(self):
         # As above, but S1 is a workload query itself: +1 hop to the cloud.
-        latency = _latency([(S1, 5, S1_PLANS["push B, pull A"])],
+        latency = _latency([(S1, 5, S1_PLANS["push B, pull A with B"])],
                            workload=(S1, S2))
         self.assertEqual(latency, 7)
 
@@ -403,10 +414,10 @@ class TestPushPullSteps(unittest.TestCase):
 
     def test_pull_round_trips_stay_sequential(self):
         # S1 at 6: push B (1), pull A with B (1 + 1)        -> ready 3
-        # S2 at cloud: push S1 (3 + 2 = 5), pull C (5 + 3 + 3) -> 11
+        # S2 at cloud: push S1 (3 + 2 = 5), pull C with S1 (5 + 3 + 3) -> 11
         latency = _latency([
             (S1, 6, [((), ["B"]), (["B"], ["A"])]),
-            (S2, CLOUD, [((), [S1]), (["A"], ["C"])]),
+            (S2, CLOUD, [((), [S1]), ([S1], ["C"])]),
         ])
         self.assertEqual(latency, 11)
 
@@ -422,32 +433,48 @@ class TestPushPullSteps(unittest.TestCase):
         ])
         self.assertEqual(latency, 7)  # was 11: 6 + (3 + 1 + 1)
 
-    def test_step_already_at_the_node_needs_no_round_trip(self):
-        # C already reaches node 6 for another placement there, so the pull
-        # step for it costs only its 1-hop push, not a request round trip.
+    # S2's own plan only ever gets C by pushing it or by pulling it with S1.
+    # Kraken also counts an event as at the node when another query placed
+    # there earlier already has it pushed: placing a projection adds its
+    # primitives to the node's event stack, and CostCalculator then charges
+    # a pull step whose primitives are all on that stack no round trip. The
+    # two tests below place such a query explicitly.
+
+    def test_without_local_events_the_round_trip_counts(self):
+        # S1 at 6: A and B pushed, ready at 1; node 6's stack has A, B.
+        # S2 at 6: push S1 (0 hops, 1), pull C with S1: the request goes
+        # down to node 2 (2), C is back at 3; +2 hops to the sink.
         latency = _latency([
             (S1, 6, ALL_PUSH_S1),
-            (S2, 6, [((), [S1]), (["A"], ["C"])], [(1, ["C"])]),
+            (S2, 6, S2_PLANS["push S1, pull C with S1"]),
         ])
+        self.assertEqual(latency, 5)
+
+    def test_step_already_at_the_node_needs_no_round_trip(self):
+        # As above, but the workload also has A_C = AND(A, C) at node 6,
+        # placed before S2 with A and C pushed (1 hop, ready at 1, +2 to the
+        # sink = 3). C now reaches node 6 anyway, so S2's step "pull C with
+        # S1" is local: C is in at 1, not 3, and S2 is ready at 1, +2 = 3.
+        latency = _latency([
+            (S1, 6, ALL_PUSH_S1),
+            (A_C, 6, [((), ["A", "C"])]),
+            (S2, 6, S2_PLANS["push S1, pull C with S1"], [(1, ["C"])]),
+        ], workload=(A_C, S2))
         self.assertEqual(latency, 3)
 
     def test_partly_local_step_still_needs_the_round_trip(self):
-        # S1 at 6 is ready at 1. S2 at 5: push C (2), pull S1 with C. A
-        # already passes node 5 for another placement there, but B does not,
-        # so S1 cannot be had locally: the request goes down to node 6 (3),
-        # S1 answers at once and is back at 4; +1 hop to the sink.
+        # The workload also has A_D = AND(A, D) at node 5 with A and D pushed
+        # (ready at 2, +1 to the sink = 3), so node 5's stack has A and D.
+        # S1 at 6 is ready at 1. S2 at 5: push C (2), pull S1 with C. Of
+        # S1's primitives only A is on node 5's stack, B is not, so S1 cannot
+        # be had locally: the request goes down to node 6 (3), S1 answers at
+        # once and is back at 4; +1 hop to the sink.
         latency = _latency([
             (S1, 6, ALL_PUSH_S1),
-            (S2, 5, S2_PLANS["push C, pull S1"], [(1, ["A"])]),
-        ])
+            (A_D, 5, [((), ["A", "D"])]),
+            (S2, 5, S2_PLANS["push C, pull S1 with C"], [(1, ["A"])]),
+        ], workload=(A_D, S2))
         self.assertEqual(latency, 5)  # was 6: 1 + (2 + 1 + 1) + 1
-
-    def test_without_local_events_the_round_trip_counts(self):
-        latency = _latency([
-            (S1, 6, ALL_PUSH_S1),
-            (S2, 6, [((), [S1]), (["A"], ["C"])]),
-        ])
-        self.assertEqual(latency, 5)  # S1 ready at 1, request to 2 and back by 3, +2
 
 
 if __name__ == "__main__":
