@@ -298,6 +298,18 @@ class TestProcessingLatency(unittest.TestCase):
         ], processing={S1: 2.0}, xi=0.5)
         self.assertEqual(latency, 8)  # was 12: 7 + (3 + 1 + 1)
 
+    def test_processing_hidden_behind_the_request(self):
+        # Same plan for S2, but S1 at 5 has A and B pushed: its inputs are in
+        # at 2 and its results at 2 + 0.5 * 2 = 3. S2's request for S1 only
+        # gets to node 5 at 4 and is answered at once, back in the cloud at
+        # 5, as without processing: S1's processing is not on the critical
+        # path.
+        latency = _latency([
+            (S1, 5, ALL_PUSH_S1),
+            (S2, CLOUD, S2_PLANS["push C, pull S1 with C"]),
+        ], processing={S1: 2.0}, xi=0.5)
+        self.assertEqual(latency, 5)  # was 8: (2 + 1) + (3 + 1 + 1)
+
 
 class TestDeeperQueries(unittest.TestCase):
     """S3 = SEQ(S2, D) adds a third level. D comes from node 7, two hops below
