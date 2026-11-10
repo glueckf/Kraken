@@ -10,7 +10,10 @@ more than 3. Each input w now arrives at ready(w) + hops(w -> node); only
 push-pull steps are sequential.
 
 The network is medium_c's tree: cloud 0 (the sink) <- 5 <- 6 <- {1, 2},
-A produced at node 1, B and C at node 2.
+A produced at node 1, B and C at node 2. Events only flow towards the cloud,
+so a projection can only sit on a common ancestor of its sources that
+produces no events itself (node 6, 5 or the cloud), as Kraken's optimizer
+enforces; every test uses such placements.
 """
 
 import os
@@ -131,12 +134,6 @@ class TestAllPushParallelInputs(unittest.TestCase):
         latency = _latency([(S1, 5, ALL_PUSH_S1), (S2, CLOUD, ALL_PUSH_S2)])
         self.assertEqual(latency, 3)  # was 5
 
-    def test_serial_path_through_a_subquery_still_accumulates(self):
-        # B travels 2 hops to S1 at node 1, S1's output 3 more to the cloud:
-        # a genuinely sequential path of 5, longer than C's direct 3.
-        latency = _latency([(S1, 1, ALL_PUSH_S1), (S2, CLOUD, ALL_PUSH_S2)])
-        self.assertEqual(latency, 5)
-
     def test_sink_hop_of_a_shared_workload_query_is_not_inherited(self):
         # S1 is itself a workload query (shared subquery): its own result
         # goes to the sink, but S2 consumes it at node 6 without that detour.
@@ -162,14 +159,16 @@ class TestPushPullSteps(unittest.TestCase):
         self.assertEqual(latency, 11)
 
     def test_pull_waits_for_a_late_subquery(self):
-        # S1 at 1: push A (local), pull B from node 2 (2 + 2)   -> ready 4
-        # S2 at 6: push C (1); pull S1 from node 1: the request is there at
-        # 2 but S1 only has results at 4, back at 5; +2 hops to the sink.
+        # S1 at 5: push B (2), pull A with B (2 + 2 + 2)       -> ready 6
+        # S2 at cloud: push C (3); pull S1 with C: the request leaves once C
+        # is in (3) and is at node 5 at 4, but S1 only has results at 6,
+        # back at 7. The old recursion added S2's steps (3 + 1 + 1) on top of
+        # S1's 6, although C travels while S1 is still being computed.
         latency = _latency([
-            (S1, 1, [((), ["A"]), (["A"], ["B"])]),
-            (S2, 6, [((), ["C"]), (["C"], [S1])]),
+            (S1, 5, [((), ["B"]), (["B"], ["A"])]),
+            (S2, CLOUD, [((), ["C"]), (["C"], [S1])]),
         ])
-        self.assertEqual(latency, 7)  # was 9: 4 + (1 + 1 + 1) + 2
+        self.assertEqual(latency, 7)  # was 11: 6 + (3 + 1 + 1)
 
     def test_step_already_at_the_node_needs_no_round_trip(self):
         # C already reaches node 6 for another placement there, so the pull
@@ -185,7 +184,7 @@ class TestPushPullSteps(unittest.TestCase):
             (S1, 6, ALL_PUSH_S1),
             (S2, 6, [((), [S1]), (["A"], ["C"])]),
         ])
-        self.assertEqual(latency, 5)  # S1 at 1, request to 2 and back by 3, +2
+        self.assertEqual(latency, 5)  # S1 ready at 1, request to 2 and back by 3, +2
 
 
 if __name__ == "__main__":
