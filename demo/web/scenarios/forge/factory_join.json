@@ -324,7 +324,7 @@
      }
     }
    },
-   "solve_seconds": 0.0010383129119873047,
+   "solve_seconds": 0.0008997917175292969,
    "analysis": {
     "alpha": 0.2,
     "scores": [
@@ -426,7 +426,7 @@
      }
     }
    },
-   "solve_seconds": 0.0010886192321777344,
+   "solve_seconds": 0.0010766983032226562,
    "analysis": {
     "alpha": 0.6,
     "scores": [
@@ -528,7 +528,7 @@
      }
     }
    },
-   "solve_seconds": 0.001028299331665039,
+   "solve_seconds": 0.0009527206420898438,
    "analysis": {
     "alpha": 0.9,
     "scores": [

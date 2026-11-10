@@ -779,7 +779,7 @@
    },
    "comm": "push",
    "cost": 2591.0,
-   "latency": 4.0,
+   "latency": 3.0,
    "processing_latency": 64.98944566647961
   },
   "inev": {
@@ -887,7 +887,7 @@
      }
     }
    },
-   "solve_seconds": 0.006539583206176758
+   "solve_seconds": 0.007027864456176758
   },
   {
    "alpha": 0.5,
@@ -924,7 +924,7 @@
      }
     }
    },
-   "solve_seconds": 0.00732874870300293
+   "solve_seconds": 0.009555816650390625
   },
   {
    "alpha": 0.9,
@@ -961,7 +961,7 @@
      }
     }
    },
-   "solve_seconds": 0.006269931793212891
+   "solve_seconds": 0.007018566131591797
   }
  ],
  "norm_anchors": {

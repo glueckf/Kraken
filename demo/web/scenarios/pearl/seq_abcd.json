@@ -690,7 +690,7 @@
    },
    "comm": "push",
    "cost": 4045.0,
-   "latency": 4.0,
+   "latency": 3.0,
    "processing_latency": 320.8133730374617
   },
   "inev": {
@@ -825,7 +825,7 @@
      }
     }
    },
-   "solve_seconds": 0.008822917938232422
+   "solve_seconds": 0.009671449661254883
   },
   {
    "alpha": 0.5,
@@ -874,7 +874,7 @@
      }
     }
    },
-   "solve_seconds": 0.00783085823059082
+   "solve_seconds": 0.010056257247924805
   },
   {
    "alpha": 0.9,
@@ -923,13 +923,13 @@
      }
     }
    },
-   "solve_seconds": 0.006559133529663086
+   "solve_seconds": 0.007714509963989258
   }
  ],
  "norm_anchors": {
   "cost_min": 1370.222140014062,
   "cost_max": 4045.0,
-  "latency_min": 4.0,
+  "latency_min": 3.0,
   "latency_max": 17.0
  },
  "goldens": [
