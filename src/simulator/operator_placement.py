@@ -14,6 +14,29 @@ from simulator.projections import return_partitioning, total_rate
 # maxDist = max([max(x) for x in allPairs])
 
 
+def inputs_arrival(instances, projection, ready, available_at):
+    """Time at which the last input of `projection` has reached its node.
+
+    Inputs travel in parallel (the model of Kraken's critical path), so this
+    is the latest arrival, not a sum. Each instance is one event routed from
+    its source to the projection's node. A primitive event is available at
+    its own source from the start, a placed subquery once it is `ready`.
+    Every stop on a route records when the event passed it, because later
+    placements may pick the event up there (set_event_nodes).
+    """
+    arrival = 0
+    for instance in instances:
+        path = instance.routingDict[projection]
+        start = available_at.get(
+            (instance.name, path[0]), ready.get(instance.projname, 0)
+        )
+        for hops, stop in enumerate(path):
+            key = (instance.name, stop)
+            available_at[key] = min(available_at.get(key, float("inf")), start + hops)
+        arrival = max(arrival, start + len(path) - 1)
+    return arrival
+
+
 def get_lower_bound(
     query, self
 ):  # lower bound -> for multiple projections, keep track of events sent as single sink and do not add up
@@ -138,6 +161,7 @@ def calculate_operator_placement(self, file_path: str, max_parents: int):
     start_time = time.time()
 
     hopLatency = {}
+    available_at = {}  # (etb, node) -> hops after which the event is there
 
     # Reduce calls of init_event_nodes
     # init_eventNodes = init_event_nodes()
@@ -261,7 +285,11 @@ def calculate_operator_placement(self, file_path: str, max_parents: int):
             processing_latency += result[6]
             additional = result[0]
             costs += additional
-            hopLatency[projection] += result[2]
+            # result[2] adds the longest input path on top of the slowest
+            # child, i.e. sums inputs that arrive in parallel
+            hopLatency[projection] = inputs_arrival(
+                result[4], projection, hopLatency, available_at
+            )
             myPlan.add_projection(result[3])  #!
             for newin in result[3].spawnedInstances:  # add new spawned instances
                 myPlan.add_instances(projection, newin)
@@ -273,6 +301,16 @@ def calculate_operator_placement(self, file_path: str, max_parents: int):
     print("\n" + "=" * 60)
     print("SEQUENTIAL APPROACH - PLACEMENT DECISIONS SUMMARY")
     print("=" * 60)
+
+    # Latency of INEv's own plan: a workload query placed off the sink still
+    # sends its matches there (sinks = [0], as in compute_single_sink_placement).
+    inev_latency = 0
+    for projection, result in temp_results_dict.items():
+        if projection in self.query_workload:
+            inev_latency = max(
+                inev_latency,
+                hopLatency[projection] + allPairs[result["placement_node"]][0],
+            )
 
     if temp_results_dict:
         total_projections = len(temp_results_dict)
@@ -378,7 +416,7 @@ def calculate_operator_placement(self, file_path: str, max_parents: int):
     end_time = time.time()
     logging_result_inev = {
         "cost": costs,
-        "transmission_latency": centralHopLatency,
+        "transmission_latency": inev_latency,
         "processing_latency": processing_latency,
         "computing_time": end_time - start_time,
         "status": "success",
