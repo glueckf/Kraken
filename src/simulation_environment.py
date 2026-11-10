@@ -355,11 +355,14 @@ def compute_all_push(context):
         # producer's own rate times its own distance to the destination.
         mycosts = 0
         event_costs = {}  # Track costs per event type for processing latency calculation
+        # Hops of the farthest source that actually sends an event to the cloud
+        longest_path = 0
 
         for eventtype in eventtypes:
             event_type_cost = 0.0
             for node_id, rate in context.h_local_rate_lookup.get(eventtype, {}).items():
                 event_type_cost += rate * dest_distances[node_id]
+                longest_path = max(longest_path, dest_distances[node_id])
 
             mycosts += event_type_cost
             event_costs[eventtype] = event_type_cost
@@ -382,9 +385,6 @@ def compute_all_push(context):
                 processing_latency += query_output_rate * (
                     query_event_cost / sum_input_rates
                 )
-
-        # Longest path is simply the maximum distance from destination
-        longest_path = max(dest_distances)
 
         end_time = time.time()
 
