@@ -320,6 +320,8 @@ def compute_all_push(context):
         mycosts = 0
         routing_dict = {}
         event_costs = {}  # Track costs per event type for processing latency calculation
+        # Hops of the farthest source that actually sends an event to the cloud
+        longest_path = 0
 
         for eventtype in eventtypes:
             event_rate = context.h_rates_data[eventtype]
@@ -346,6 +348,7 @@ def compute_all_push(context):
                 cost = event_rate * min_distance
                 mycosts += cost
                 event_type_cost += cost
+                longest_path = max(longest_path, min_distance)
 
                 # Compute shortest path only once per event instance
                 shortest_path = nx.shortest_path(
@@ -373,9 +376,6 @@ def compute_all_push(context):
                 processing_latency += query_output_rate * (
                     query_event_cost / sum_input_rates
                 )
-
-        # Longest path is simply the maximum distance from destination
-        longest_path = max(dest_distances)
 
         end_time = time.time()
 
