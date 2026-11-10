@@ -13,13 +13,16 @@ The network is medium_c's tree: cloud 0 (the sink) <- 5 <- 6 <- {1, 2},
 A produced at node 1, B and C at node 2. Events only flow towards the cloud,
 so a projection can only sit on a common ancestor of its sources that
 produces no events itself (node 6, 5 or the cloud), as Kraken's optimizer
-enforces; every test uses such placements.
+enforces; every test uses such placements. Node 7 below 5 is not part of
+medium_c: it produces a second copy of C in TestSeveralSources only.
 """
 
+import itertools
 import os
 import sys
 import unittest
 from types import SimpleNamespace
+from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
@@ -30,9 +33,10 @@ from kraken.data.acquisition_step import (
     PullResponse,
 )
 from kraken.data.state import PlacementInfo, SolutionCandidate
+from simulation_environment import calculate_sequential_max_latency
 
 CLOUD = 0
-PARENT = {5: 0, 6: 5, 1: 6, 2: 6}
+PARENT = {5: 0, 6: 5, 1: 6, 2: 6, 7: 5}
 SOURCES = {"A": [1], "B": [2], "C": [2]}
 S1 = "SEQ(A, B)"
 S2 = "SEQ(A, B, C)"
@@ -86,9 +90,9 @@ def _plan(node, steps, placed, already_at_node=()):
     return acquisition
 
 
-def _latency(placements, workload=(S2,)):
+def _latency(placements, workload=(S2,), processing=None, xi=0.0):
     """placements: list of (projection, node, steps[, already_at_node]) in
-    processing order."""
+    processing order; processing: l_p per projection, weighted by xi."""
     candidate, placed = SolutionCandidate(), {}
     for projection, node, steps, *local in placements:
         acquisition = _plan(node, steps, placed, *local)
@@ -100,22 +104,79 @@ def _latency(placements, workload=(S2,)):
         candidate.placements[projection] = PlacementInfo(
             projection=projection, node=node, strategy="test", individual_cost=0.0,
             individual_transmission_latency=transmission,
-            individual_processing_latency=0.0, acquisition_steps=acquisition,
+            individual_processing_latency=(processing or {}).get(projection, 0.0),
+            acquisition_steps=acquisition,
         )
         placed[projection] = node
     problem = SimpleNamespace(
         processing_order=[S1, S2],
         dependencies_per_projection=DEPS,
         query_workload=list(workload),
-        latency_weighting_factor=0.0,
+        latency_weighting_factor=xi,
         cost_calculator=SimpleNamespace(
             params={"pairwise_distance_matrix": DIST, "sink_nodes": [CLOUD]}),
     )
     return candidate.get_critical_path_latency(problem)
 
 
+def _sequential_latency(placements):
+    """The Sequential baseline's latency of S2 for the same plans. It reports
+    no sink hop, so callers place S2 in the cloud."""
+    acquisitions, placed = {}, {}
+    for projection, node, steps in placements:
+        acquisitions[projection] = _plan(node, steps, placed)
+        placed[projection] = node
+    context = SimpleNamespace(
+        config=SimpleNamespace(xi=0.0),
+        processing_order=[S1, S2],
+        h_mycombi=DEPS,
+        sum_of_input_rates_per_query={},
+        h_projrates={},
+        allPairs=DIST,
+        query_workload=[S2],
+    )
+    latencies, _ = calculate_sequential_max_latency(
+        context, [None] * 6 + [acquisitions])
+    return latencies[S2]
+
+
 ALL_PUSH_S1 = [((), ["A", "B"])]
 ALL_PUSH_S2 = [((), [S1, "C"])]
+
+# Every placement Kraken can choose: S1 on a host, S2 on the same or a higher
+# one (it consumes S1, and events only flow up). Hosts form a chain.
+HOSTS = [6, 5, CLOUD]
+DEPTH = {CLOUD: 0, 5: 1, 6: 2, 1: 3, 2: 3}
+PLACEMENTS = [(n1, n2) for i, n1 in enumerate(HOSTS) for n2 in HOSTS[i:]]
+S1_PLANS = {
+    "all push": ALL_PUSH_S1,
+    "push B, pull A": [((), ["B"]), (["B"], ["A"])],
+    "push A, pull B": [((), ["A"]), (["A"], ["B"])],
+}
+S2_PLANS = {
+    "all push": ALL_PUSH_S2,
+    "push S1, pull C": [((), [S1]), (["A"], ["C"])],
+    "push C, pull S1": [((), ["C"]), (["C"], [S1])],
+}
+
+
+def _expected(n1, plan1, n2, plan2, workload=(S2,)):
+    """The same timings derived by hand for this chain of hosts."""
+    h1 = DEPTH[1] - DEPTH[n1]  # hops from A's or B's source up to S1
+    h2 = DEPTH[2] - DEPTH[n2]  # hops from C's source up to S2
+    d12 = DEPTH[n1] - DEPTH[n2]  # hops from S1 up to S2
+    # pull: the first event comes up, the request goes down, the other back up
+    ready1 = h1 if plan1 == "all push" else 3 * h1
+    if plan2 == "all push":
+        ready2 = max(ready1 + d12, h2)
+    elif plan2 == "push S1, pull C":
+        ready2 = ready1 + d12 + 2 * h2
+    else:  # the request waits at S1's node until S1 has results
+        ready2 = max(h2 + d12, ready1) + d12
+    latency = ready2 + DEPTH[n2]
+    if S1 in workload:
+        latency = max(latency, ready1 + DEPTH[n1])
+    return latency
 
 
 class TestAllPushParallelInputs(unittest.TestCase):
@@ -143,6 +204,68 @@ class TestAllPushParallelInputs(unittest.TestCase):
 
     def test_nothing_placed(self):
         self.assertEqual(_latency([]), 0.0)
+
+
+class TestAllFeasibleCombinations(unittest.TestCase):
+    """Every placement Kraken can choose here with every acquisition plan of
+    either projection: 6 placements x 3 x 3 plans, S1 shared or not."""
+
+    def test_against_hand_derived_timings(self):
+        for workload in [(S2,), (S1, S2)]:
+            for (n1, n2), plan1, plan2 in itertools.product(
+                    PLACEMENTS, S1_PLANS, S2_PLANS):
+                with self.subTest(S1=(n1, plan1), S2=(n2, plan2), workload=workload):
+                    latency = _latency([(S1, n1, S1_PLANS[plan1]),
+                                        (S2, n2, S2_PLANS[plan2])], workload)
+                    self.assertEqual(
+                        latency, _expected(n1, plan1, n2, plan2, workload))
+
+    def test_all_push_never_exceeds_the_deepest_source(self):
+        for n1, n2 in PLACEMENTS:
+            with self.subTest(S1=n1, S2=n2):
+                latency = _latency([(S1, n1, ALL_PUSH_S1), (S2, n2, ALL_PUSH_S2)])
+                self.assertEqual(latency, 3)
+
+    def test_pulling_is_never_faster_than_all_push(self):
+        for (n1, n2), plan1, plan2 in itertools.product(
+                PLACEMENTS, S1_PLANS, S2_PLANS):
+            with self.subTest(S1=(n1, plan1), S2=(n2, plan2)):
+                latency = _latency([(S1, n1, S1_PLANS[plan1]),
+                                    (S2, n2, S2_PLANS[plan2])])
+                self.assertGreaterEqual(latency, 3)
+
+
+class TestSeveralSources(unittest.TestCase):
+    def test_pull_waits_for_the_farthest_source(self):
+        # C also produced at node 7 (one hop below 5), so S2 can only sit on
+        # 5 or the cloud. S1 at 6 is ready at 1 and reaches 5 at 2; the
+        # request for C gets to 7 at 3 and its answer back at 4, but node 2
+        # is two hops away: back at 6, +1 hop to the sink.
+        with mock.patch.dict(SOURCES, {"C": [7, 2]}):
+            latency = _latency([
+                (S1, 6, ALL_PUSH_S1),
+                (S2, 5, S2_PLANS["push S1, pull C"]),
+            ])
+        self.assertEqual(latency, 7)
+
+
+class TestProcessingLatency(unittest.TestCase):
+    def test_weighted_processing_delays_dependents(self):
+        # S1 in the cloud is ready at 3 + 0.5 * 2; S2 waits for it: 4 + 0.5 * 1
+        latency = _latency([(S1, CLOUD, ALL_PUSH_S1), (S2, CLOUD, ALL_PUSH_S2)],
+                           processing={S1: 2.0, S2: 1.0}, xi=0.5)
+        self.assertEqual(latency, 4.5)
+
+
+class TestSequentialBaseline(unittest.TestCase):
+    """calculate_sequential_max_latency uses the same model for its plans."""
+
+    def test_matches_the_hand_derived_timings(self):
+        for n1, plan1, plan2 in itertools.product(HOSTS, S1_PLANS, S2_PLANS):
+            with self.subTest(S1=(n1, plan1), S2=plan2):
+                latency = _sequential_latency([(S1, n1, S1_PLANS[plan1]),
+                                               (S2, CLOUD, S2_PLANS[plan2])])
+                self.assertEqual(latency, _expected(n1, plan1, CLOUD, plan2))
 
 
 class TestPushPullSteps(unittest.TestCase):
