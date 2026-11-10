@@ -32,6 +32,8 @@ from simulator.combigen import populate_proj_filter_dict, remove_filters, genera
 from simulator.operator_placement import calculate_operator_placement
 from prepp.prepp import generate_prePP
 from prepp.generate_eval_plan import generate_eval_plan
+from kraken.data.acquisition_step import AcquisitionSet
+from kraken.data.state import input_arrival
 
 # ==================== SIMULATION CONFIGURATION ====================
 
@@ -954,13 +956,9 @@ def calculate_sequential_max_latency(context, sequential_results):
         if not steps or (isinstance(steps, dict) and "error" in steps):
             continue
 
-        total_transmission_latency = 0.0
         inputs_cost = 0.0
-        step_sequence = getattr(steps, "steps", []) or []
+        step_sequence = [s for s in (getattr(steps, "steps", []) or []) if s is not None]
         for step in step_sequence:
-            if step is None:
-                continue
-            total_transmission_latency += getattr(step, "total_latency", 0.0) or 0.0
             pull_response = getattr(step, "pull_response", None)
             if pull_response is not None:
                 inputs_cost += getattr(pull_response, "cost", 0.0) or 0.0
@@ -994,7 +992,7 @@ def calculate_sequential_max_latency(context, sequential_results):
             processing_latency = 0.0
 
         per_projection_metrics[proj_key] = {
-            "transmission": total_transmission_latency,
+            "acquisition": AcquisitionSet(steps=step_sequence),
             "processing": processing_latency,
         }
 
@@ -1034,23 +1032,24 @@ def calculate_sequential_max_latency(context, sequential_results):
             return critical_latency_cache[proj_key]
 
         metrics = per_projection_metrics.get(
-            proj_key, {"transmission": 0.0, "processing": 0.0}
+            proj_key, {"acquisition": None, "processing": 0.0}
         )
-        transmission_latency = metrics["transmission"]
         processing_latency = metrics["processing"]
 
-        latest_predecessor_latency = 0.0
-        for predecessor in dependency_map.get(proj_key, []):
-            latest_predecessor_latency = max(
-                latest_predecessor_latency,
-                calculate_critical_latency(predecessor),
+        # Inputs arrive in parallel, only push-pull steps are sequential
+        # (same model as SolutionCandidate.get_critical_path_latency).
+        input_ready = {
+            predecessor: calculate_critical_latency(predecessor)
+            for predecessor in dependency_map.get(proj_key, [])
+        }
+        if metrics["acquisition"] is not None:
+            arrival = input_arrival(
+                metrics["acquisition"], input_ready, context.allPairs
             )
+        else:
+            arrival = max(input_ready.values(), default=0.0)
 
-        critical_latency = (
-            (processing_latency * xi)
-            + transmission_latency
-            + latest_predecessor_latency
-        )
+        critical_latency = (processing_latency * xi) + arrival
         critical_latency_cache[proj_key] = critical_latency
         return critical_latency
 
