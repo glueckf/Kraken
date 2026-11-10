@@ -324,7 +324,7 @@
      }
     }
    },
-   "solve_seconds": 0.00104522705078125,
+   "solve_seconds": 0.001043558120727539,
    "analysis": {
     "alpha": 0.0,
     "scores": [
@@ -426,7 +426,7 @@
      }
     }
    },
-   "solve_seconds": 0.0008759498596191406,
+   "solve_seconds": 0.0009205341339111328,
    "analysis": {
     "alpha": 0.1,
     "scores": [
@@ -528,7 +528,7 @@
      }
     }
    },
-   "solve_seconds": 0.0008952617645263672,
+   "solve_seconds": 0.0009024143218994141,
    "analysis": {
     "alpha": 0.2,
     "scores": [
@@ -630,7 +630,7 @@
      }
     }
    },
-   "solve_seconds": 0.0008783340454101562,
+   "solve_seconds": 0.0009698867797851562,
    "analysis": {
     "alpha": 0.3,
     "scores": [
@@ -732,7 +732,7 @@
      }
     }
    },
-   "solve_seconds": 0.0009746551513671875,
+   "solve_seconds": 0.0009300708770751953,
    "analysis": {
     "alpha": 0.4,
     "scores": [
@@ -834,7 +834,7 @@
      }
     }
    },
-   "solve_seconds": 0.0009088516235351562,
+   "solve_seconds": 0.000865936279296875,
    "analysis": {
     "alpha": 0.5,
     "scores": [
@@ -936,7 +936,7 @@
      }
     }
    },
-   "solve_seconds": 0.0009024143218994141,
+   "solve_seconds": 0.0008878707885742188,
    "analysis": {
     "alpha": 0.6,
     "scores": [
@@ -1038,7 +1038,7 @@
      }
     }
    },
-   "solve_seconds": 0.0009899139404296875,
+   "solve_seconds": 0.0008640289306640625,
    "analysis": {
     "alpha": 0.7,
     "scores": [
@@ -1140,7 +1140,7 @@
      }
     }
    },
-   "solve_seconds": 0.0009431838989257812,
+   "solve_seconds": 0.0009186267852783203,
    "analysis": {
     "alpha": 0.8,
     "scores": [
@@ -1242,7 +1242,7 @@
      }
     }
    },
-   "solve_seconds": 0.0008890628814697266,
+   "solve_seconds": 0.0008914470672607422,
    "analysis": {
     "alpha": 0.9,
     "scores": [
@@ -1344,7 +1344,7 @@
      }
     }
    },
-   "solve_seconds": 0.0008800029754638672,
+   "solve_seconds": 0.0008854866027832031,
    "analysis": {
     "alpha": 1.0,
     "scores": [
