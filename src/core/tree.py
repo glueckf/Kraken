@@ -30,20 +30,26 @@ class Tree:
             if (isinstance(self, SEQ) and isinstance(other, SEQ)) or (
                 isinstance(self, NSEQ) and isinstance(other, NSEQ)
             ):
-                truelist = [
-                    1
-                    for x in range(len(self.children))
-                    if str(self.children[x]) == str(other.children[x])
-                ]
-                if sum(truelist) == len(self.children):
-                    return True
+                # Position matters, but children compare with ==, so a nested
+                # AND ignores its order: SEQ(E, AND(D, F, B)) == SEQ(E, AND(B, D, F))
+                return all(
+                    mine is theirs or mine == theirs
+                    for mine, theirs in zip(self.children, other.children)
+                )
             else:
                 return True
         else:
             return False
 
     def __hash__(self):
-        return hash(str(self))
+        # Must agree with __eq__: equal trees need equal hashes, so AND hashes
+        # its children in sorted order, SEQ and NSEQ in their own order
+        if isinstance(self, PrimEvent):
+            return hash(str(self))
+        children = [hash(x) for x in self.children]
+        if isinstance(self, AND):
+            children.sort()
+        return hash((type(self).__name__, tuple(children)))
 
     def __len__(self):
         return len(self.leafs())  # orleafs?

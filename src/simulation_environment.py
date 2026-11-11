@@ -1241,6 +1241,19 @@ class Simulation:
                 "endTransmissionRatio",
             ]
 
+            # Fresh containers for this run. The class-level defaults are shared
+            # by every Simulation in the process (a pool worker runs many jobs),
+            # and the pipeline fills them in place, so a run would otherwise
+            # inherit the projections, rates and combinations of earlier runs
+            # on other topologies and workloads.
+            self.h_projlist = []
+            self.h_projrates = {}
+            self.h_projsPerQuery = {}
+            self.h_sharedProjectionsDict = {}
+            self.h_sharedProjectionsList = []
+            self.h_combiDict = {}
+            self.h_placementTreeDict = {}
+
             # Initialize core simulation parameters
             from simulator.projections import generate_all_projections
 
