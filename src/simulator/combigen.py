@@ -945,6 +945,12 @@ def generate_combigen(self):
     # Update mycombi with the newly processed projections
     mycombi = curcombi
 
+    # A query missing here is never placed, and INEv under-reports its cost
+    # (down to an empty plan with cost 0) instead of failing
+    dropped = [str(q) for q in wl if q.strip_kl_simple() not in mycombi]
+    if dropped:
+        raise ValueError(f"Workload queries missing from the combination: {dropped}")
+
     criticalMSProjs = [
         x
         for x in mycombi.keys()
