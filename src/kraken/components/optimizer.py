@@ -81,6 +81,13 @@ class PlacementOptimizer:
     ) -> List[int]:
         """Find nodes that are common ancestors to required event sources.
 
+        The sources of a primitive event are the nodes that produce it,
+        taken from ``params["nodes_per_primitive_event"]`` (``h_nodes``).
+        The ETB table (``h_eventNodes`` / ``h_IndexEventNodes``) is not a
+        safe source here: INEv runs before Kraken and marks every stop on
+        its routing paths as holding the ETB, which turns relay nodes
+        (often the cloud) into required sources and drops valid hosts.
+
         Args:
             projection: Projection being placed
             params: Problem parameters
@@ -88,12 +95,9 @@ class PlacementOptimizer:
         Returns:
             List of node IDs that have access to all required events
         """
-        from core.structures import get_nodes
-
         # Extract parameters
         network_data = params["network_data"]
-        index_event_nodes = params["index_event_nodes"]
-        event_nodes = params["event_nodes"]
+        nodes_per_primitive_event = params["nodes_per_primitive_event"]
         primitive_events_per_projection = params["primitive_events_per_projection"]
 
         # Get primitive events for this projection
@@ -106,17 +110,10 @@ class PlacementOptimizer:
         # Extract required primitive events
         required_events = set(self._flatten_events(combination))
 
-        # Build union of all source nodes for required events
+        # Build union of all producer nodes for required events
         required_sources: Set[int] = set()
-        etb_sources_cache: Dict[Any, List[int]] = {}
-
         for ev in required_events:
-            for etb in index_event_nodes.get(ev, ()):
-                if etb not in etb_sources_cache:
-                    etb_sources_cache[etb] = get_nodes(
-                        etb, event_nodes, index_event_nodes
-                    )
-                required_sources.update(etb_sources_cache[etb])
+            required_sources.update(nodes_per_primitive_event.get(ev, ()))
 
         # Fast bail-out: if nothing is required, any non-leaf is suitable
         if not required_sources:
