@@ -348,6 +348,12 @@ def _gather_problem_parameters(simulation_context: Any) -> Dict[str, Any]:
         "latency_weighting_factor": simulation_context.config.xi,
         "cost_weight": getattr(simulation_context.config, "cost_weight", 0.5),
         "latency_weight": 1 - getattr(simulation_context.config, "cost_weight", 0.5),
+        # Multi-node placement (all-push only), off unless the config enables it
+        "multi_node_placement": getattr(
+            simulation_context.config, "multi_node_placement", False
+        ),
+        # False: every projection uses all-push (no PrePP)
+        "push_pull": getattr(simulation_context.config, "push_pull", True),
     }
 
     return context
@@ -420,6 +426,7 @@ def _calculate_solution_metrics(
         - cumulative_processing_latency: Total processing latency across all placements
         - num_placements: Number of placement decisions
         - placements_at_cloud: Number of placements at cloud node (0)
+        - multi_node_placements: Number of projections placed on several nodes
         - average_cost_per_placement: Mean cost per placement
     """
     total_cost = solution.cumulative_cost
@@ -438,9 +445,12 @@ def _calculate_solution_metrics(
     # Get cumulative processing latency
     cumulative_processing_latency = solution.cumulative_processing_latency
 
-    # Count placements at cloud
+    # Count placements at cloud (a multi-node placement with an instance there)
     placements_at_cloud = sum(
-        1 for info in solution.placements.values() if info.node == 0
+        1 for info in solution.placements.values() if 0 in info.nodes
+    )
+    multi_node_placements = sum(
+        1 for info in solution.placements.values() if info.instances
     )
 
     # Calculate average cost
@@ -454,6 +464,7 @@ def _calculate_solution_metrics(
         "cumulative_processing_latency": cumulative_processing_latency,
         "num_placements": num_placements,
         "placements_at_cloud": placements_at_cloud,
+        "multi_node_placements": multi_node_placements,
         "average_cost_per_placement": avg_cost,
     }
 
@@ -520,7 +531,7 @@ def _enrich_log_with_solution(
     """
     # Create a set of (projection, node, strategy) tuples from final solution
     solution_set = {
-        (info.projection, info.node, info.strategy)
+        (info.projection, info.location, info.strategy)
         for info in solution.placements.values()
     }
 

@@ -1,9 +1,15 @@
 """Placement optimizer for candidate node selection."""
 
 from functools import lru_cache
-from typing import Any, Dict, List, Set
+from typing import Any, Dict, List, Set, Tuple
 
 import networkx as nx
+
+from kraken.components.multi_node import (
+    MultiNodeOption,
+    choose_instances,
+    splittable_inputs,
+)
 
 
 class PlacementOptimizer:
@@ -67,14 +73,77 @@ class PlacementOptimizer:
         if not placed_subqueries:
             return self._ensure_deterministic_order(possible_nodes)
 
-        # Phase 2: Apply reachability constraints
-        subquery_nodes = list(placed_subqueries.values())
+        # Phase 2: Apply reachability constraints (every instance of a
+        # multi-node subquery must reach the node)
+        subquery_nodes = [
+            node
+            for location in placed_subqueries.values()
+            for node in (location if isinstance(location, tuple) else (location,))
+        ]
         common_reachable = self._get_common_reachable_nodes(subquery_nodes)
 
         # Filter nodes based on reachability
         valid_nodes = [node for node in possible_nodes if node in common_reachable]
 
         return self._ensure_deterministic_order(valid_nodes)
+
+    def get_multi_node_options(
+        self,
+        projection: Any,
+        senders: Dict[Any, List[Tuple[int, float]]],
+        params: Dict[str, Any],
+    ) -> List[MultiNodeOption]:
+        """Multi-node placements of a projection (see components/multi_node.py).
+
+        First tests which inputs can be split at all, then chooses the
+        instances for each of them with an all-push cost estimate.
+
+        Args:
+            projection: Projection to be placed
+            senders: Senders (node, rate) of each input of the projection, as
+                CostCalculator.get_input_senders returns them
+            params: Problem parameters dictionary
+
+        Returns:
+            Options with at least two instances, deterministic order
+        """
+        hosts = sorted(
+            node for node, produced in params["network_data"].items() if not produced
+        )
+        splittable = splittable_inputs(senders, hosts, self._reaches)
+        if not splittable:
+            return []
+
+        distances = params["pairwise_distance_matrix"]
+        sink_nodes = params.get("sink_nodes", [])
+        output_rate = params["projection_rates_selectivity"].get(projection, (0, 0))[1]
+        is_workload = projection in params["query_workload"]
+
+        def sink_distance(host):
+            if not is_workload or host in sink_nodes:
+                return 0.0
+            return sum(distances[host][sink] for sink in sink_nodes)
+
+        options = []
+        for split, valid_hosts in splittable.items():
+            split_rate = sum(rate for _, rate in senders[split])
+            complete = [s for dep, lst in senders.items() if dep != split for s in lst]
+            for assignment in choose_instances(
+                senders[split],
+                complete,
+                valid_hosts,
+                self._reaches,
+                distances,
+                output_per_split_rate=output_rate / split_rate if split_rate else 0.0,
+                sink_distance=sink_distance,
+            ):
+                options.append(MultiNodeOption(split, assignment))
+        return options
+
+    def _reaches(self, source: int, destination: int) -> bool:
+        """Whether events can flow from source to destination (or source is it)."""
+        info = self.routing_dict.get(destination, {}).get(source)
+        return info is not None and info.get("common_ancestor") == destination
 
     def _get_ancestor_based_candidates(
         self, projection: Any, params: Dict[str, Any]

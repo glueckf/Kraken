@@ -1,7 +1,10 @@
 import math
-from typing import List, Any, Dict
+from typing import List, Any, Dict, Optional
 
-from kraken.components.event_stack_manager import update_event_stack
+from kraken.components.event_stack_manager import (
+    _extract_primitive_events,
+    update_event_stack,
+)
 from kraken.components.cost_calculator import CostCalculator
 from kraken.components.optimizer import PlacementOptimizer
 from kraken.components.sorter import EventPlacementSorter
@@ -29,7 +32,19 @@ class PlacementProblem:
             latency_threshold if latency_threshold is not None else float("inf")
         )
         self.query_workload = context["query_workload"]
+        # Also consider placing a projection on several nodes, splitting one
+        # input over the instances (components/multi_node.py); all-push only.
+        self.multi_node_placement = bool(context.get("multi_node_placement", False))
+        self.push_pull = bool(context.get("push_pull", True))
         self.dependencies_per_projection = context["dependencies_per_projection"]
+        # Projections another projection reads. With push-pull on, these stay
+        # single-node: their consumers would lose push-pull (a multi-node
+        # input is all-push only), which costs more than the split saves.
+        self.consumed_projections = {
+            dep
+            for deps in self.dependencies_per_projection.values()
+            for dep in deps
+        }
         self.latency_weighting_factor = context.get(
             "latency_weighting_factor", 1.0
         )  # The 'xi' factor
@@ -109,9 +124,6 @@ class PlacementProblem:
         possible_nodes = self.optimizer.get_possible_placement_nodes_optimized(
             p, placed_subqueries, self.cost_calculator.params
         )
-
-        if not possible_nodes:
-            return []
 
         # This sorts the nodes in an optimized manner to allow for pruning.
         # The goal is to: Check nodes that have all the inputs available first
@@ -200,6 +212,13 @@ class PlacementProblem:
             if pruning:
                 break
 
+        if self.multi_node_placement and (
+            not self.push_pull or p not in self.consumed_projections
+        ):
+            s_next_options.extend(
+                self._expand_multi_node(s_current, p, projection_index)
+            )
+
         if not s_next_options:
             return s_next_options
 
@@ -238,10 +257,64 @@ class PlacementProblem:
         scored_options.sort(key=lambda item: item[0])
         return [candidate for _, candidate in scored_options]
 
+    def _expand_multi_node(
+        self, s_current: SolutionCandidate, p: Any, projection_index: int
+    ) -> List[SolutionCandidate]:
+        """Next states that place p on several nodes (all-push), filtered by
+        the latency threshold like the single-node candidates."""
+        senders = self.cost_calculator.get_input_senders(p, s_current)
+        options = self.optimizer.get_multi_node_options(
+            p, senders, self.cost_calculator.params
+        )
+        next_states = []
+        for option in options:
+            result = self.cost_calculator.calculate_multi_node(p, option, s_current)
+            s_next_temp = self._create_next_candidate(s_current, p, None, result)
+            max_latency_so_far = s_next_temp.get_critical_path_latency(self)
+            lookahead_latency = max_latency_so_far
+            if p not in self.query_workload:
+                lookahead_latency += min(
+                    self._get_min_distance_to_sink(host) for host in option.hosts
+                )
+            is_pruned = lookahead_latency > self.latency_threshold
+
+            if self.logging_enabled:
+                self.detailed_log.append(
+                    {
+                        "projection_index": projection_index,
+                        "projection": p,
+                        "candidate_node": option.hosts,
+                        "communication_strategy": result["strategy"],
+                        "is_pruned": is_pruned,
+                        "is_part_of_final_solution": False,  # Filled later
+                        "individual_cost": result["individual_cost"],
+                        "individual_transmission_latency": result[
+                            "transmission_latency"
+                        ],
+                        "individual_processing_latency": result["processing_latency"],
+                        "cumulative_cost_before": s_current.cumulative_cost,
+                        "cumulative_processing_latency_before": s_current.cumulative_processing_latency,
+                        "cumulative_cost_after": s_next_temp.cumulative_cost,
+                        "cumulative_processing_latency_after": s_next_temp.cumulative_processing_latency,
+                        "max_latency_so_far": max_latency_so_far,
+                        "lookahead_latency": lookahead_latency,
+                    }
+                )
+            if not is_pruned:
+                next_states.append(s_next_temp)
+        return next_states
+
     def _create_next_candidate(
-        self, s_current: SolutionCandidate, p: Any, n: int, strategy_result: dict
+        self,
+        s_current: SolutionCandidate,
+        p: Any,
+        n: Optional[int],
+        strategy_result: dict,
     ) -> SolutionCandidate:
-        """Helper function to create a new, extended SolutionCandidate object."""
+        """Helper function to create a new, extended SolutionCandidate object.
+
+        n is None for a multi-node placement, whose strategy_result carries
+        "split_input" and "instances" (CostCalculator.calculate_multi_node)."""
         new_placements = s_current.placements.copy()
         new_event_stack = {k: v.copy() for k, v in s_current.event_stack.items()}
 
@@ -253,14 +326,35 @@ class PlacementProblem:
             individual_transmission_latency=strategy_result["transmission_latency"],
             individual_processing_latency=strategy_result["processing_latency"],
             acquisition_steps=strategy_result["acquisition_steps"],
+            split_input=strategy_result.get("split_input"),
+            instances=strategy_result.get("instances", []),
         )
 
         new_placements[p] = placement_info
 
-        # TODO: Implement this in /kraken/components/event_stack_manager.py
-        update_event_stack(
-            stack=new_event_stack, node_id=n, query_id=p, placement_info=placement_info
-        )
+        if placement_info.instances:
+            # An instance receives all of every complete input, but only part
+            # of the split input.
+            complete_events = set()
+            for dep in self.dependencies_per_projection.get(p, []):
+                if dep != placement_info.split_input:
+                    complete_events |= _extract_primitive_events(str(dep))
+            for instance in placement_info.instances:
+                update_event_stack(
+                    stack=new_event_stack,
+                    node_id=instance.node,
+                    query_id=p,
+                    placement_info=placement_info,
+                    events=complete_events,
+                )
+        else:
+            # TODO: Implement this in /kraken/components/event_stack_manager.py
+            update_event_stack(
+                stack=new_event_stack,
+                node_id=n,
+                query_id=p,
+                placement_info=placement_info,
+            )
 
         return SolutionCandidate(
             placements=new_placements,

@@ -1,6 +1,6 @@
 import re
 from dataclasses import dataclass, field
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional, Union
 
 from .acquisition_step import AcquisitionSet, AcquisitionStep
 
@@ -8,6 +8,26 @@ from .acquisition_step import AcquisitionSet, AcquisitionStep
 # Forward declaration to allow type hinting PlacementProblem within SolutionCandidate
 class PlacementProblem:
     pass
+
+
+@dataclass()
+class PlacementInstance:
+    """One instance of a multi-node placement (see components/multi_node.py).
+
+    It runs on `node`, receives every sender of the complete inputs plus the
+    senders of the split input listed in `split_senders`, and produces the
+    matches of those senders: `output_rate` is its share of the projection's
+    output rate. Costs and latencies are those of this instance alone, sink
+    hop included.
+    """
+
+    node: int
+    split_senders: List[int]
+    output_rate: float
+    individual_cost: float
+    individual_transmission_latency: float
+    individual_processing_latency: float
+    acquisition_steps: AcquisitionSet
 
 
 @dataclass()
@@ -20,7 +40,7 @@ class PlacementInfo:
     """
 
     projection: Any  # The projection (event type) this vertex v represents
-    node: int  # The physical node n from Graph T
+    node: Optional[int]  # The physical node n from Graph T; None if multi-node
     strategy: str  # e.g. 'all_push' or 'push_pull'
 
     individual_cost: (
@@ -33,6 +53,26 @@ class PlacementInfo:
     acquisition_steps: (
         AcquisitionSet  # Acquisition steps for this vertex v and its inputs
     )
+
+    # Multi-node placement: the input whose senders are split over the
+    # instances, and the instances (each with its own node, plan, cost and
+    # latency). Empty for a single-node placement. For a multi-node placement
+    # the costs and processing latency above are the instances' sums and the
+    # transmission latency their maximum.
+    split_input: Any = None
+    instances: List[PlacementInstance] = field(default_factory=list)
+
+    @property
+    def nodes(self) -> List[int]:
+        """The node of every instance (one node for a single-node placement)."""
+        if self.instances:
+            return [instance.node for instance in self.instances]
+        return [self.node]
+
+    @property
+    def location(self) -> Union[int, tuple]:
+        """The node, or the tuple of instance nodes of a multi-node placement."""
+        return tuple(self.nodes) if self.instances else self.node
 
 
 @dataclass(slots=True)
@@ -88,20 +128,36 @@ class SolutionCandidate:
                 for dep in problem.dependencies_per_projection.get(p, [])
                 if dep in ready
             }
+
+            def sink_hops(node):
+                if p in problem.query_workload and sink_nodes and node not in sink_nodes:
+                    return max(distances[node][sink] for sink in sink_nodes)
+                return 0
+
+            if placement.instances:
+                # Multi-node: each instance waits only for its own inputs; the
+                # projection's output is ready per instance node.
+                ready[p] = {}
+                end_to_end_latencies[p] = 0.0
+                for instance in placement.instances:
+                    arrival = input_arrival(
+                        instance.acquisition_steps, input_ready, distances
+                    )
+                    instance_ready = (
+                        instance.individual_processing_latency * xi
+                    ) + arrival
+                    ready[p][instance.node] = instance_ready
+                    end_to_end_latencies[p] = max(
+                        end_to_end_latencies[p],
+                        instance_ready + sink_hops(instance.node),
+                    )
+                continue
+
             arrival = input_arrival(
                 placement.acquisition_steps, input_ready, distances
             )
             ready[p] = (placement.individual_processing_latency * xi) + arrival
-
-            end_to_end_latencies[p] = ready[p]
-            if (
-                p in problem.query_workload
-                and sink_nodes
-                and placement.node not in sink_nodes
-            ):
-                end_to_end_latencies[p] += max(
-                    distances[placement.node][sink] for sink in sink_nodes
-                )
+            end_to_end_latencies[p] = ready[p] + sink_hops(placement.node)
 
         if not end_to_end_latencies:
             return 0.0
@@ -111,10 +167,11 @@ class SolutionCandidate:
 
     def get_placed_subqueries(
         self, projection: Any, problem: "PlacementProblem"
-    ) -> Dict[Any, int]:
-        """Helper method to get the locations of already-placed direct dependencies"""
+    ) -> Dict[Any, Union[int, tuple]]:
+        """Helper method to get the locations of already-placed direct dependencies:
+        the node, or the tuple of instance nodes of a multi-node placement."""
         return {
-            dep: self.placements[dep].node
+            dep: self.placements[dep].location
             for dep in problem.dependencies_per_projection.get(projection, [])
             if dep in self.placements
         }
@@ -133,7 +190,8 @@ def input_arrival(
     Args:
         acquisition: The placement's acquisition steps, in plan order.
         input_ready: Ready time of each placed subquery input, keyed by its
-            name; primitive events are ready at time 0.
+            name; for a multi-node subquery a dict of ready times per instance
+            node. Primitive events are ready at time 0.
         distances: Pairwise hop distances (request and response travel the
             same path).
     """
@@ -145,7 +203,13 @@ def input_arrival(
             event_ready = input_ready.get(event, 0.0)
             for source in details.get("sources", []):
                 hops = source["distance"]
-                sent = max(arrived + hops, event_ready) if pulled else event_ready
+                if isinstance(event_ready, dict):  # multi-node subquery
+                    source_ready = event_ready.get(
+                        source.get("source_node"), max(event_ready.values(), default=0.0)
+                    )
+                else:
+                    source_ready = event_ready
+                sent = max(arrived + hops, source_ready) if pulled else source_ready
                 step_arrival = max(step_arrival, sent + hops)
         arrived = max(arrived, step_arrival)
     return arrived

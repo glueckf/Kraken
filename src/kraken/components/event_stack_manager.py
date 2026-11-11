@@ -1,10 +1,14 @@
 import re
-from typing import Any, Set
+from typing import Any, Optional, Set
 from kraken.data.state import PlacementInfo
 
 
 def update_event_stack(
-    stack: dict, node_id: int, query_id: Any, placement_info: PlacementInfo
+    stack: dict,
+    node_id: int,
+    query_id: Any,
+    placement_info: PlacementInfo,
+    events: Optional[Set[str]] = None,
 ) -> None:
     """Update the event stack with events made available by a new placement.
 
@@ -13,10 +17,16 @@ def update_event_stack(
         node_id: The node where the placement occurred
         query_id: The projection/query that was placed
         placement_info: Information about the placement including acquisition steps
+        events: The primitive events that now fully reach the node; defaults
+            to all primitive events of the projection. An instance of a
+            multi-node placement receives only part of its split input, so
+            only the complete inputs' events count.
     """
     # Extract primitive events from the projection itself
     projection_str = str(query_id)
-    primitive_events = _extract_primitive_events(projection_str)
+    primitive_events = (
+        _extract_primitive_events(projection_str) if events is None else set(events)
+    )
 
     # Initialize node entry if it doesn't exist
     if node_id not in stack:

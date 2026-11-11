@@ -10,7 +10,7 @@ from kraken.data.acquisition_step import (
     AcquisitionStep,
     PullResponse,
 )
-from kraken.data.state import SolutionCandidate
+from kraken.data.state import PlacementInstance, SolutionCandidate
 
 
 class CostCalculator:
@@ -60,6 +60,104 @@ class CostCalculator:
 
         return final_strategies
 
+    def calculate_multi_node(
+        self, p: Any, option: Any, s_current: SolutionCandidate
+    ) -> Dict[str, Any]:
+        """All-push costs of a multi-node placement (see components/multi_node.py).
+
+        Every instance receives all senders of the complete inputs and its
+        share of the split input's senders. Its output rate is the
+        projection's output rate times its share of the split input's rate
+        (INES rates are products of the input rates). Each instance is
+        costed like a single-node all-push placement, local events and sink
+        included; the placement's cost and processing latency are the
+        instances' sums, its transmission latency their maximum.
+
+        Args:
+            p: Projection being placed
+            option: MultiNodeOption (split input and instances)
+            s_current: Current solution state
+
+        Returns:
+            Strategy dictionary like calculate()'s, plus "split_input" and
+            "instances" (PlacementInstance list)
+        """
+        senders = self.get_input_senders(p, s_current)
+        split = option.split_input
+        split_rate = dict(senders[split])
+        total_split_rate = sum(split_rate.values())
+        output_rate = self.params["projection_rates_selectivity"].get(p, (0.0, 0.0))[1]
+
+        instances = []
+        for host, split_nodes in option.assignment:
+            if total_split_rate > 0:
+                share = sum(split_rate[u] for u in split_nodes) / total_split_rate
+            else:
+                share = len(split_nodes) / len(split_rate)
+            instance_senders = dict(senders)
+            instance_senders[split] = [(u, split_rate[u]) for u in split_nodes]
+
+            result = self._all_push_from_senders(
+                p, host, instance_senders, output_rate * share
+            )
+            result = self._adjust_for_local_events(result, p, host, s_current)
+            result = self._add_sink_costs(result, p, host, output_rate * share)
+            instances.append(
+                PlacementInstance(
+                    node=host,
+                    split_senders=list(split_nodes),
+                    output_rate=output_rate * share,
+                    individual_cost=result["individual_cost"],
+                    individual_transmission_latency=result["transmission_latency"],
+                    individual_processing_latency=result["processing_latency"],
+                    acquisition_steps=result["acquisition_steps"],
+                )
+            )
+
+        return {
+            "strategy": "all_push",
+            "individual_cost": sum(i.individual_cost for i in instances),
+            "transmission_latency": max(
+                i.individual_transmission_latency for i in instances
+            ),
+            "processing_latency": sum(
+                i.individual_processing_latency for i in instances
+            ),
+            # Each instance has its own plan (PlacementInstance.acquisition_steps)
+            "acquisition_steps": AcquisitionSet(steps=[]),
+            "split_input": split,
+            "instances": instances,
+        }
+
+    def get_input_senders(
+        self, p: Any, s_current: SolutionCandidate
+    ) -> Dict[Any, List[Tuple[int, float]]]:
+        """The senders (node, rate) of each input of a projection.
+
+        A primitive event is sent by every node producing it, with its local
+        rate; a placed subquery by its node with its output rate, or by each
+        instance of a multi-node placement with that instance's output rate.
+        Inputs that are neither are left out, as in the all-push costs.
+        """
+        local_rate_lookup = self.params.get("local_rate_lookup", {})
+        projection_rates = self.params["projection_rates_selectivity"]
+        senders = {}
+        for dependency in self.params["dependencies_per_projection"].get(p, []):
+            if dependency in local_rate_lookup:
+                senders[dependency] = list(local_rate_lookup[dependency].items())
+            elif dependency in s_current.placements:
+                placement = s_current.placements[dependency]
+                if placement.instances:
+                    senders[dependency] = [
+                        (instance.node, instance.output_rate)
+                        for instance in placement.instances
+                    ]
+                else:
+                    senders[dependency] = [
+                        (placement.node, projection_rates.get(dependency, (0, 1))[1])
+                    ]
+        return senders
+
     def _get_raw_costs_for_strategies(
         self, p: Any, n: int, s_current: SolutionCandidate
     ) -> List[Dict[str, Any]]:
@@ -75,6 +173,19 @@ class CostCalculator:
         """
         # Step 1: Compute all-push strategy
         all_push_result = self._compute_all_push_costs(p, n, s_current)
+
+        if not self.params.get("push_pull", True):
+            return [all_push_result]
+
+        # PrePP's own multi-sink support is INEv's (instances at the sources
+        # of the partitioning input), so a multi-node input gets all-push only.
+        if any(
+            isinstance(location, tuple)
+            for location in self._get_placement_context(p, s_current)[
+                "placed_subqueries"
+            ].values()
+        ):
+            return [all_push_result]
 
         # Step 2: Compute push-pull strategy using PrePP
         is_deterministic = self.params["simulation_mode"].value == "deterministic"
@@ -188,13 +299,17 @@ class CostCalculator:
 
         return strategy_result
 
-    def _add_sink_costs(self, strategy_result: Dict, p: Any, n: int) -> Dict:
+    def _add_sink_costs(
+        self, strategy_result: Dict, p: Any, n: int, output_rate: float = None
+    ) -> Dict:
         """Add transmission costs to sink nodes if needed.
 
         Args:
             strategy_result: Single strategy dictionary to update
             p: Projection being placed
             n: Node ID where placement is considered
+            output_rate: Rate sent to the sinks; defaults to the projection's
+                output rate (an instance of a multi-node placement sends its share)
 
         Returns:
             Strategy dictionary with sink costs added
@@ -203,8 +318,9 @@ class CostCalculator:
         if p not in self.params["query_workload"] or n in self.params["sink_nodes"]:
             return strategy_result
 
-        proj_rates = self.params["projection_rates_selectivity"]
-        output_rate = proj_rates.get(p, (0, 1))[1]
+        if output_rate is None:
+            proj_rates = self.params["projection_rates_selectivity"]
+            output_rate = proj_rates.get(p, (0, 1))[1]
 
         # Calculate distances to sinks
         sink_nodes = self.params["sink_nodes"]
@@ -402,50 +518,44 @@ class CostCalculator:
         Returns:
             Dictionary containing all-push strategy with a standardized format.
         """
-        context = self._get_placement_context(p, s_current)
-        dependencies = context["dependencies"].get(p, [])
+        output_rate = self.params["projection_rates_selectivity"].get(
+            p, (0.0, 0.0)
+        )[1]
+        return self._all_push_from_senders(
+            p, n, self.get_input_senders(p, s_current), output_rate
+        )
+
+    def _all_push_from_senders(
+        self,
+        p: Any,
+        n: int,
+        senders: Dict[Any, List[Tuple[int, float]]],
+        processing_latency: float,
+    ) -> Dict[str, Any]:
+        """All-push costs of node n receiving the given senders of each input.
+
+        Every sender pushes its rate over its hop distance to n. Inputs come
+        in the projection's dependency order; the processing latency is the
+        output rate of what n computes.
+        """
         distances = self.params["pairwise_distance_matrix"]
 
         total_cost = 0.0
         max_transmission_latency = 0.0
         pull_response_details = {}
 
-        for dependency in dependencies:
-            dep_str = str(dependency)
+        for dependency in self.params["dependencies_per_projection"].get(p, []):
+            if dependency not in senders:
+                # Skip if dependency is not found (should not happen in a valid graph)
+                continue
             dep_total_cost = 0.0
             dep_max_latency = 0
             sources_info = []
-
-            if dependency in context["local_rate_lookup"]:
-                # Case 1: Primitive event with potentially multiple sources
-                for source_node, rate in context["local_rate_lookup"][
-                    dependency
-                ].items():
-                    hops = distances[source_node][n]
-                    cost = hops * rate
-                    dep_total_cost += cost
-                    dep_max_latency = max(dep_max_latency, hops)
-                    sources_info.append(
-                        {
-                            "source_node": source_node,
-                            "distance": hops,
-                            "base_rate": rate,
-                            "raw_cost": cost,
-                        }
-                    )
-                selectivity = (
-                    1.0  # Primitive events have no further selectivity applied here
-                )
-
-            elif dependency in context["placed_subqueries"]:
-                # Case 2: Already placed subquery (virtual event) from a single source
-                source_node = context["placed_subqueries"][dependency]
-                # Output rate of the dependency is the input rate for the current projection
-                rate = context["projection_rates"].get(dependency, (0, 1))[1]
+            for source_node, rate in senders[dependency]:
                 hops = distances[source_node][n]
                 cost = hops * rate
-                dep_total_cost = cost
-                dep_max_latency = hops
+                dep_total_cost += cost
+                dep_max_latency = max(dep_max_latency, hops)
                 sources_info.append(
                     {
                         "source_node": source_node,
@@ -454,20 +564,17 @@ class CostCalculator:
                         "raw_cost": cost,
                     }
                 )
-                # Here selectivity would be 1.0 as the cost is already based on the dependency's output rate
-                selectivity = 1.0
-            else:
-                # Skip if dependency is not found (should not happen in a valid graph)
-                continue
 
             total_cost += dep_total_cost
             max_transmission_latency = max(max_transmission_latency, dep_max_latency)
 
-            pull_response_details[dep_str] = {
+            # Selectivity is 1.0: primitive events have none applied here, and a
+            # subquery's rate already is its output rate.
+            pull_response_details[str(dependency)] = {
                 "cost_with_selectivity": dep_total_cost,
                 "latency": dep_max_latency,
                 "raw_cost": dep_total_cost,
-                "selectivity_applied": selectivity,
+                "selectivity_applied": 1.0,
                 "sources": sources_info,
             }
 
@@ -481,21 +588,18 @@ class CostCalculator:
         acquisition_step = AcquisitionStep(
             pull_request=None,  # No pull request in "all-push"
             pull_response=pull_response,
-            events_to_pull=[str(dep) for dep in dependencies],
+            events_to_pull=[
+                str(dep)
+                for dep in self.params["dependencies_per_projection"].get(p, [])
+            ],
         )
-
-        acquisition_set = AcquisitionSet(steps=[acquisition_step])
-
-        push_processing_latency = self.params["projection_rates_selectivity"].get(
-            p, (0.0, 0.0)
-        )[1]
 
         return {
             "strategy": "all_push",
             "individual_cost": total_cost,
             "transmission_latency": max_transmission_latency,
-            "processing_latency": push_processing_latency,
-            "acquisition_steps": acquisition_set,
+            "processing_latency": processing_latency,
+            "acquisition_steps": AcquisitionSet(steps=[acquisition_step]),
         }
 
     def _process_prepp_output(

@@ -234,6 +234,11 @@ class SimulationConfig:
     latency_threshold: float = None  # If None, latency is not considered
     cost_weight: float = 0.5
 
+    # Kraken may place a projection on several nodes (all-push only)
+    multi_node_placement: bool = False
+    # Kraken weighs PrePP's push-pull plans next to all-push; False = all-push only
+    push_pull: bool = True
+
     # Latency Trade-off Study
     run_latency_tradeoff_study: bool = False
     output_dataset_name: Optional[str] = None
