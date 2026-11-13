@@ -1,8 +1,9 @@
 """Tests for multi-node placement (components/multi_node.py).
 
-TestTwoSteps covers the two steps on their own. The Kraken scenarios run
-twice, with multi-node placement off (TestMultiNodeOff) and on
-(TestMultiNodeOn), so every change is checked in both modes.
+TestTwoSteps covers the two steps on their own, TestPrePPInput what PrePP
+sees of a multi-node placement. The Kraken scenarios run twice, with
+multi-node placement off (TestMultiNodeOff) and on (TestMultiNodeOn), so
+every change is checked in both modes.
 
 A multi-node placement splits one input X of a projection over several
 instances: every instance receives all senders of the other inputs, and each
@@ -41,6 +42,8 @@ from core.all_pairs import create_routing_dict
 from core.structures import init_event_nodes
 from kraken.components.cost_calculator import CostCalculator
 from kraken.components.multi_node import choose_instances, splittable_inputs
+from kraken.data.acquisition_step import AcquisitionSet
+from kraken.data.state import PlacementInfo, PlacementInstance, SolutionCandidate
 from kraken.problem import PlacementProblem
 from kraken.search.greedy import GreedySearch
 
@@ -213,6 +216,131 @@ class TestTwoSteps(unittest.TestCase):
         self.assertGreater(checked, 10)  # the property was exercised
 
 
+class TestPrePPInput(unittest.TestCase):
+    """What PrePP sees of a multi-node placement (CostCalculator's buffer).
+
+    PrePP models one rate per source of an event. An instance of a
+    multi-node subquery sends only its share of the matches; the muse graph
+    lists the instances as the subquery's sources with sourceShare= f, each
+    sending f times the subquery's output rate.
+    """
+
+    def test_source_share_token(self):
+        from prepp.prepp import extract_muse_graph_source_share
+
+        line = ("SELECT SEQ(A, B) FROM A; B ON {0, 1} WITH selectionRate= 0.0001"
+                " sourceShare= 0.25")
+        self.assertEqual(extract_muse_graph_source_share(line), 0.25)
+        self.assertIsNone(extract_muse_graph_source_share(line.split(" sourceShare")[0]))
+
+    def _prepp_steps(self, on, source_share):
+        """PrePP's plan for Q2 on the cloud, reading Q from the nodes in on."""
+        import contextlib
+        import io
+
+        from prepp.prepp import generate_prePP
+
+        sources = NESTED["sources"]
+        lines = ["network"]
+        for node in range(7):
+            rates = [sources.get(e, {}).get(node, 0) for e in "ABCDEF"]
+            children = [c for c, ps in TREE.items() if node in ps] or None
+            lines += [f"Node {node} Node {node}", "Computational Power: inf",
+                      "Memory: inf", f"Eventrates: {rates}",
+                      f"Parents: {TREE.get(node)}", f"Child: {children}",
+                      "Siblings: None", ""]
+        share = "" if source_share is None else f" sourceShare= {source_share}"
+        lines += [
+            "selectivities",
+            str({"AB": 0.0001, "BA": 0.0001, "AC": 0.01, "CA": 0.01, "BC": 1, "CB": 1}),
+            "", "queries", Q2, "", "muse graph",
+            f"SELECT {Q} FROM A; B ON {{{on}}} WITH selectionRate= 0.0001{share}",
+            f"SELECT {Q2} FROM {Q}; C ON {{0}} WITH selectionRate= 0.01",
+        ]
+        with contextlib.redirect_stdout(io.StringIO()):
+            output = generate_prePP(io.StringIO("\n".join(lines)), "ppmuse", "e",
+                                    0, 0, 1, True, allPairs=_distances(_graph(TREE)),
+                                    is_deterministic=True)
+        return {str(step.events_to_pull): step for step in output[6][Q2].steps}
+
+    def test_prepp_scales_the_instance_rates(self):
+        # Q's rate is 0.0001 x 10 x 2000 = 2. Listed on nodes 0 and 1, each
+        # node sends all of it by default (INEv's multi-sink), so getting Q
+        # from node 1 costs 2 x 1 hop; with sourceShare 0.5 it costs 1.
+        key = str([Q])
+        self.assertAlmostEqual(self._prepp_steps("0, 1", None)[key].total_cost, 2.0)
+        self.assertAlmostEqual(self._prepp_steps("0, 1", 0.5)[key].total_cost, 1.0)
+
+    def _nested_state(self, rates):
+        """Q placed on nodes 0 and 1 with these instance output rates."""
+        candidate = SolutionCandidate()
+        candidate.placements[Q] = PlacementInfo(
+            projection=Q, node=None, strategy="all_push", individual_cost=0.0,
+            individual_transmission_latency=0.0, individual_processing_latency=0.0,
+            acquisition_steps=AcquisitionSet(), split_input="B",
+            instances=[PlacementInstance(node, [unit], rate, 0.0, 0.0, 0.0,
+                                         AcquisitionSet())
+                       for node, unit, rate in zip((0, 1), (6, 4), rates)],
+        )
+        return candidate
+
+    def test_muse_graph_lists_the_instances(self):
+        calculator = CostCalculator(_context(**{k: v for k, v in NESTED.items()
+                                                 if k != "order"}))
+        state = self._nested_state((1.5, 0.5))
+        lines = []
+        calculator._add_muse_graph_entries(lines, Q2, 0, {Q: (0, 1)}, state)
+        # Two sources, 2.0 / 2 each on average.
+        self.assertEqual(lines[0], "SELECT SEQ(A, B) FROM A; B ON {0, 1} WITH "
+                                   "selectionRate= 0.0001 sourceShare= 0.5")
+        # An instance of Q2 that receives Q from node 0 only: 1.5 of 2.0.
+        lines = []
+        calculator._add_muse_graph_entries(lines, Q2, 0, {Q: (0, 1)}, state,
+                                           split=(Q, [0]))
+        self.assertEqual(lines[0], "SELECT SEQ(A, B) FROM A; B ON {0} WITH "
+                                   "selectionRate= 0.0001 sourceShare= 0.75")
+
+    def test_instance_network_drops_the_other_sources(self):
+        # A primitive split input: the instance's network keeps the event
+        # only at the sources it receives; nothing else changes.
+        import ast
+
+        from kraken.run import _gather_problem_parameters
+
+        simulation = _ines_simulation(*SIMULATIONS[-1])
+        calculator = CostCalculator(_gather_problem_parameters(simulation))
+        lookup = calculator.params["local_rate_lookup"]
+        p, event = next(
+            (p, dep)
+            for p, deps in calculator.params["dependencies_per_projection"].items()
+            for dep in deps
+            if dep in lookup and len(lookup[dep]) >= 3
+        )
+        keep = sorted(lookup[event])[:1]
+        dropped = set(lookup[event]) - set(keep)
+        full = calculator._build_prepp_input_buffer(p, 0, SolutionCandidate())
+        instance = calculator._build_prepp_input_buffer(
+            p, 0, SolutionCandidate(), split=(event, keep))
+        full, instance = full.getvalue().splitlines(), instance.getvalue().splitlines()
+        self.assertEqual(len(full), len(instance))
+        index = ord(event) - ord("A")
+        node = None
+        changed = set()
+        for before, after in zip(full, instance):
+            if before.startswith("Node "):
+                node = int(before.split()[1])
+            if before != after:
+                self.assertTrue(before.startswith("Eventrates: "))
+                rates_before = ast.literal_eval(before[len("Eventrates: "):])
+                rates_after = ast.literal_eval(after[len("Eventrates: "):])
+                self.assertEqual(rates_after[index], 0)
+                self.assertGreater(rates_before[index], 0)
+                rates_before[index] = 0
+                self.assertEqual(rates_before, rates_after)
+                changed.add(node)
+        self.assertEqual(changed, dropped)
+
+
 # Every scenario below runs twice, through TestMultiNodeOff and
 # TestMultiNodeOn, so each change to Kraken is checked in both modes: off,
 # Kraken must place every projection on one node exactly as it did before
@@ -282,12 +410,14 @@ def _ines_simulation(network_size, max_parents, seed):
     return simulation
 
 
-def _run_kraken(simulation, multi, push_pull, drop_switch=False):
+def _run_kraken(simulation, multi, push_pull, drop_switch=False, guard=True):
     """Kraken greedy as run_kraken_solver runs it, without writing results.
 
     drop_switch leaves multi_node_placement out of the context, i.e. Kraken
-    as it was before the switch existed. PrePP draws random selectivities,
-    so the RNG is reset for every run.
+    as it was before the switch existed. guard=False lets Kraken split
+    projections that other projections read, also with push-pull on
+    (PlacementProblem.consumed_projections). PrePP draws random
+    selectivities, so the RNG is reset for every run.
     """
     import contextlib
     import io
@@ -305,6 +435,8 @@ def _run_kraken(simulation, multi, push_pull, drop_switch=False):
     )
     order = sorted(dependencies, key=lambda x: dependencies[x])
     problem = PlacementProblem(order, context, False)
+    if not guard:
+        problem.consumed_projections = set()
     random.seed(0)
     with contextlib.redirect_stdout(io.StringIO()):
         solution = GreedySearch().solve(problem)
@@ -369,6 +501,15 @@ class _OffAndOn:
                         node for node, _ in lst]
                     for node in nodes:
                         self.assertTrue(reaches(node, instance.node), (p, dep, node))
+            # Each instance pushes all, or uses PrePP's plan if push-pull is
+            # on; the placement is push-pull if any instance is.
+            strategies = {i.strategy for i in info.instances}
+            if params.get("push_pull", True):
+                self.assertLessEqual(strategies, {"all_push", "push_pull"})
+            else:
+                self.assertEqual(strategies, {"all_push"})
+            self.assertEqual(info.strategy,
+                             "push_pull" if "push_pull" in strategies else "all_push")
             # The instances add up to the placement.
             self.assertAlmostEqual(info.individual_cost,
                                    sum(i.individual_cost for i in info.instances))
@@ -438,19 +579,22 @@ class _OffAndOn:
     def setUpClass(cls):
         cls.simulations = [_ines_simulation(*s) for s in SIMULATIONS]
 
-    def _check_simulations(self, push_pull):
-        split = 0
+    def _check_simulations(self, push_pull, guard=True):
+        split, solutions = 0, []
         for spec, simulation in zip(SIMULATIONS, self.simulations):
-            with self.subTest(simulation=spec, push_pull=push_pull):
-                solution, problem, metrics = _run_kraken(simulation, self.MULTI, push_pull)
+            with self.subTest(simulation=spec, push_pull=push_pull, guard=guard):
+                solution, problem, metrics = _run_kraken(simulation, self.MULTI,
+                                                         push_pull, guard=guard)
                 self.assert_valid(solution, problem, metrics)
                 split += metrics["multi_node_placements"]
+                solutions.append((solution, problem))
                 if not self.MULTI:
                     # Off is the default: the same plan as without the switch.
                     default, _, _ = _run_kraken(simulation, False, push_pull,
                                                 drop_switch=True)
                     self.assertEqual(_plan(solution), _plan(default))
                     self.assertEqual(solution.cumulative_cost, default.cumulative_cost)
+        self.solutions = solutions
         return split
 
     def test_ines_simulations_all_push(self):
@@ -460,6 +604,25 @@ class _OffAndOn:
 
     def test_ines_simulations_push_pull(self):
         self._check_simulations(push_pull=True)
+
+    def test_ines_simulations_push_pull_unguarded(self):
+        # Projections other projections read may be split too: instances use
+        # PrePP's plans, and consumers pull from the instances.
+        self._check_simulations(push_pull=True, guard=False)
+        if not self.MULTI:
+            return
+        instance_push_pull = pulls_from_instances = False
+        for solution, problem in self.solutions:
+            for p, info in solution.placements.items():
+                instance_push_pull |= any(i.strategy == "push_pull" for i in info.instances)
+                reads_multi_node = any(
+                    isinstance(solution.placements[d].location, tuple)
+                    for d in problem.dependencies_per_projection.get(p, [])
+                    if d in solution.placements
+                )
+                pulls_from_instances |= reads_multi_node and info.strategy == "push_pull"
+        self.assertTrue(instance_push_pull)
+        self.assertTrue(pulls_from_instances)
 
 
 class TestMultiNodeOff(_OffAndOn, unittest.TestCase):

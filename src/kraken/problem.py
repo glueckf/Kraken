@@ -33,13 +33,16 @@ class PlacementProblem:
         )
         self.query_workload = context["query_workload"]
         # Also consider placing a projection on several nodes, splitting one
-        # input over the instances (components/multi_node.py); all-push only.
+        # input over the instances (components/multi_node.py).
         self.multi_node_placement = bool(context.get("multi_node_placement", False))
         self.push_pull = bool(context.get("push_pull", True))
         self.dependencies_per_projection = context["dependencies_per_projection"]
         # Projections another projection reads. With push-pull on, these stay
-        # single-node: their consumers would lose push-pull (a multi-node
-        # input is all-push only), which costs more than the split saves.
+        # single-node. Their consumers could pull from the instances
+        # (CostCalculator._add_muse_graph_entries), but no instance node holds
+        # all of the split input, so later placements there no longer find it
+        # on the event stack. Greedy does not see that loss: in random INES
+        # runs, splitting them raised the total cost more often than it saved.
         self.consumed_projections = {
             dep
             for deps in self.dependencies_per_projection.values()
@@ -260,15 +263,20 @@ class PlacementProblem:
     def _expand_multi_node(
         self, s_current: SolutionCandidate, p: Any, projection_index: int
     ) -> List[SolutionCandidate]:
-        """Next states that place p on several nodes (all-push), filtered by
-        the latency threshold like the single-node candidates."""
+        """Next states that place p on several nodes, filtered by the latency
+        threshold like the single-node candidates. Each option gives an
+        all-push state and, with push-pull on, possibly one where instances
+        use PrePP's plans (CostCalculator.calculate_multi_node)."""
         senders = self.cost_calculator.get_input_senders(p, s_current)
         options = self.optimizer.get_multi_node_options(
             p, senders, self.cost_calculator.params
         )
         next_states = []
-        for option in options:
-            result = self.cost_calculator.calculate_multi_node(p, option, s_current)
+        for option, result in (
+            (option, result)
+            for option in options
+            for result in self.cost_calculator.calculate_multi_node(p, option, s_current)
+        ):
             s_next_temp = self._create_next_candidate(s_current, p, None, result)
             max_latency_so_far = s_next_temp.get_critical_path_latency(self)
             lookahead_latency = max_latency_so_far

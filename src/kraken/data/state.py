@@ -28,6 +28,7 @@ class PlacementInstance:
     individual_transmission_latency: float
     individual_processing_latency: float
     acquisition_steps: AcquisitionSet
+    strategy: str = "all_push"  # or "push_pull"
 
 
 @dataclass()

@@ -176,12 +176,20 @@ def generate_hardcoded_projection_selectivities():
 
 class Query_fragment:
     def __init__(
-        self, query, primitive_operators, node_placement, forbidden_event_types
+        self,
+        query,
+        primitive_operators,
+        node_placement,
+        forbidden_event_types,
+        source_share=1.0,
     ):
         self.query = query
         self.primitive_operators = primitive_operators
         self.node_placement = node_placement
         self.forbidden_event_types = forbidden_event_types
+        # Fraction of the query's output rate each node in node_placement
+        # sends (see extract_muse_graph_source_share)
+        self.source_share = source_share
 
 
 def get_current_section(line, CURRENT_SECTION):
@@ -415,6 +423,20 @@ def extract_muse_graph_forbidden(line):
             return line[line.find("/n(") + 3 : line.find("WITH") - 2]
         else:
             return line[line.find("/n(") + 3 : len(line) - 2]
+
+
+def extract_muse_graph_source_share(line):
+    """Optional "sourceShare= f" after the selection rate.
+
+    Kraken places a query on several nodes that each produce part of its
+    matches (a multi-node placement). Listing those nodes in ON gives the
+    query several sources; sourceShare tells PrePP that each of them sends
+    f times the query's output rate instead of all of it. Without it every
+    node in ON sends the full rate, as for INEv's multi-sink placements.
+    """
+    match = re.search(r"sourceShare=\s*([0-9.eE+-]+)", line)
+    if match:
+        return float(match.group(1))
 
 
 def extract_muse_graph_selectivities(
@@ -1137,6 +1159,9 @@ def generate_prePP(
                 if extract_muse_graph_forbidden(line) is not None:
                     query_obj.forbidden_event_types = extract_muse_graph_forbidden(line)
 
+                if extract_muse_graph_source_share(line) is not None:
+                    query_obj.source_share = extract_muse_graph_source_share(line)
+
                 # print(f"[DEBUG] Adding query to network: query='{query_obj.query}', node_placement={getattr(query_obj, 'node_placement', 'None')}")
                 query_network.append(query_obj)
             all_event_combinations = []
@@ -1196,6 +1221,7 @@ def generate_prePP(
                     eventtype_to_sources_map,
                     eventtype_pair_to_selectivity,
                 )
+                * query_network[i].source_share
             )
         # for query in query_network:
         #     print(query.query)

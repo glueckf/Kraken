@@ -62,16 +62,18 @@ class CostCalculator:
 
     def calculate_multi_node(
         self, p: Any, option: Any, s_current: SolutionCandidate
-    ) -> Dict[str, Any]:
-        """All-push costs of a multi-node placement (see components/multi_node.py).
+    ) -> List[Dict[str, Any]]:
+        """Costs of a multi-node placement (see components/multi_node.py).
 
         Every instance receives all senders of the complete inputs and its
         share of the split input's senders. Its output rate is the
         projection's output rate times its share of the split input's rate
         (INES rates are products of the input rates). Each instance is
-        costed like a single-node all-push placement, local events and sink
-        included; the placement's cost and processing latency are the
-        instances' sums, its transmission latency their maximum.
+        costed like a single-node placement, local events and sink included:
+        all-push, and with push-pull on also a PrePP plan that sees only the
+        instance's senders of the split input. The placement's cost and
+        processing latency are the instances' sums, its transmission latency
+        their maximum.
 
         Args:
             p: Projection being placed
@@ -79,43 +81,69 @@ class CostCalculator:
             s_current: Current solution state
 
         Returns:
-            Strategy dictionary like calculate()'s, plus "split_input" and
-            "instances" (PlacementInstance list)
+            One strategy dictionary like calculate()'s, plus "split_input" and
+            "instances" (PlacementInstance list), with every instance
+            all-push; and, if push-pull is cheaper for some instance, a
+            second one where every instance uses its cheaper plan.
         """
         senders = self.get_input_senders(p, s_current)
         split = option.split_input
         split_rate = dict(senders[split])
         total_split_rate = sum(split_rate.values())
         output_rate = self.params["projection_rates_selectivity"].get(p, (0.0, 0.0))[1]
+        push_pull = self.params.get("push_pull", True)
 
-        instances = []
+        all_push_instances, cheapest_instances = [], []
         for host, split_nodes in option.assignment:
             if total_split_rate > 0:
                 share = sum(split_rate[u] for u in split_nodes) / total_split_rate
             else:
                 share = len(split_nodes) / len(split_rate)
+            instance_rate = output_rate * share
             instance_senders = dict(senders)
             instance_senders[split] = [(u, split_rate[u]) for u in split_nodes]
 
-            result = self._all_push_from_senders(
-                p, host, instance_senders, output_rate * share
+            all_push = self._all_push_from_senders(
+                p, host, instance_senders, instance_rate
             )
-            result = self._adjust_for_local_events(result, p, host, s_current)
-            result = self._add_sink_costs(result, p, host, output_rate * share)
-            instances.append(
-                PlacementInstance(
-                    node=host,
-                    split_senders=list(split_nodes),
-                    output_rate=output_rate * share,
-                    individual_cost=result["individual_cost"],
-                    individual_transmission_latency=result["transmission_latency"],
-                    individual_processing_latency=result["processing_latency"],
-                    acquisition_steps=result["acquisition_steps"],
+            strategies = [all_push]
+            if push_pull:
+                pushed_pulled = self._instance_push_pull(
+                    p, host, split, split_nodes, s_current, instance_rate
                 )
-            )
+                if pushed_pulled is not None:
+                    strategies.append(pushed_pulled)
 
+            instances = []
+            for result in strategies:
+                result = self._adjust_for_local_events(result, p, host, s_current)
+                result = self._add_sink_costs(result, p, host, instance_rate)
+                instances.append(
+                    PlacementInstance(
+                        node=host,
+                        split_senders=list(split_nodes),
+                        output_rate=instance_rate,
+                        individual_cost=result["individual_cost"],
+                        individual_transmission_latency=result["transmission_latency"],
+                        individual_processing_latency=result["processing_latency"],
+                        acquisition_steps=result["acquisition_steps"],
+                        strategy=result["strategy"],
+                    )
+                )
+            all_push_instances.append(instances[0])
+            cheapest_instances.append(min(instances, key=lambda i: i.individual_cost))
+
+        results = [self._combine_instances(split, all_push_instances)]
+        if any(i.strategy == "push_pull" for i in cheapest_instances):
+            results.append(self._combine_instances(split, cheapest_instances))
+        return results
+
+    @staticmethod
+    def _combine_instances(split: Any, instances: List[PlacementInstance]) -> Dict:
+        """The strategy dictionary of a multi-node placement of these instances."""
+        uses_push_pull = any(i.strategy == "push_pull" for i in instances)
         return {
-            "strategy": "all_push",
+            "strategy": "push_pull" if uses_push_pull else "all_push",
             "individual_cost": sum(i.individual_cost for i in instances),
             "transmission_latency": max(
                 i.individual_transmission_latency for i in instances
@@ -128,6 +156,40 @@ class CostCalculator:
             "split_input": split,
             "instances": instances,
         }
+
+    def _instance_push_pull(
+        self,
+        p: Any,
+        host: int,
+        split: Any,
+        split_nodes: List[int],
+        s_current: SolutionCandidate,
+        instance_rate: float,
+    ) -> Optional[Dict[str, Any]]:
+        """PrePP's push-pull plan for one instance of a multi-node placement.
+
+        PrePP sees only the instance's senders of the split input: a
+        primitive event is left out of the network at its other sources, a
+        multi-node subquery lists only the instances it sends from. None if
+        PrePP finds no plan, or if a primitive split input also occurs inside
+        another input (leaving it out of the network would shrink that
+        input too).
+        """
+        if split in self.params.get("local_rate_lookup", {}):
+            for dep in self.params["dependencies_per_projection"].get(p, []):
+                if dep != split and split in self._extract_needed_events(dep):
+                    return None
+        input_buffer = self._build_prepp_input_buffer(
+            p, host, s_current, split=(split, split_nodes)
+        )
+        if input_buffer is None:
+            return None
+        prepp_output = self._run_prepp(input_buffer)
+        if not prepp_output or len(prepp_output) < 6:
+            return None
+        return self._process_prepp_output(
+            prepp_output, p, host, None, output_rate=instance_rate
+        )
 
     def get_input_senders(
         self, p: Any, s_current: SolutionCandidate
@@ -177,47 +239,14 @@ class CostCalculator:
         if not self.params.get("push_pull", True):
             return [all_push_result]
 
-        # PrePP's own multi-sink support is INEv's (instances at the sources
-        # of the partitioning input), so a multi-node input gets all-push only.
-        if any(
-            isinstance(location, tuple)
-            for location in self._get_placement_context(p, s_current)[
-                "placed_subqueries"
-            ].values()
-        ):
-            return [all_push_result]
-
         # Step 2: Compute push-pull strategy using PrePP
-        is_deterministic = self.params["simulation_mode"].value == "deterministic"
-
-        METHOD = "ppmuse"
-        ALGORITHM = "e"
-        SAMPLES = 0
-        TOP_K = 0
-        RUNS = 1
-        PLAN_PRINT = True
-
-        all_pairs = self.params.get("all_pairs")
-
         # Create input buffer for PrePP
         input_buffer = self._build_prepp_input_buffer(p, n, s_current)
         if input_buffer is None:
             return [all_push_result]
 
         # Run PrePP for push-pull optimization
-        from prepp.prepp import generate_prePP
-
-        prepp_output = generate_prePP(
-            input_buffer=input_buffer,
-            method=METHOD,
-            algorithm=ALGORITHM,
-            samples=SAMPLES,
-            top_k=TOP_K,
-            runs=RUNS,
-            plan_print=PLAN_PRINT,
-            allPairs=all_pairs,
-            is_deterministic=is_deterministic,
-        )
+        prepp_output = self._run_prepp(input_buffer)
 
         # Process PrePP results to extract push-pull strategy
         if not prepp_output or len(prepp_output) < 6:
@@ -244,6 +273,22 @@ class CostCalculator:
             return [all_push_result]
 
         return [all_push_result, push_pull_result]
+
+    def _run_prepp(self, input_buffer: Any) -> Optional[List]:
+        """Run PrePP's exact push-pull planner on an input buffer."""
+        from prepp.prepp import generate_prePP
+
+        return generate_prePP(
+            input_buffer=input_buffer,
+            method="ppmuse",
+            algorithm="e",
+            samples=0,
+            top_k=0,
+            runs=1,
+            plan_print=True,
+            allPairs=self.params.get("all_pairs"),
+            is_deterministic=self.params["simulation_mode"].value == "deterministic",
+        )
 
     def _adjust_for_local_events(
         self, strategy_result: Dict, p: Any, n: int, s_current: SolutionCandidate
@@ -379,7 +424,11 @@ class CostCalculator:
         }
 
     def _build_prepp_input_buffer(
-        self, p: Any, n: int, s_current: SolutionCandidate
+        self,
+        p: Any,
+        n: int,
+        s_current: SolutionCandidate,
+        split: Optional[Tuple[Any, List[int]]] = None,
     ) -> Optional[Any]:
         """Build input buffer for PrePP using only state information.
 
@@ -387,23 +436,39 @@ class CostCalculator:
             p: Projection being placed
             n: Node where placement is considered
             s_current: Current solution state
+            split: For an instance of a multi-node placement, the split input
+                and the nodes of its senders the instance receives. A
+                primitive split input is left out of the network at its other
+                sources; a multi-node subquery lists only these instances.
 
         Returns:
             Input buffer for PrePP or None if creation fails
         """
-        if self._static_buffer_cache is None:
-            # First time call: Generate and cache the static sections
-            context = self._get_placement_context(p, s_current)
-            static_lines = self._generate_network_config()
+        context = self._get_placement_context(p, s_current)
+        local_rate_lookup = self.params.get("local_rate_lookup", {})
+        if split is not None and split[0] in local_rate_lookup:
+            event, keep = split
+            static_lines = self._generate_network_config(
+                drop_sources={
+                    event: {node for node in local_rate_lookup[event] if node not in keep}
+                }
+            )
             static_lines.append("selectivities")
             static_lines.append(str(context["selectivities"]))
             static_lines.append("")
-            self._static_buffer_cache = "\n".join(static_lines)
+            static_buffer = "\n".join(static_lines)
+        else:
+            if self._static_buffer_cache is None:
+                # First time call: Generate and cache the static sections
+                static_lines = self._generate_network_config()
+                static_lines.append("selectivities")
+                static_lines.append(str(context["selectivities"]))
+                static_lines.append("")
+                self._static_buffer_cache = "\n".join(static_lines)
+            static_buffer = self._static_buffer_cache
 
-        # Start with the cached static sections
-        buffer_content = [self._static_buffer_cache]
-
-        context = self._get_placement_context(p, s_current)
+        # Start with the static sections
+        buffer_content = [static_buffer]
 
         # Add the dynamic sections
         buffer_content.append("queries")
@@ -411,7 +476,9 @@ class CostCalculator:
         buffer_content.append("")
         buffer_content.append("muse graph")
         dynamic_lines = []
-        self._add_muse_graph_entries(dynamic_lines, p, n, context["placed_subqueries"])
+        self._add_muse_graph_entries(
+            dynamic_lines, p, n, context["placed_subqueries"], s_current, split
+        )
         buffer_content.append("\n".join(dynamic_lines))
 
         # Create buffer
@@ -421,8 +488,14 @@ class CostCalculator:
 
         return buffer
 
-    def _generate_network_config(self) -> List[str]:
-        """Generate network configuration section."""
+    def _generate_network_config(
+        self, drop_sources: Optional[Dict[str, Set[int]]] = None
+    ) -> List[str]:
+        """Generate network configuration section.
+
+        drop_sources: primitive events to leave out at some of their sources
+        (rate 0 there), for an instance of a multi-node placement.
+        """
         lines = ["network"]
         network = self.params["network_data_nodes"]
 
@@ -440,6 +513,17 @@ class CostCalculator:
                 or getattr(node, "rates", None)
                 or [0] * 6
             )
+
+            dropped = [
+                ord(event) - ord("A")
+                for event, nodes in (drop_sources or {}).items()
+                if i in nodes
+            ]
+            if dropped:
+                event_rates = [
+                    0 if index in dropped else rate
+                    for index, rate in enumerate(event_rates)
+                ]
 
             # Try different possible attribute names for children
             children = self._extract_node_ids(
@@ -473,9 +557,22 @@ class CostCalculator:
         return lines
 
     def _add_muse_graph_entries(
-        self, lines: List[str], p: Any, n: int, placed_subqueries: Dict
+        self,
+        lines: List[str],
+        p: Any,
+        n: int,
+        placed_subqueries: Dict,
+        s_current: Optional[SolutionCandidate] = None,
+        split: Optional[Tuple[Any, List[int]]] = None,
     ) -> None:
-        """Add muse graph entries for projection."""
+        """Add muse graph entries for projection.
+
+        A multi-node subquery is listed ON its instance nodes with a
+        sourceShare: PrePP assumes one rate per source, so each instance
+        sends the mean share of the listed instances. If it is the split
+        input of an instance (split), only the instances that send to it
+        are listed.
+        """
         proj_str = str(p)
         sel_rate = self.params["projection_rates_selectivity"].get(p, (0.0, 0.0))[0]
 
@@ -487,8 +584,21 @@ class CostCalculator:
                 )[0]
                 primitives = self._get_primitive_events(subquery)
                 combination_str = "; ".join(primitives)
+                source_share = ""
+                if isinstance(subquery_node, tuple):
+                    instances = s_current.placements[subquery].instances
+                    total = sum(i.output_rate for i in instances)
+                    if split is not None and split[0] == subquery:
+                        instances = [i for i in instances if i.node in split[1]]
+                    share = (
+                        sum(i.output_rate for i in instances) / total
+                        if total > 0
+                        else len(instances) / len(s_current.placements[subquery].instances)
+                    ) / len(instances)
+                    subquery_node = ", ".join(str(i.node) for i in instances)
+                    source_share = f" sourceShare= {share}"
                 lines.append(
-                    f"SELECT {subquery} FROM {combination_str} ON {{{subquery_node}}} WITH selectionRate= {subq_rate}"
+                    f"SELECT {subquery} FROM {combination_str} ON {{{subquery_node}}} WITH selectionRate= {subq_rate}{source_share}"
                 )
 
             # Add main query referencing virtual events
@@ -603,7 +713,12 @@ class CostCalculator:
         }
 
     def _process_prepp_output(
-        self, prepp_output: List, p: Any, n: int, all_push_base_cost: float
+        self,
+        prepp_output: List,
+        p: Any,
+        n: int,
+        all_push_base_cost: float,
+        output_rate: Optional[float] = None,
     ) -> Optional[Dict[str, Any]]:
         """Process raw PrePP output to extract push-pull strategy.
 
@@ -612,6 +727,8 @@ class CostCalculator:
             p: Projection
             n: Node
             all_push_base_cost: Base cost from all-push strategy for ratio calculation
+            output_rate: The output rate the processing latency scales with;
+                defaults to the projection's (an instance produces its share)
 
         Returns:
             Push-pull strategy dictionary or None if invalid
@@ -632,9 +749,11 @@ class CostCalculator:
         total_plan_costs = sum(step.total_cost for step in acquisition_set.steps)
         total_plan_latency = sum(step.total_latency for step in acquisition_set.steps)
 
-        all_push_processing_latency = self.params["projection_rates_selectivity"].get(
-            p, (0.0, 0.0)
-        )[1]
+        all_push_processing_latency = (
+            output_rate
+            if output_rate is not None
+            else self.params["projection_rates_selectivity"].get(p, (0.0, 0.0))[1]
+        )
 
         # Calculate the processing latency
         # The ratio is: (sum of pull response costs) / (sum of all primitive input rates for query)
