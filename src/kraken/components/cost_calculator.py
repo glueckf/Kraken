@@ -167,10 +167,9 @@ class CostCalculator:
         acquisition_set = strategy_result["acquisition_steps"]
 
         if strategy_name == "all_push":
-            # Pass the dictionary representation from the first step
+            # All-push has a single step that pushes every input
             cost_adj, lat_adj = self._compute_all_push_adjustment(
-                {0: acquisition_set.steps[0].pull_response.detailed_costs},
-                events_already_available,
+                acquisition_set.steps[0], events_already_available, n, s_current
             )
         else:  # push_pull
             # Pass the list of step objects
@@ -640,48 +639,50 @@ class CostCalculator:
 
     def _compute_all_push_adjustment(
         self,
-        push_pull_steps: Dict[int, Dict[str, Any]],
+        step: AcquisitionStep,
         events_already_available: Set[str],
+        n: int,
+        s_current: SolutionCandidate,
     ) -> Tuple[float, float]:
-        """Compute all-push adjustment using push-pull step 0.
+        """Compute the all-push adjustment for inputs already at the node.
+
+        The all-push step pushes every input; its pull_response.detailed_costs
+        has one entry per input, keyed by the input's name. A primitive input
+        that another placement already brings to the node is not sent again,
+        so its cost is saved. If every input is already there, the step's
+        transmission latency is saved too (as for a push-pull step).
 
         Args:
-            push_pull_steps: Push-pull acquisition steps
+            step: The all-push acquisition step
             events_already_available: Events available at node
+            n: Node ID
+            s_current: Current solution state
 
         Returns:
             Tuple of (cost_adjustment, latency_adjustment)
         """
-        if 0 not in push_pull_steps:
-            return 0.0, 0.0
-
-        step_0 = push_pull_steps[0]
-        pull_response = step_0.get("detailed_cost_contribution", {}).get(
-            "pull_response", {}
-        )
-
-        if not pull_response:
-            return 0.0, 0.0
-
-        all_push_events = set(pull_response.keys())
+        details = step.pull_response.detailed_costs
+        all_push_events = set(details.keys())
         events_we_can_skip = all_push_events & events_already_available
 
         if not events_we_can_skip:
             return 0.0, 0.0
 
-        total_cost_adj = 0.0
-        max_latency = 0.0
+        # Same metadata as a push-pull step (_compute_acquisition_adjustment)
+        step.already_at_node = sorted(events_we_can_skip)
+        step.acquired_by_query = self._get_query_sources(
+            events_we_can_skip, n, s_current
+        )
 
-        for event in events_we_can_skip:
-            if event in pull_response:
-                details = pull_response[event]
-                total_cost_adj += details.get("cost_with_selectivity", 0.0)
-                max_latency = max(max_latency, details.get("latency", 0))
+        total_cost_adj = sum(
+            details[event].get("cost_with_selectivity", 0.0)
+            for event in events_we_can_skip
+        )
 
         if all_push_events <= events_already_available:
+            max_latency = max(details[event].get("latency", 0) for event in details)
             return total_cost_adj, max_latency
-        else:
-            return total_cost_adj, 0.0
+        return total_cost_adj, 0.0
 
     def _parse_primitive_events(self, events_to_pull: List[Any]) -> Set[str]:
         """Parse primitive events from list.
