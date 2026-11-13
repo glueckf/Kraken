@@ -12,6 +12,7 @@ import uuid
 
 from inev.process_combination import compute_dependencies
 from core.all_pairs import create_routing_dict
+from core.structures import init_event_nodes
 
 from kraken.problem import PlacementProblem
 from kraken.data.state import SolutionCandidate
@@ -313,6 +314,14 @@ def _gather_problem_parameters(simulation_context: Any) -> Dict[str, Any]:
     Returns:
         Dictionary containing all necessary problem parameters.
     """
+    # INEv runs before Kraken and mutates h_eventNodes / h_IndexEventNodes in
+    # place (every routing stop is marked as holding the ETB; projection ETBs
+    # are added). Give Kraken the init-time tables, rebuilt from the original
+    # producers, instead of INEv's working state.
+    event_nodes, index_event_nodes = init_event_nodes(
+        simulation_context.h_nodes, simulation_context.h_network_data
+    )
+
     context = {
         # Query and workload
         "query_workload": simulation_context.query_workload,
@@ -324,9 +333,9 @@ def _gather_problem_parameters(simulation_context: Any) -> Dict[str, Any]:
         "routing_dict": create_routing_dict(simulation_context.graph),
         # Network and event data
         "network_data": simulation_context.h_network_data,
-        "event_nodes": simulation_context.h_eventNodes,
-        "event_distribution_matrix": simulation_context.h_eventNodes,
-        "index_event_nodes": simulation_context.h_IndexEventNodes,
+        "event_nodes": event_nodes,
+        "event_distribution_matrix": event_nodes,
+        "index_event_nodes": index_event_nodes,
         "global_event_rates": simulation_context.h_rates_data,
         # Projection and selectivity
         "projection_rates_selectivity": simulation_context.h_projrates,
