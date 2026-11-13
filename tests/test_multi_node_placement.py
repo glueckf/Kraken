@@ -1,5 +1,9 @@
 """Tests for multi-node placement (components/multi_node.py).
 
+TestTwoSteps covers the two steps on their own. The Kraken scenarios run
+twice, with multi-node placement off (TestMultiNodeOff) and on
+(TestMultiNodeOn), so every change is checked in both modes.
+
 A multi-node placement splits one input X of a projection over several
 instances: every instance receives all senders of the other inputs, and each
 sender of X sends to exactly one instance, so every combination of one
@@ -209,78 +213,261 @@ class TestTwoSteps(unittest.TestCase):
         self.assertGreater(checked, 10)  # the property was exercised
 
 
-class TestKrakenTree(unittest.TestCase):
-    """The whole Kraken pipeline on the tree, all-push only."""
+# Every scenario below runs twice, through TestMultiNodeOff and
+# TestMultiNodeOn, so each change to Kraken is checked in both modes: off,
+# Kraken must place every projection on one node exactly as it did before
+# multi-node placement existed; on, it may split, and every split must be
+# valid. EXPECTED holds the hand-derived results per mode.
 
-    def test_single_node_without_multi_node_placement(self):
-        solution, _ = _solve(multi=False)
-        placement = solution.placements[Q]
-        self.assertEqual((placement.location, placement.individual_cost), (0, 4020.0))
-        self.assertEqual(placement.instances, [])
+NESTED = dict(sources=dict(SOURCES, C={5: 1.0}), workload=(Q2,), order=(Q, Q2),
+              deps={Q: ["A", "B"], Q2: [Q, "C"]}, rates={Q: Q_RATES, Q2: Q2_RATES})
 
-    def test_multi_node_placement(self):
-        solution, _ = _solve()
+EXPECTED = {
+    False: {
+        # Q at the cloud: A 10 x 2 hops + B 1000 x 2 + B 1000 x 2.
+        "single_query": (0, 4020.0, []),
+        "event_stack": {0: {"A", "B"}},
+        # 2 + 2 hops to the cloud
+        "latency": 4.0,
+        # Q at the cloud for 4020 (no sink: only Q2 reads it), Q2 gets C: 2
+        "nested": (0, 4020.0, 0, 2.0),
+        "nested_senders": {Q: [(0, 2.0)], "C": [(5, 1.0)]},
+        "push_pull_guard": (0, 0),
+    },
+    True: {
+        # Split B: the cloud gets A and B@6 (20 + 2000), node 1 gets A and
+        # B@4 (10 + 1000) plus its output 1 x 1 hop to the sink.
+        "single_query": ((0, 1), 3031.0,
+                         [(0, [6], 1.0, 2020.0), (1, [4], 1.0, 1011.0)]),
+        # Each instance has all A's, but only part of the B's.
+        "event_stack": {0: {"A"}, 1: {"A"}},
+        # Node 1 needs 1 + 1 hop + 1 hop to the sink, the cloud 1 + 2 hops.
+        "latency": 3.0,
+        # Q on (0, 1) only feeds Q2, so its instances send nothing to the
+        # sink: 1010 + 2020. Q2 needs a host every instance and C reach: the
+        # cloud, receiving Q from node 1 (1/s, 1 hop) and C (1/s, 2 hops).
+        "nested": ((0, 1), 3030.0, 0, 3.0),
+        "nested_senders": {Q: [(0, 1.0), (1, 1.0)], "C": [(5, 1.0)]},
+        # With push-pull on, only projections nobody reads may be split.
+        "push_pull_guard": (0, (0, 1)),
+    },
+}
+
+# Random INES simulations (network size, max_parents, seed), event skew
+# 2.0. With multi-node placement on, all-push Kraken splits at least one
+# projection in each of them (checked for several PYTHONHASHSEED values).
+SIMULATIONS = [(12, 2, 0), (12, 2, 1), (12, 2, 6), (12, 2, 7), (20, 3, 4)]
+
+
+def _ines_simulation(network_size, max_parents, seed):
+    """A random INES simulation, run up to INEv (Kraken's input)."""
+    import contextlib
+    import io
+
+    import numpy as np
+
+    import simulation_environment as se
+    from simulator.operator_placement import calculate_operator_placement
+
+    random.seed(seed)
+    np.random.seed(seed)
+    config = se.SimulationConfig(
+        network_size=network_size, node_event_ratio=0.5, num_event_types=6,
+        event_skew=2.0, max_parents=max_parents, parent_factor=1.0,
+        query_size=3, query_length=5,
+    )
+    with contextlib.redirect_stdout(io.StringIO()):
+        simulation = se.Simulation(config)
+        calculate_operator_placement(simulation, "test", 0)
+    return simulation
+
+
+def _run_kraken(simulation, multi, push_pull, drop_switch=False):
+    """Kraken greedy as run_kraken_solver runs it, without writing results.
+
+    drop_switch leaves multi_node_placement out of the context, i.e. Kraken
+    as it was before the switch existed. PrePP draws random selectivities,
+    so the RNG is reset for every run.
+    """
+    import contextlib
+    import io
+
+    from inev.process_combination import compute_dependencies
+    from kraken.run import _calculate_solution_metrics, _gather_problem_parameters
+
+    simulation.config.multi_node_placement = multi
+    simulation.config.push_pull = push_pull
+    context = _gather_problem_parameters(simulation)
+    if drop_switch:
+        del context["multi_node_placement"]
+    dependencies = compute_dependencies(
+        simulation, simulation.h_mycombi, simulation.h_criticalMSTypes
+    )
+    order = sorted(dependencies, key=lambda x: dependencies[x])
+    problem = PlacementProblem(order, context, False)
+    random.seed(0)
+    with contextlib.redirect_stdout(io.StringIO()):
+        solution = GreedySearch().solve(problem)
+    metrics = _calculate_solution_metrics(solution, problem, simulation)
+    return solution, problem, metrics
+
+
+def _plan(solution):
+    return [(str(p), info.location, info.strategy, round(info.individual_cost, 6))
+            for p, info in solution.placements.items()]
+
+
+class _OffAndOn:
+    """Scenarios shared by TestMultiNodeOff and TestMultiNodeOn."""
+
+    MULTI = None  # set by the subclasses
+
+    def _solve(self, **kwargs):
+        return _solve(multi=self.MULTI, **kwargs)
+
+    def _expected(self, key):
+        return EXPECTED[self.MULTI][key]
+
+    def assert_valid(self, solution, problem, metrics=None):
+        """Checks that hold for every solution, in both modes."""
+        params = problem.cost_calculator.params
+        rates = params["projection_rates_selectivity"]
+        self.assertEqual(set(solution.placements), set(problem.processing_order))
+        total = sum(info.individual_cost for info in solution.placements.values())
+        self.assertAlmostEqual(solution.cumulative_cost, total,
+                               delta=1e-6 * max(1.0, total))
+        latency = solution.get_critical_path_latency(problem)
+        self.assertGreaterEqual(latency, 0.0)
+        self.assertLess(latency, float("inf"))
+        split = [p for p, info in solution.placements.items() if info.instances]
+        if metrics is not None:
+            self.assertEqual(metrics["multi_node_placements"], len(split))
+            self.assertEqual(metrics["total_cost"], solution.cumulative_cost)
+        if not self.MULTI:
+            self.assertEqual(split, [])
+        for p, info in solution.placements.items():
+            if not info.instances:
+                self.assertIsInstance(info.node, int)
+                self.assertIsNone(info.split_input)
+                continue
+            # A valid split: two or more instances on distinct nodes, every
+            # sender of the split input at exactly one of them, every sender
+            # of the other inputs at all of them.
+            self.assertIsNone(info.node)
+            self.assertGreaterEqual(len(info.instances), 2)
+            self.assertEqual(len(set(info.nodes)), len(info.nodes))
+            senders = problem.cost_calculator.get_input_senders(p, solution)
+            self.assertIn(info.split_input, senders)
+            self.assertEqual(
+                sorted(u for i in info.instances for u in i.split_senders),
+                sorted(node for node, _ in senders[info.split_input]),
+            )
+            reaches = problem.optimizer._reaches
+            for instance in info.instances:
+                for dep, lst in senders.items():
+                    nodes = instance.split_senders if dep == info.split_input else [
+                        node for node, _ in lst]
+                    for node in nodes:
+                        self.assertTrue(reaches(node, instance.node), (p, dep, node))
+            # The instances add up to the placement.
+            self.assertAlmostEqual(info.individual_cost,
+                                   sum(i.individual_cost for i in info.instances))
+            self.assertAlmostEqual(sum(i.output_rate for i in info.instances),
+                                   rates[p][1], delta=1e-9 * max(1.0, rates[p][1]))
+
+    # --- the tree ---------------------------------------------------------
+
+    def test_single_query(self):
+        solution, problem = self._solve()
         placement = solution.placements[Q]
-        self.assertEqual(placement.location, (0, 1))
-        self.assertIsNone(placement.node)
-        self.assertEqual(placement.split_input, "B")
+        location, cost, instances = self._expected("single_query")
+        self.assertEqual((placement.location, placement.individual_cost),
+                         (location, cost))
         self.assertEqual(
             [(i.node, i.split_senders, i.output_rate, i.individual_cost)
              for i in placement.instances],
-            [(0, [6], 1.0, 2020.0), (1, [4], 1.0, 1011.0)],
+            instances,
         )
-        self.assertEqual(solution.cumulative_cost, 3031.0)
+        self.assertEqual(solution.cumulative_cost, cost)
+        self.assert_valid(solution, problem)
 
-    def test_event_stack_holds_only_complete_inputs(self):
-        # Each instance has all A's, but only part of the B's.
-        solution, _ = _solve()
-        for node in (0, 1):
-            self.assertEqual(set(solution.event_stack[node]), {"A"})
+    def test_event_stack(self):
+        solution, _ = self._solve()
+        self.assertEqual({n: set(events) for n, events in solution.event_stack.items()},
+                         self._expected("event_stack"))
 
-    def test_latency_takes_the_slowest_instance(self):
-        # l_p = output rate, weighted by xi = 1. Single node at the cloud:
-        # 2 + 2 hops = 4. Multi-node: node 1 needs 1 + 1 hop + 1 hop to the
-        # sink, the cloud instance 1 + 2 hops: max 3.
-        single, problem = _solve(multi=False, xi=1.0)
-        self.assertEqual(single.get_critical_path_latency(problem), 4.0)
-        multi, problem = _solve(xi=1.0)
-        self.assertEqual(multi.placements[Q].location, (0, 1))
-        self.assertEqual(multi.get_critical_path_latency(problem), 3.0)
+    def test_latency(self):
+        # l_p = output rate, weighted by xi = 1.
+        solution, problem = self._solve(xi=1.0)
+        self.assertEqual(solution.get_critical_path_latency(problem),
+                         self._expected("latency"))
 
-    def test_parent_reads_the_instances(self):
-        # Q2 = SEQ(Q, C), C at 5. Q is placed on (0, 1) and only feeds Q2, so
-        # its instances send nothing to the sink: 1010 + 2020. Q2 then needs
-        # a host every instance and C reach: the cloud, receiving Q from
-        # node 1 (1/s, 1 hop) and C (1/s, 2 hops): 3.
-        sources = dict(SOURCES, C={5: 1.0})
-        kwargs = dict(sources=sources, workload=(Q2,), order=(Q, Q2),
-                      deps={Q: ["A", "B"], Q2: [Q, "C"]},
-                      rates={Q: Q_RATES, Q2: Q2_RATES})
-        solution, problem = _solve(**kwargs)
-        self.assertEqual(solution.placements[Q].location, (0, 1))
-        self.assertEqual(solution.placements[Q].individual_cost, 3030.0)
-        self.assertEqual(solution.placements[Q2].location, 0)
-        self.assertEqual(solution.placements[Q2].individual_cost, 3.0)
-        senders = problem.cost_calculator.get_input_senders(Q2, solution)
-        self.assertEqual(senders, {Q: [(0, 1.0), (1, 1.0)], "C": [(5, 1.0)]})
-        # Single-node: Q at the cloud for 4020, Q2 gets C for 2.
-        single, _ = _solve(multi=False, **kwargs)
-        self.assertEqual(single.cumulative_cost, 4022.0)
+    def test_nested(self):
+        solution, problem = self._solve(**NESTED)
+        q_location, q_cost, q2_location, q2_cost = self._expected("nested")
+        self.assertEqual(solution.placements[Q].location, q_location)
+        self.assertEqual(solution.placements[Q].individual_cost, q_cost)
+        self.assertEqual(solution.placements[Q2].location, q2_location)
+        self.assertEqual(solution.placements[Q2].individual_cost, q2_cost)
+        self.assertEqual(problem.cost_calculator.get_input_senders(Q2, solution),
+                         self._expected("nested_senders"))
+        self.assert_valid(solution, problem)
 
-    def test_push_pull_keeps_consumed_projections_single_node(self):
-        # With push-pull on, a multi-node input would cost its consumers
-        # push-pull, so only projections nobody reads may be split. PrePP is
-        # stubbed out (no buffer), which leaves all-push for every node.
-        sources = dict(SOURCES, C={5: 1.0})
-        nested = dict(sources=sources, workload=(Q2,), order=(Q, Q2),
-                      deps={Q: ["A", "B"], Q2: [Q, "C"]},
-                      rates={Q: Q_RATES, Q2: Q2_RATES})
+    def test_no_split_possible(self):
+        # A at 3 and 5, B at 4 and 6: only the cloud receives every sender of
+        # either input, so both modes place Q there.
+        sources = {"A": {3: 10.0, 5: 10.0}, "B": {4: 1000.0, 6: 1000.0}}
+        solution, problem = self._solve(sources=sources, rates={Q: (0.0001, 4.0)})
+        self.assertEqual(solution.placements[Q].location, 0)
+        self.assert_valid(solution, problem)
+
+    def test_push_pull_guard(self):
+        # PrePP is stubbed out (no buffer), which leaves all-push for every
+        # node, but push-pull is switched on.
+        nested_q, single_q = self._expected("push_pull_guard")
         with mock.patch.object(CostCalculator, "_build_prepp_input_buffer",
                                return_value=None):
-            solution, _ = _solve(push_pull=True, **nested)
-            self.assertEqual(solution.placements[Q].location, 0)
-            solution, _ = _solve(push_pull=True)
-            self.assertEqual(solution.placements[Q].location, (0, 1))
+            solution, _ = self._solve(push_pull=True, **NESTED)
+            self.assertEqual(solution.placements[Q].location, nested_q)
+            solution, _ = self._solve(push_pull=True)
+            self.assertEqual(solution.placements[Q].location, single_q)
+
+    # --- random INES simulations -----------------------------------------
+
+    @classmethod
+    def setUpClass(cls):
+        cls.simulations = [_ines_simulation(*s) for s in SIMULATIONS]
+
+    def _check_simulations(self, push_pull):
+        split = 0
+        for spec, simulation in zip(SIMULATIONS, self.simulations):
+            with self.subTest(simulation=spec, push_pull=push_pull):
+                solution, problem, metrics = _run_kraken(simulation, self.MULTI, push_pull)
+                self.assert_valid(solution, problem, metrics)
+                split += metrics["multi_node_placements"]
+                if not self.MULTI:
+                    # Off is the default: the same plan as without the switch.
+                    default, _, _ = _run_kraken(simulation, False, push_pull,
+                                                drop_switch=True)
+                    self.assertEqual(_plan(solution), _plan(default))
+                    self.assertEqual(solution.cumulative_cost, default.cumulative_cost)
+        return split
+
+    def test_ines_simulations_all_push(self):
+        split = self._check_simulations(push_pull=False)
+        if self.MULTI:
+            self.assertGreater(split, 0)  # the splits were exercised
+
+    def test_ines_simulations_push_pull(self):
+        self._check_simulations(push_pull=True)
+
+
+class TestMultiNodeOff(_OffAndOn, unittest.TestCase):
+    MULTI = False
+
+
+class TestMultiNodeOn(_OffAndOn, unittest.TestCase):
+    MULTI = True
 
 
 if __name__ == "__main__":
